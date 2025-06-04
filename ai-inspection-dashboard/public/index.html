@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>IQE动态检验系统</title>
+  <script type="text/javascript">
+    // 处理来自404.html的重定向
+    (function() {
+      var redirect = sessionStorage.redirect;
+      delete sessionStorage.redirect;
+      if (redirect && redirect != location.href) {
+        history.replaceState(null, null, redirect);
+      }
+
+      // 处理查询参数
+      var l = window.location;
+      var query = l.search.slice(1);
+      var params = {};
+      
+      if (query) {
+        query.split('&').forEach(function(v) {
+          var pair = v.split('=');
+          params[pair[0]] = pair[1];
+        });
+      }
+
+      // 如果有p参数，表示这是从404.html重定向来的
+      if (params.p) {
+        var path = params.p;
+        var newUrl = l.protocol + '//' + l.host + path;
+        
+        if (params.q) {
+          newUrl += '?' + params.q.replace(/~and~/g, '&');
+        }
+        
+        if (l.hash) {
+          newUrl += l.hash;
+        }
+        
+        history.replaceState(null, null, newUrl);
+      }
+    })();
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <!-- 构建的脚本会自动注入 -->
+</body>
+</html> 
