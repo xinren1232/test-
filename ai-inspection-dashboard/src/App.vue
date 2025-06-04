@@ -14,11 +14,19 @@
       >
         <el-menu-item index="/">首页</el-menu-item>
         <el-menu-item index="/factory">库存管理</el-menu-item>
-        <el-menu-item index="/lab">实验室检验</el-menu-item>
-        <el-menu-item index="/online">上线使用</el-menu-item>
+        
+        <el-sub-menu index="/lab-group">
+          <template #title>实验室数据</template>
+          <el-menu-item index="/lab">常规检验</el-menu-item>
+          <el-menu-item index="/lab-inspection">送样检验</el-menu-item>
+        </el-sub-menu>
+        
+        <el-menu-item index="/online">生产现场</el-menu-item>
         <el-menu-item index="/batch">批次管理</el-menu-item>
         <el-menu-item index="/monitoring">实时监控</el-menu-item>
+        <el-menu-item index="/analysis">高级分析</el-menu-item>
         <el-menu-item index="/ai">AI助手</el-menu-item>
+        <el-menu-item index="/architecture">架构视图</el-menu-item>
       </el-menu>
       <div class="user-container">
         <el-dropdown>
@@ -183,3 +191,5 @@ body {
   }
 }
 </style> 
+ 
+ 

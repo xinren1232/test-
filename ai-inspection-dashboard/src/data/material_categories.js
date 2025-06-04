@@ -133,3 +133,5 @@ export function getCategoryInspectionConfig(id) {
   
   return configs[id] || { sampleRate: 0.1, keyItems: [] }
 } 
+ 
+ 

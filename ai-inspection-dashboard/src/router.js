@@ -20,6 +20,11 @@ const router = createRouter({
       component: () => import('./pages/LabView.vue')
     },
     {
+      path: '/lab-inspection',
+      name: 'labInspection',
+      component: () => import('./pages/LabInspectionView.vue')
+    },
+    {
       path: '/online',
       name: 'online',
       component: () => import('./pages/OnlineView.vue')
@@ -49,6 +54,11 @@ const router = createRouter({
       path: '/architecture',
       name: 'architecture',
       component: () => import('./pages/ArchitectureView.vue')
+    },
+    {
+      path: '/analysis',
+      name: 'analysis',
+      component: () => import('./pages/AnalysisView.vue')
     }
     // 设置页面暂未实现，需要时再添加
     // {
@@ -60,3 +70,5 @@ const router = createRouter({
 })
 
 export default router 
+ 
+ 

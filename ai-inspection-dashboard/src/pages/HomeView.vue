@@ -98,6 +98,36 @@
       </el-col>
     </el-row>
 
+    <!-- 风险分布图表 -->
+    <el-row :gutter="20" class="chart-row">
+      <el-col :xs="24" :sm="24" :md="12" :lg="12">
+        <el-card class="box-card">
+          <template #header>
+            <div class="card-header">
+              <h2>物料风险分布</h2>
+              <el-button type="primary" size="small" @click="goToPage('/analysis')">详细分析</el-button>
+            </div>
+          </template>
+          <div class="chart-content">
+            <div ref="riskDistributionChartRef" style="width: 100%; height: 300px;"></div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="24" :md="12" :lg="12">
+        <el-card class="box-card">
+          <template #header>
+            <div class="card-header">
+              <h2>测试合格率趋势</h2>
+              <el-button type="primary" size="small" @click="goToPage('/lab')">查看详情</el-button>
+            </div>
+          </template>
+          <div class="chart-content">
+            <div ref="passRateChartRef" style="width: 100%; height: 300px;"></div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
     <!-- 快速导航 -->
     <el-row :gutter="20" class="feature-row">
       <el-col :xs="24" :sm="12" :md="6">
@@ -134,17 +164,45 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { materialCategories } from '../data/material_categories.js'
 import factoryDataJson from '../data/factory_data.json'
 import labDataJson from '../data/lab_data.json'
 import onlineDataJson from '../data/online_data.json'
+import { recommendInspectionStrategy } from '../logic/recommend.js'
+import * as echarts from 'echarts/core'
+import { PieChart, BarChart } from 'echarts/charts'
+import { 
+  TitleComponent, 
+  TooltipComponent, 
+  LegendComponent,
+  GridComponent
+} from 'echarts/components'
+import { LabelLayout } from 'echarts/features'
+import { CanvasRenderer } from 'echarts/renderers'
+import { ArrowRight } from '@element-plus/icons-vue'
+
+// 注册必需的组件
+echarts.use([
+  TitleComponent, 
+  TooltipComponent, 
+  LegendComponent,
+  GridComponent,
+  PieChart,
+  BarChart,
+  LabelLayout,
+  CanvasRenderer
+])
 
 const router = useRouter()
 const factoryData = ref(factoryDataJson)
 const labData = ref(labDataJson)
 const onlineData = ref(onlineDataJson)
+const riskDistributionChartRef = ref(null)
+const passRateChartRef = ref(null)
+let riskDistributionChart = null
+let passRateChart = null
 
 // 计算工厂平均缺陷率
 const avgFactoryDefectRate = computed(() => {
@@ -214,9 +272,359 @@ const highRiskPercentage = computed(() => {
     : 0
 })
 
+// 计算各类别风险分布
+const categoryRiskData = computed(() => {
+  const data = []
+  
+  materialCategories.forEach(category => {
+    // 获取该类别的所有物料
+    const categoryMaterials = new Set()
+    const highRiskMaterials = new Set()
+    const mediumRiskMaterials = new Set()
+    const lowRiskMaterials = new Set()
+    
+    // 收集该类别的所有物料
+    factoryData.value
+      .filter(item => item.category_id === category.id)
+      .forEach(item => categoryMaterials.add(item.material_code))
+    
+    labData.value
+      .filter(item => item.category_id === category.id)
+      .forEach(item => categoryMaterials.add(item.material_code))
+    
+    onlineData.value
+      .filter(item => item.category_id === category.id)
+      .forEach(item => categoryMaterials.add(item.material_code))
+    
+    // 分析风险等级
+    categoryMaterials.forEach(code => {
+      const factory = factoryData.value.find(item => item.material_code === code)
+      const lab = labData.value.find(item => item.material_code === code)
+      const online = onlineData.value.find(item => item.material_code === code)
+      
+      let isHighRisk = false
+      let isMediumRisk = false
+      
+      // 工厂缺陷率判断
+      if (factory && factory.defect_rate > 2) {
+        isHighRisk = true
+      } else if (factory && factory.defect_rate > 1) {
+        isMediumRisk = true
+      }
+      
+      // 实验室测试结果判断
+      if (lab && lab.result === '不合格') {
+        isHighRisk = true
+      } else if (lab && lab.score < 80) {
+        isMediumRisk = true
+      }
+      
+      // 上线缺陷率判断
+      if (online) {
+        const defectRate = (online.defect_count / online.total_count) * 100
+        if (defectRate > 2) {
+          isHighRisk = true
+        } else if (defectRate > 1) {
+          isMediumRisk = true
+        }
+      }
+      
+      if (isHighRisk) {
+        highRiskMaterials.add(code)
+      } else if (isMediumRisk) {
+        mediumRiskMaterials.add(code)
+      } else {
+        lowRiskMaterials.add(code)
+      }
+    })
+    
+    data.push({
+      categoryId: category.id,
+      categoryName: category.name,
+      totalCount: categoryMaterials.size,
+      highRiskCount: highRiskMaterials.size,
+      mediumRiskCount: mediumRiskMaterials.size,
+      lowRiskCount: lowRiskMaterials.size
+    })
+  })
+  
+  return data
+})
+
+// AI推荐数据
+const recommendationData = computed(() => {
+  return categoryRiskData.value
+    .filter(item => item.totalCount > 0)
+    .map(item => {
+      // 计算风险等级
+      let riskLevel = '低风险'
+      if (item.highRiskCount > 0) {
+        riskLevel = '高风险'
+      } else if (item.mediumRiskCount > 0) {
+        riskLevel = '中风险'
+      }
+      
+      // 生成推荐
+      let recommendation = ''
+      let specificStrategy = ''
+      
+      if (riskLevel === '高风险') {
+        recommendation = '建议进行严格检验，提高抽样比例'
+        specificStrategy = `重点关注${item.categoryName}类不良项`
+      } else if (riskLevel === '中风险') {
+        recommendation = '建议进行常规检验，关注历史问题点'
+        specificStrategy = '保持正常检验频率'
+      } else {
+        recommendation = '可适当降低检验频率，实施抽检'
+        specificStrategy = '维持基本检验项目'
+      }
+      
+      return {
+        categoryName: item.categoryName,
+        riskLevel,
+        recommendation,
+        specificStrategy
+      }
+    })
+    .sort((a, b) => {
+      // 按风险等级排序
+      const riskOrder = { '高风险': 0, '中风险': 1, '低风险': 2 }
+      return riskOrder[a.riskLevel] - riskOrder[b.riskLevel]
+    })
+})
+
+// 获取风险等级对应的标签类型
+function getRiskTagType(riskLevel) {
+  switch (riskLevel) {
+    case '高风险': return 'danger'
+    case '中风险': return 'warning'
+    case '低风险': return 'success'
+    default: return 'info'
+  }
+}
+
+// 初始化图表
+function initCharts() {
+  // 初始化风险分布图表
+  if (riskDistributionChartRef.value) {
+    riskDistributionChart = echarts.init(riskDistributionChartRef.value)
+    updateRiskDistributionChart()
+  }
+  
+  // 初始化合格率趋势图表
+  if (passRateChartRef.value) {
+    passRateChart = echarts.init(passRateChartRef.value)
+    updatePassRateChart()
+  }
+}
+
+// 更新风险分布图表
+function updateRiskDistributionChart() {
+  if (!riskDistributionChart) return
+  
+  const categories = categoryRiskData.value
+    .filter(item => item.totalCount > 0)
+    .map(item => item.categoryName)
+  
+  const highRiskData = categoryRiskData.value
+    .filter(item => item.totalCount > 0)
+    .map(item => item.highRiskCount)
+  
+  const mediumRiskData = categoryRiskData.value
+    .filter(item => item.totalCount > 0)
+    .map(item => item.mediumRiskCount)
+  
+  const lowRiskData = categoryRiskData.value
+    .filter(item => item.totalCount > 0)
+    .map(item => item.lowRiskCount)
+  
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow'
+      }
+    },
+    legend: {
+      data: ['高风险', '中风险', '低风险']
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'value'
+    },
+    yAxis: {
+      type: 'category',
+      data: categories
+    },
+    series: [
+      {
+        name: '高风险',
+        type: 'bar',
+        stack: 'total',
+        label: {
+          show: true
+        },
+        emphasis: {
+          focus: 'series'
+        },
+        data: highRiskData,
+        itemStyle: {
+          color: '#F56C6C'
+        }
+      },
+      {
+        name: '中风险',
+        type: 'bar',
+        stack: 'total',
+        label: {
+          show: true
+        },
+        emphasis: {
+          focus: 'series'
+        },
+        data: mediumRiskData,
+        itemStyle: {
+          color: '#E6A23C'
+        }
+      },
+      {
+        name: '低风险',
+        type: 'bar',
+        stack: 'total',
+        label: {
+          show: true
+        },
+        emphasis: {
+          focus: 'series'
+        },
+        data: lowRiskData,
+        itemStyle: {
+          color: '#67C23A'
+        }
+      }
+    ]
+  }
+  
+  riskDistributionChart.setOption(option)
+}
+
+// 更新合格率趋势图表
+function updatePassRateChart() {
+  if (!passRateChart) return
+  
+  // 按日期分组计算合格率
+  const dateMap = new Map()
+  
+  labData.value.forEach(item => {
+    const date = item.test_date.substring(0, 10)
+    if (!dateMap.has(date)) {
+      dateMap.set(date, { total: 0, pass: 0 })
+    }
+    
+    const stats = dateMap.get(date)
+    stats.total++
+    if (item.result === '合格') {
+      stats.pass++
+    }
+  })
+  
+  // 转换为数组并排序
+  const sortedData = Array.from(dateMap.entries())
+    .map(([date, stats]) => ({
+      date,
+      passRate: stats.total > 0 ? (stats.pass / stats.total * 100).toFixed(1) : 0
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date))
+  
+  // 最多显示最近10天数据
+  const recentData = sortedData.slice(-10)
+  
+  const option = {
+    tooltip: {
+      trigger: 'axis'
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: recentData.map(item => item.date),
+      axisLabel: {
+        rotate: 45
+      }
+    },
+    yAxis: {
+      type: 'value',
+      min: 0,
+      max: 100,
+      axisLabel: {
+        formatter: '{value}%'
+      }
+    },
+    series: [
+      {
+        name: '合格率',
+        type: 'line',
+        data: recentData.map(item => parseFloat(item.passRate)),
+        markLine: {
+          data: [
+            {
+              name: '目标线',
+              yAxis: 90,
+              lineStyle: {
+                color: '#67C23A'
+              },
+              label: {
+                formatter: '目标: 90%',
+                position: 'start'
+              }
+            }
+          ]
+        },
+        itemStyle: {
+          color: '#409EFF'
+        },
+        lineStyle: {
+          width: 3
+        },
+        symbol: 'circle',
+        symbolSize: 8
+      }
+    ]
+  }
+  
+  passRateChart.setOption(option)
+}
+
+// 窗口大小变化时重置图表
+function handleResize() {
+  riskDistributionChart && riskDistributionChart.resize()
+  passRateChart && passRateChart.resize()
+}
+
 function goToPage(path) {
   router.push(path)
 }
+
+onMounted(() => {
+  initCharts()
+  window.addEventListener('resize', handleResize)
+})
+
+// 组件卸载时移除事件监听
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+  riskDistributionChart && riskDistributionChart.dispose()
+  passRateChart && passRateChart.dispose()
+})
 </script>
 
 <style scoped>
@@ -384,5 +792,17 @@ function goToPage(path) {
   justify-content: center;
   margin-top: auto;
   padding-top: 10px;
+}
+
+.chart-row {
+  margin-bottom: 24px;
+}
+
+.chart-content {
+  padding: 10px 0;
+}
+
+.recommendation-content {
+  padding: 10px 0;
 }
 </style> 

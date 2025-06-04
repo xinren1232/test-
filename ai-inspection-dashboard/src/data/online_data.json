@@ -248,27 +248,27 @@
     "id": "O011",
     "material_id": "F004",
     "material_name": "背板结构件-金属",
-    "date": "2023-11-18",
-    "line_id": "L07",
-    "line_name": "结构件装配线",
+    "date": "2023-11-16",
+    "line_id": "L05",
+    "line_name": "组件装配线",
     "total_count": 1500,
-    "defect_count": 30,
+    "defect_count": 25,
     "operator": "周伟",
     "issues": [
       {
-        "type": "表面划痕",
-        "count": 15,
+        "type": "划痕",
+        "count": 12,
         "severity": "轻微"
       },
       {
         "type": "尺寸偏差",
-        "count": 10,
+        "count": 8,
         "severity": "中等"
       },
       {
-        "type": "涂层缺陷",
+        "type": "变形",
         "count": 5,
-        "severity": "轻微"
+        "severity": "严重"
       }
     ]
   },
@@ -276,27 +276,27 @@
     "id": "O012",
     "material_id": "F005",
     "material_name": "中框结构件-塑料",
-    "date": "2023-11-20",
-    "line_id": "L07",
-    "line_name": "结构件装配线",
+    "date": "2023-11-18",
+    "line_id": "L05",
+    "line_name": "组件装配线",
     "total_count": 1800,
-    "defect_count": 36,
+    "defect_count": 20,
     "operator": "张明",
     "issues": [
       {
-        "type": "注塑缺陷",
-        "count": 20,
+        "type": "色差",
+        "count": 10,
         "severity": "轻微"
       },
       {
         "type": "尺寸偏差",
-        "count": 10,
+        "count": 6,
         "severity": "中等"
       },
       {
-        "type": "变形",
-        "count": 6,
-        "severity": "中等"
+        "type": "裂痕",
+        "count": 4,
+        "severity": "严重"
       }
     ]
   },
@@ -304,11 +304,11 @@
     "id": "O013",
     "material_id": "F018",
     "material_name": "马达振动器",
-    "date": "2023-11-22",
-    "line_id": "L05",
-    "line_name": "组件装配线",
+    "date": "2023-11-20",
+    "line_id": "L06",
+    "line_name": "电池装配线",
     "total_count": 2500,
-    "defect_count": 25,
+    "defect_count": 30,
     "operator": "李强",
     "issues": [
       {
@@ -317,54 +317,184 @@
         "severity": "中等"
       },
       {
-        "type": "噪音过大",
+        "type": "噪声过大",
         "count": 10,
         "severity": "轻微"
+      },
+      {
+        "type": "连接异常",
+        "count": 5,
+        "severity": "严重"
       }
     ]
   },
   {
     "id": "O014",
+    "material_id": "F017",
+    "material_name": "NFC天线",
+    "date": "2023-11-22",
+    "line_id": "L01",
+    "line_name": "SMT生产线01",
+    "total_count": 3000,
+    "defect_count": 15,
+    "operator": "李强",
+    "issues": [
+      {
+        "type": "信号弱",
+        "count": 10,
+        "severity": "中等"
+      },
+      {
+        "type": "焊接问题",
+        "count": 5,
+        "severity": "轻微"
+      }
+    ]
+  },
+  {
+    "id": "O015",
     "material_id": "F019",
     "material_name": "前壳组件",
-    "date": "2023-11-25",
-    "line_id": "L07",
-    "line_name": "结构件装配线",
+    "date": "2023-11-23",
+    "line_id": "L05",
+    "line_name": "组件装配线",
     "total_count": 1200,
-    "defect_count": 24,
+    "defect_count": 36,
     "operator": "周伟",
     "issues": [
       {
-        "type": "表面缺陷",
+        "type": "划痕",
         "count": 15,
         "severity": "轻微"
       },
       {
-        "type": "尺寸偏差",
+        "type": "气泡",
+        "count": 12,
+        "severity": "轻微"
+      },
+      {
+        "type": "色差",
         "count": 9,
         "severity": "中等"
       }
     ]
   },
   {
-    "id": "O015",
+    "id": "O016",
+    "material_id": "F013",
+    "material_name": "包装盒-高端系列",
+    "date": "2023-11-24",
+    "line_id": "L07",
+    "line_name": "包装线",
+    "total_count": 2000,
+    "defect_count": 10,
+    "operator": "王芳",
+    "issues": [
+      {
+        "type": "印刷偏差",
+        "count": 6,
+        "severity": "轻微"
+      },
+      {
+        "type": "结构损坏",
+        "count": 4,
+        "severity": "中等"
+      }
+    ]
+  },
+  {
+    "id": "O017",
+    "material_id": "F001",
+    "material_name": "电阻器-0805-10K",
+    "date": "2023-11-25",
+    "line_id": "L01",
+    "line_name": "SMT生产线01",
+    "total_count": 4500,
+    "defect_count": 18,
+    "operator": "张明",
+    "issues": [
+      {
+        "type": "焊接不良",
+        "count": 12,
+        "severity": "轻微"
+      },
+      {
+        "type": "元件损坏",
+        "count": 6,
+        "severity": "中等"
+      }
+    ]
+  },
+  {
+    "id": "O018",
+    "material_id": "F007",
+    "material_name": "LCD显示屏-6.7寸",
+    "date": "2023-11-26",
+    "line_id": "L03",
+    "line_name": "显示模组装配线",
+    "total_count": 900,
+    "defect_count": 27,
+    "operator": "赵刚",
+    "issues": [
+      {
+        "type": "亮点",
+        "count": 10,
+        "severity": "轻微"
+      },
+      {
+        "type": "色彩偏差",
+        "count": 12,
+        "severity": "中等"
+      },
+      {
+        "type": "接口损坏",
+        "count": 5,
+        "severity": "严重"
+      }
+    ]
+  },
+  {
+    "id": "O019",
     "material_id": "F003",
     "material_name": "IC-存储器-128GB",
-    "date": "2023-11-26",
+    "date": "2023-11-27",
     "line_id": "L02",
     "line_name": "芯片装配线",
-    "total_count": 1200,
-    "defect_count": 12,
+    "total_count": 800,
+    "defect_count": 16,
     "operator": "王芳",
     "issues": [
       {
         "type": "引脚变形",
-        "count": 5,
+        "count": 6,
         "severity": "中等"
       },
       {
         "type": "数据错误",
-        "count": 7,
+        "count": 10,
+        "severity": "严重"
+      }
+    ]
+  },
+  {
+    "id": "O020",
+    "material_id": "F006",
+    "material_name": "高通骁龙处理器",
+    "date": "2023-11-28",
+    "line_id": "L02",
+    "line_name": "芯片装配线",
+    "total_count": 500,
+    "defect_count": 8,
+    "operator": "王芳",
+    "issues": [
+      {
+        "type": "功耗异常",
+        "count": 5,
+        "severity": "中等"
+      },
+      {
+        "type": "温度过高",
+        "count": 3,
         "severity": "严重"
       }
     ]

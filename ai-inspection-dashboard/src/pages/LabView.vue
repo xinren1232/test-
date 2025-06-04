@@ -1,97 +1,45 @@
 <template>
-  <div class="lab-container">
-    <!-- 页面标题与工具栏 -->
-    <div class="page-header">
-      <h2 class="page-title">实验室测试管理</h2>
-      <div class="toolbar">
-        <el-input
-          v-model="searchQuery"
-          placeholder="搜索物料编码或名称"
-          clearable
-          class="search-input"
-        >
-          <template #prefix>
-            <el-icon><el-icon-search /></el-icon>
-          </template>
-        </el-input>
-        
-        <el-select v-model="categoryFilter" placeholder="物料分类" clearable class="filter-select">
-          <el-option
-            v-for="category in materialCategories"
-            :key="category.id"
-            :label="category.name"
-            :value="category.id"
-          />
-        </el-select>
-        
-        <el-select v-model="resultFilter" placeholder="测试结果" clearable class="filter-select">
-          <el-option label="全部结果" value="" />
-          <el-option label="合格" value="合格" />
-          <el-option label="不合格" value="不合格" />
-        </el-select>
-        
-        <el-button type="primary" @click="refreshData">
-          <el-icon><el-icon-refresh /></el-icon> 刷新
-        </el-button>
-      </div>
+  <div class="lab-view">
+    <h2 class="page-title">实验室检测分析</h2>
+    
+    <!-- 质量预警面板 -->
+    <div v-if="showQualityAlert" class="quality-alert">
+      <el-alert
+        :title="`质量预警: 检测到${pendingRisks.length}个潜在风险批次`"
+        type="warning"
+        description="系统已基于历史检测数据分析出潜在风险，请查看详情"
+        show-icon
+        :closable="false"
+      >
+        <template #default>
+          <div class="alert-content">
+            <div class="alert-message">
+              <p>相似批次的历史不良率: <b>{{ predictedDefectRate }}%</b></p>
+              <p>建议: <b>{{ qualityRecommendation }}</b></p>
+            </div>
+            <div class="alert-actions">
+              <el-button size="small" type="warning" @click="handleRiskAnalysis">查看分析</el-button>
+              <el-button size="small" @click="handleDismissAlert">稍后提醒</el-button>
+            </div>
+          </div>
+        </template>
+      </el-alert>
     </div>
     
-    <!-- 数据概览卡片 -->
-    <div class="statistics-cards">
+    <!-- 统计卡片 -->
+    <div class="stat-cards">
       <el-row :gutter="20">
-        <el-col :xs="24" :sm="12" :md="6">
-          <el-card class="stat-card" shadow="hover">
-            <div class="stat-content">
-              <div class="stat-icon total-icon">
-                <el-icon><el-icon-data-line /></el-icon>
-              </div>
-              <div class="stat-info">
-                <div class="stat-title">总测试样本</div>
-                <div class="stat-value">{{ filteredData.length }}</div>
-              </div>
+        <el-col :xs="24" :sm="12" :md="6" v-for="(card, index) in statCardsData" :key="index">
+          <el-card shadow="hover" class="stat-card" :class="card.type">
+            <div class="card-icon">
+              <i :class="`el-icon-${card.icon}`"></i>
             </div>
-          </el-card>
-        </el-col>
-        
-        <el-col :xs="24" :sm="12" :md="6">
-          <el-card class="stat-card success" shadow="hover">
-            <div class="stat-content">
-              <div class="stat-icon pass-icon">
-                <el-icon><el-icon-check /></el-icon>
-              </div>
-              <div class="stat-info">
-                <div class="stat-title">合格数量</div>
-                <div class="stat-value">{{ passCount }}</div>
-                <div class="stat-rate">{{ passRate }}%</div>
-              </div>
-            </div>
-          </el-card>
-        </el-col>
-        
-        <el-col :xs="24" :sm="12" :md="6">
-          <el-card class="stat-card danger" shadow="hover">
-            <div class="stat-content">
-              <div class="stat-icon fail-icon">
-                <el-icon><el-icon-close /></el-icon>
-              </div>
-              <div class="stat-info">
-                <div class="stat-title">不合格数量</div>
-                <div class="stat-value">{{ failCount }}</div>
-                <div class="stat-rate">{{ failRate }}%</div>
-              </div>
-            </div>
-          </el-card>
-        </el-col>
-        
-        <el-col :xs="24" :sm="12" :md="6">
-          <el-card class="stat-card" shadow="hover">
-            <div class="stat-content">
-              <div class="stat-icon category-icon">
-                <el-icon><el-icon-collection-tag /></el-icon>
-              </div>
-              <div class="stat-info">
-                <div class="stat-title">物料种类数</div>
-                <div class="stat-value">{{ uniqueMaterialCount }}</div>
+            <div class="card-content">
+              <div class="card-label">{{ card.label }}</div>
+              <div class="card-value">{{ card.value }}</div>
+              <div class="card-trend">
+                <i :class="card.trend === 'up' ? 'el-icon-top' : 'el-icon-bottom'"></i>
+                {{ card.change }}
               </div>
             </div>
           </el-card>
@@ -99,185 +47,298 @@
       </el-row>
     </div>
     
-    <!-- 图表分析 -->
-    <el-row :gutter="20">
-      <el-col :xs="24" :sm="24" :md="12">
-        <el-card class="chart-card">
-          <template #header>
-            <div class="card-header">
-              <h3>物料分类合格率</h3>
-            </div>
-          </template>
-          <div class="chart-wrapper" ref="categoryChartRef"></div>
-        </el-card>
+    <!-- 筛选条件 -->
+    <div class="filter-container">
+      <el-form :inline="true" :model="filterForm" class="filter-form">
+        <el-form-item label="物料代码">
+          <el-input v-model="filterForm.materialCode" placeholder="输入物料代码" clearable></el-input>
+        </el-form-item>
+        <el-form-item label="物料名称">
+          <el-input v-model="filterForm.materialName" placeholder="输入物料名称" clearable></el-input>
+        </el-form-item>
+        <el-form-item label="测试项目">
+          <el-select v-model="filterForm.testItem" placeholder="选择测试项目" clearable>
+            <el-option 
+              v-for="item in testItemOptions" 
+              :key="item.value" 
+              :label="item.label" 
+              :value="item.value">
+            </el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="检测结果">
+          <el-select v-model="filterForm.result" placeholder="选择结果" clearable>
+            <el-option label="合格" value="OK"></el-option>
+            <el-option label="不合格" value="NG"></el-option>
+            <el-option label="有条件接收" value="有条件接收"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="日期范围">
+          <el-date-picker
+            v-model="filterForm.dateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            format="YYYY/MM/DD"
+            value-format="YYYY/MM/DD"
+          ></el-date-picker>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleFilter">筛选</el-button>
+          <el-button @click="resetFilter">重置</el-button>
+          <el-dropdown @command="handleExport">
+            <el-button type="success">
+              导出数据<i class="el-icon-arrow-down el-icon--right"></i>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="excel">导出Excel</el-dropdown-item>
+                <el-dropdown-item command="pdf">导出PDF报告</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </el-form-item>
+      </el-form>
+    </div>
+    
+    <!-- 数据分析和图表区域 -->
+    <el-row :gutter="20" class="charts-container">
+      <el-col :span="12">
+        <quality-trend-chart 
+          :trend-data="trendAnalysisData"
+          title="检测结果趋势分析"
+          :threshold="5"
+        ></quality-trend-chart>
       </el-col>
-      
-      <el-col :xs="24" :sm="24" :md="12">
-        <el-card class="chart-card">
-          <template #header>
-            <div class="card-header">
-              <h3>不合格项目分布</h3>
+      <el-col :span="12">
+        <el-tabs v-model="activeAnalysisTab" class="analysis-tabs">
+          <el-tab-pane label="批次质量对比" name="batchComparison">
+            <batch-comparison-radar 
+              v-if="selectedMaterial"
+              :title="`${selectedMaterial.materialName}批次质量参数对比`"
+              :batch-data="currentBatchData"
+              :available-batches="currentAvailableBatches"
+              :analysis-text="currentBatchData.analysisText"
+              :insights="currentBatchData.insights"
+            ></batch-comparison-radar>
+            <div v-else class="empty-chart">
+              <p>请从下方表格选择一个物料以查看批次质量对比</p>
             </div>
-          </template>
-          <div class="chart-wrapper" ref="failureTypeChartRef"></div>
-        </el-card>
+          </el-tab-pane>
+          <el-tab-pane label="风险因子分析" name="riskFactors">
+            <risk-factor-chart 
+              v-if="selectedMaterial"
+              :title="`${selectedMaterial.materialName}风险因子分析`"
+              :risk-data="currentRiskData"
+            ></risk-factor-chart>
+            <div v-else class="empty-chart">
+              <p>请从下方表格选择一个物料以查看风险因子分析</p>
+            </div>
+          </el-tab-pane>
+        </el-tabs>
       </el-col>
     </el-row>
     
-    <!-- 时间序列图 -->
-    <el-card class="chart-card">
-      <template #header>
-        <div class="card-header">
-          <h3>测试结果趋势分析</h3>
-          <el-radio-group v-model="timeRange" size="small">
-            <el-radio-button label="month">近一月</el-radio-button>
-            <el-radio-button label="quarter">近三月</el-radio-button>
-            <el-radio-button label="year">一年内</el-radio-button>
-          </el-radio-group>
-        </div>
-      </template>
-      <div class="chart-wrapper trend-chart" ref="trendChartRef"></div>
-    </el-card>
-    
-    <!-- 测试数据表格 -->
-    <el-card class="table-card">
-      <template #header>
-        <div class="card-header">
-          <h3>实验室测试记录</h3>
-          <el-button-group>
-            <el-button size="small" @click="exportData">导出数据</el-button>
-            <el-button size="small" type="primary" @click="openAnalysisDialog">数据分析</el-button>
-          </el-button-group>
-        </div>
-      </template>
-      
+    <!-- 检测结果表格 -->
+    <div class="table-container">
+      <h3 class="section-title">检测结果明细</h3>
       <el-table 
-        :data="pagedData" 
+        :data="filteredLabTests" 
         style="width: 100%" 
         border 
         stripe 
-        highlight-current-row
-        @sort-change="handleSortChange"
+        :row-class-name="tableRowClassName"
         @row-click="handleRowClick"
-        :row-class-name="testResultRowClassName"
       >
-        <el-table-column type="expand">
-          <template #default="props">
-            <div class="expanded-content">
-              <el-descriptions :column="2" border size="small">
-                <el-descriptions-item label="测试项目">{{ props.row.test_items.join(', ') }}</el-descriptions-item>
-                <el-descriptions-item label="不合格项">{{ props.row.failed_items ? props.row.failed_items.join(', ') : '无' }}</el-descriptions-item>
-                <el-descriptions-item label="测试设备">{{ props.row.equipment }}</el-descriptions-item>
-                <el-descriptions-item label="测试标准">{{ props.row.standard }}</el-descriptions-item>
-                <el-descriptions-item label="备注" :span="2">{{ props.row.notes || '无' }}</el-descriptions-item>
-              </el-descriptions>
-            </div>
-          </template>
-        </el-table-column>
-        
-        <el-table-column prop="test_id" label="测试ID" width="100" />
-        <el-table-column prop="material_code" label="物料编码" sortable width="140" />
-        <el-table-column prop="material_name" label="物料名称" width="180" />
-        <el-table-column label="物料分类" width="180">
+        <el-table-column prop="id" label="检测编号" width="150"></el-table-column>
+        <el-table-column prop="testDate" label="检测日期" width="120"></el-table-column>
+        <el-table-column prop="materialCode" label="物料代码" width="110"></el-table-column>
+        <el-table-column prop="materialName" label="物料名称" min-width="180"></el-table-column>
+        <el-table-column prop="testItem" label="测试项目" min-width="200"></el-table-column>
+        <el-table-column prop="result" label="检测结果" width="100">
           <template #default="scope">
-            {{ getCategoryNameById(scope.row.category_id) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="batch_number" label="批次号" width="120" />
-        <el-table-column prop="test_date" label="测试日期" sortable width="120">
-          <template #default="scope">
-            {{ formatDate(scope.row.test_date) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="sample_size" label="样本数" sortable width="100" align="center" />
-        <el-table-column prop="result" label="测试结论" sortable width="100" align="center">
-          <template #default="scope">
-            <el-tag :type="scope.row.result === '合格' ? 'success' : 'danger'">
+            <el-tag :type="getResultTagType(scope.row.result)" size="small">
               {{ scope.row.result }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="tester" label="测试员" width="100" />
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column prop="defectRate" label="不良比例" width="120"></el-table-column>
+        <el-table-column prop="supplier" label="供应商" width="120"></el-table-column>
+        <el-table-column label="操作" width="180">
           <template #default="scope">
-            <el-button type="primary" link size="small" @click.stop="viewDetail(scope.row)">详情</el-button>
-            <el-button type="warning" link size="small" @click.stop="retest(scope.row)">复测</el-button>
+            <el-button type="text" size="small" @click.stop="viewDetails(scope.row)">详情</el-button>
+            <el-button type="text" size="small" @click.stop="viewImages(scope.row)" :disabled="!scope.row.images || !scope.row.images.length">
+              查看图片
+            </el-button>
+            <el-button type="text" size="small" @click.stop="sendToAiAnalysis(scope.row)">AI分析</el-button>
           </template>
         </el-table-column>
       </el-table>
       
-      <!-- 分页 -->
-      <div class="pagination-wrapper">
+      <div class="pagination-container">
         <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :page-sizes="[10, 20, 50, 100]"
+          background
           layout="total, sizes, prev, pager, next, jumper"
-          :total="filteredData.length"
+          :total="totalTests"
+          :page-size="pagination.pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :current-page="pagination.currentPage"
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
-        />
+        >
+        </el-pagination>
       </div>
-    </el-card>
-    
-    <!-- 测试详情对话框 -->
-    <el-dialog
-      v-model="detailDialogVisible"
-      title="测试详细信息"
+    </div>
+
+    <!-- 详情弹窗 -->
+    <el-dialog 
+      v-model="dialogVisible" 
+      :title="selectedTest ? `检测详情: ${selectedTest.id}` : '检测详情'" 
       width="70%"
-      append-to-body
+      destroy-on-close
     >
-      <div v-if="selectedTest" class="test-detail">
-        <el-descriptions :column="2" border>
-          <el-descriptions-item label="测试ID">{{ selectedTest.test_id }}</el-descriptions-item>
-          <el-descriptions-item label="测试日期">{{ formatDate(selectedTest.test_date) }}</el-descriptions-item>
-          <el-descriptions-item label="物料编码">{{ selectedTest.material_code }}</el-descriptions-item>
-          <el-descriptions-item label="物料名称">{{ selectedTest.material_name }}</el-descriptions-item>
-          <el-descriptions-item label="物料分类">{{ getCategoryNameById(selectedTest.category_id) }}</el-descriptions-item>
-          <el-descriptions-item label="批次号">{{ selectedTest.batch_number }}</el-descriptions-item>
-          <el-descriptions-item label="样本数">{{ selectedTest.sample_size }}</el-descriptions-item>
-          <el-descriptions-item label="测试结果">
-            <el-tag :type="selectedTest.result === '合格' ? 'success' : 'danger'">
-              {{ selectedTest.result }}
-            </el-tag>
+      <div v-if="selectedTest" class="test-details">
+        <el-descriptions :column="2" border size="medium">
+          <el-descriptions-item label="检测编号">{{ selectedTest.id }}</el-descriptions-item>
+          <el-descriptions-item label="检测日期">{{ selectedTest.testDate }}</el-descriptions-item>
+          <el-descriptions-item label="物料代码">{{ selectedTest.materialCode }}</el-descriptions-item>
+          <el-descriptions-item label="物料名称">{{ selectedTest.materialName }}</el-descriptions-item>
+          <el-descriptions-item label="检测来源">{{ selectedTest.testSource }}</el-descriptions-item>
+          <el-descriptions-item label="项目">{{ selectedTest.project }}</el-descriptions-item>
+          <el-descriptions-item label="测试项目">{{ selectedTest.testItem }}</el-descriptions-item>
+          <el-descriptions-item label="检测结果">
+            <el-tag :type="getResultTagType(selectedTest.result)">{{ selectedTest.result }}</el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="测试员">{{ selectedTest.tester }}</el-descriptions-item>
-          <el-descriptions-item label="测试设备">{{ selectedTest.equipment }}</el-descriptions-item>
-          <el-descriptions-item label="测试标准" :span="2">{{ selectedTest.standard }}</el-descriptions-item>
+          <el-descriptions-item label="不良批次">{{ selectedTest.badBatch || 'N/A' }}</el-descriptions-item>
+          <el-descriptions-item label="不良比例">{{ selectedTest.defectRate }}</el-descriptions-item>
+          <el-descriptions-item label="供应商">{{ selectedTest.supplier }}</el-descriptions-item>
+          <el-descriptions-item label="责任归类">{{ selectedTest.responsibility }}</el-descriptions-item>
+          <el-descriptions-item label="建议处理" :span="2">{{ selectedTest.recommendation }}</el-descriptions-item>
+          <el-descriptions-item label="备注" :span="2">{{ selectedTest.remarks }}</el-descriptions-item>
         </el-descriptions>
         
-        <!-- 测试项目列表 -->
-        <h4 class="section-title">测试项目明细</h4>
-        <el-table 
-          :data="getTestItemsDetail(selectedTest)" 
-          style="width: 100%" 
-          border 
-          size="small"
-        >
-          <el-table-column prop="item" label="测试项目" />
-          <el-table-column prop="standard" label="标准要求" />
-          <el-table-column prop="result" label="测试结果" />
-          <el-table-column prop="status" label="状态" width="100">
-            <template #default="scope">
-              <el-tag :type="scope.row.status === '合格' ? 'success' : 'danger'">
-                {{ scope.row.status }}
-              </el-tag>
-            </template>
-          </el-table-column>
-        </el-table>
+        <div v-if="selectedTest.relatedRecords && selectedTest.relatedRecords.length" class="related-records">
+          <h4>相关记录</h4>
+          <el-tag v-for="record in selectedTest.relatedRecords" :key="record" size="small">
+            {{ record }}
+          </el-tag>
+        </div>
         
-        <!-- 测试图片 -->
-        <h4 class="section-title">测试图片</h4>
-        <div class="test-images">
-          <el-empty v-if="!selectedTest.images || selectedTest.images.length === 0" description="暂无测试图片" />
-          <el-image 
-            v-for="(img, index) in selectedTest.images || []" 
-            :key="index"
-            :src="img" 
-            :preview-src-list="selectedTest.images"
-            class="test-image"
-            fit="cover"
-          />
+        <div v-if="selectedTest.images && selectedTest.images.length" class="test-images">
+          <h4>检测图片</h4>
+          <div class="image-grid">
+            <div v-for="(image, index) in selectedTest.images" :key="index" class="image-item">
+              <el-image 
+                :src="image.url || image" 
+                :preview-src-list="selectedTest.images.map(img => img.url || img)"
+                fit="cover"
+              ></el-image>
+              <div class="image-caption" v-if="image.caption">{{ image.caption }}</div>
+            </div>
+          </div>
+        </div>
+        
+        <div v-if="selectedTest.testProcedure || selectedTest.testEquipment || selectedTest.testParameters" class="test-procedure">
+          <h4>测试过程</h4>
+          <el-descriptions :column="1" border size="small">
+            <el-descriptions-item v-if="selectedTest.testProcedure" label="测试规范">
+              {{ selectedTest.testProcedure }}
+            </el-descriptions-item>
+            <el-descriptions-item v-if="selectedTest.testEquipment" label="测试设备">
+              {{ Array.isArray(selectedTest.testEquipment) ? selectedTest.testEquipment.join(', ') : selectedTest.testEquipment }}
+            </el-descriptions-item>
+            <el-descriptions-item v-if="selectedTest.testParameters" label="测试参数">
+              <div v-for="(value, key) in selectedTest.testParameters" :key="key" class="param-item">
+                {{ key }}: {{ value }}
+              </div>
+            </el-descriptions-item>
+            <el-descriptions-item v-if="selectedTest.tester" label="测试人员">
+              {{ selectedTest.tester }}
+            </el-descriptions-item>
+            <el-descriptions-item v-if="selectedTest.reviewer" label="复核人员">
+              {{ selectedTest.reviewer }}
+            </el-descriptions-item>
+          </el-descriptions>
+        </div>
+      </div>
+    </el-dialog>
+
+    <!-- 图片预览弹窗 -->
+    <el-dialog 
+      v-model="imageDialogVisible" 
+      :title="selectedTest ? `${selectedTest.materialName} 检测图片` : '检测图片'"
+      width="80%"
+    >
+      <div v-if="selectedTest && selectedTest.images && selectedTest.images.length" class="image-preview">
+        <div class="image-carousel">
+          <el-carousel height="400px" arrow="always" indicator-position="outside">
+            <el-carousel-item v-for="(image, index) in selectedTest.images" :key="index">
+              <div class="carousel-image-container">
+                <img :src="image.url || image" alt="检测图片" class="carousel-image">
+                <div class="carousel-caption" v-if="image.caption">{{ image.caption }}</div>
+              </div>
+            </el-carousel-item>
+          </el-carousel>
+        </div>
+        <div class="image-thumbnails">
+          <div 
+            v-for="(image, index) in selectedTest.images" 
+            :key="index" 
+            class="thumbnail-item"
+            @click="currentImageIndex = index"
+          >
+            <el-image 
+              :src="image.url || image" 
+              fit="cover"
+              class="thumbnail"
+            ></el-image>
+          </div>
+        </div>
+      </div>
+    </el-dialog>
+
+    <!-- 风险分析弹窗 -->
+    <el-dialog
+      v-model="riskAnalysisDialogVisible"
+      title="风险批次分析"
+      width="80%"
+    >
+      <div class="risk-analysis-container">
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="物料名称">{{ selectedMaterialForRisk?.materialName }}</el-descriptions-item>
+          <el-descriptions-item label="物料代码">{{ selectedMaterialForRisk?.materialCode }}</el-descriptions-item>
+          <el-descriptions-item label="风险评分">
+            <span class="risk-score" :class="getRiskScoreClass(selectedMaterialForRisk?.riskScore)">
+              {{ selectedMaterialForRisk?.riskScore }}
+            </span>
+          </el-descriptions-item>
+          <el-descriptions-item label="影响范围">{{ selectedMaterialForRisk?.riskImpactScope }}</el-descriptions-item>
+        </el-descriptions>
+        
+        <el-tabs type="border-card" class="risk-tabs">
+          <el-tab-pane label="风险因子">
+            <risk-factor-chart
+              :risk-data="selectedMaterialForRisk"
+              height="400px"
+            ></risk-factor-chart>
+          </el-tab-pane>
+          <el-tab-pane label="批次对比">
+            <batch-comparison-radar
+              v-if="selectedMaterialForRisk"
+              :batch-data="riskBatchData"
+              :available-batches="riskAvailableBatches"
+              :analysis-text="riskBatchData.analysisText"
+              :insights="riskBatchData.insights"
+              height="400px"
+            ></batch-comparison-radar>
+          </el-tab-pane>
+        </el-tabs>
+
+        <div class="risk-actions">
+          <el-button type="primary" @click="handleRiskAction">采取措施</el-button>
+          <el-button type="warning" @click="handleSendToAI">AI深度分析</el-button>
+          <el-button @click="handleGenerateReport">生成完整报告</el-button>
         </div>
       </div>
     </el-dialog>
@@ -285,769 +346,584 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue';
-import { materialCategories, getCategoryName } from '../data/material_categories';
-import * as echarts from 'echarts';
-import labDataJson from '../data/lab_data.json';
+import { ref, reactive, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { ElMessage, ElMessageBox } from 'element-plus';
 
-// 状态变量
-const labData = ref([...labDataJson]);
-const searchQuery = ref('');
-const categoryFilter = ref('');
-const resultFilter = ref('');
-const currentPage = ref(1);
-const pageSize = ref(10);
-const sortBy = ref('');
-const sortOrder = ref('');
-const detailDialogVisible = ref(false);
+// 引入自定义组件
+import QualityTrendChart from '../components/features/QualityTrendChart.vue';
+import BatchComparisonRadar from '../components/features/BatchComparisonRadar.vue';
+import RiskFactorChart from '../components/features/RiskFactorChart.vue';
+
+// 引入数据存储
+import { useIQEStore } from '../store';
+
+// 创建路由和数据存储实例
+const router = useRouter();
+const store = useIQEStore();
+
+// 提取数据
+const labTestData = computed(() => store.labTestData);
+const trendAnalysisData = computed(() => store.trendAnalysisData);
+const statCardsData = computed(() => store.getStatCardsData('lab'));
+const batchComparisonData = computed(() => store.batchComparisonData);
+const riskAnalysisData = computed(() => store.riskAnalysisData);
+
+// 筛选表单
+const filterForm = reactive({
+  materialCode: '',
+  materialName: '',
+  testItem: '',
+  result: '',
+  dateRange: []
+});
+
+// 分页控制
+const pagination = reactive({
+  currentPage: 1,
+  pageSize: 10
+});
+
+// 测试项目选项
+const testItemOptions = computed(() => {
+  // 从数据中提取不重复的测试项目
+  const items = new Set();
+  labTestData.value.forEach(test => {
+    if (test.testItem) {
+      items.add(test.testItem);
+    }
+  });
+  return Array.from(items).map(item => ({ label: item, value: item }));
+});
+
+// 弹窗状态
+const dialogVisible = ref(false);
 const selectedTest = ref(null);
-const timeRange = ref('month');
+const imageDialogVisible = ref(false);
+const currentImageIndex = ref(0);
+const riskAnalysisDialogVisible = ref(false);
+const activeAnalysisTab = ref('batchComparison');
 
-// 图表引用
-const categoryChartRef = ref(null);
-const failureTypeChartRef = ref(null);
-const trendChartRef = ref(null);
-let categoryChart = null;
-let failureTypeChart = null;
-let trendChart = null;
+// 质量预警相关状态
+const showQualityAlert = ref(true);
+const pendingRisks = ref([]);
+const predictedDefectRate = ref('32.5');
+const qualityRecommendation = ref('增加抽检比例，对来料进行重点筛选');
+const selectedMaterialForRisk = ref(null);
 
-// 计算属性
-const filteredData = computed(() => {
-  let result = labData.value;
+// 所选物料
+const selectedMaterial = ref(null);
+
+// 当前批次比较数据
+const currentBatchData = computed(() => {
+  if (!selectedMaterial.value || !selectedMaterial.value.materialCode) return {};
+  return batchComparisonData.value[selectedMaterial.value.materialCode] || {};
+});
+
+// 当前批次的可用批次列表
+const currentAvailableBatches = computed(() => {
+  if (!currentBatchData.value || !currentBatchData.value.batches) return ['standard'];
+  return ['standard', ...currentBatchData.value.batches];
+});
+
+// 当前风险分析数据
+const currentRiskData = computed(() => {
+  if (!selectedMaterial.value || !selectedMaterial.value.materialCode) return {};
+  return riskAnalysisData.value[selectedMaterial.value.materialCode] || {};
+});
+
+// 风险分析弹窗数据
+const riskBatchData = computed(() => {
+  if (!selectedMaterialForRisk.value || !selectedMaterialForRisk.value.materialCode) return {};
+  return batchComparisonData.value[selectedMaterialForRisk.value.materialCode] || {};
+});
+
+const riskAvailableBatches = computed(() => {
+  if (!riskBatchData.value || !riskBatchData.value.batches) return ['standard'];
+  return ['standard', ...riskBatchData.value.batches];
+});
+
+// 筛选后的测试数据
+const filteredLabTests = computed(() => {
+  // 应用筛选条件
+  let result = store.filterLabTests(filterForm);
   
-  // 搜索过滤
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase();
-    result = result.filter(item => 
-      item.material_code.toLowerCase().includes(query) || 
-      item.material_name.toLowerCase().includes(query) ||
-      item.test_id.toLowerCase().includes(query)
-    );
-  }
+  // 应用分页
+  const startIndex = (pagination.currentPage - 1) * pagination.pageSize;
+  const endIndex = startIndex + pagination.pageSize;
+  return result.slice(startIndex, endIndex);
+});
+
+const totalTests = computed(() => {
+  return store.filterLabTests(filterForm).length;
+});
+
+// 处理行样式
+const tableRowClassName = ({ row }) => {
+  if (row.result === 'NG') return 'error-row';
+  if (row.result === '有条件接收') return 'warning-row';
+  return '';
+};
+
+// 获取标签类型
+const getResultTagType = (result) => {
+  if (result === 'NG') return 'danger';
+  if (result === '有条件接收') return 'warning';
+  if (result === 'OK') return 'success';
+  return 'info';
+};
+
+// 获取风险评分样式
+const getRiskScoreClass = (score) => {
+  if (!score) return '';
   
-  // 分类过滤
-  if (categoryFilter.value) {
-    result = result.filter(item => item.category_id === categoryFilter.value);
-  }
+  if (score >= 85) return 'high-risk';
+  if (score >= 70) return 'medium-risk';
+  return 'low-risk';
+};
+
+// 处理分页大小变化
+const handleSizeChange = (size) => {
+  pagination.pageSize = size;
+  pagination.currentPage = 1;
+};
+
+// 处理页码变化
+const handleCurrentChange = (page) => {
+  pagination.currentPage = page;
+};
+
+// 处理筛选
+const handleFilter = () => {
+  pagination.currentPage = 1;
+};
+
+// 重置筛选条件
+const resetFilter = () => {
+  Object.keys(filterForm).forEach(key => {
+    filterForm[key] = key === 'dateRange' ? [] : '';
+  });
+  pagination.currentPage = 1;
+};
+
+// 查看详情
+const viewDetails = (row) => {
+  selectedTest.value = row;
+  dialogVisible.value = true;
+};
+
+// 查看图片
+const viewImages = (row) => {
+  selectedTest.value = row;
+  currentImageIndex.value = 0;
+  imageDialogVisible.value = true;
+};
+
+// 发送到AI分析
+const sendToAiAnalysis = (row) => {
+  ElMessage({
+    type: 'success',
+    message: `已将【${row.materialName}】的检测数据发送至AI助手进行深度分析`
+  });
   
-  // 结果过滤
-  if (resultFilter.value) {
-    result = result.filter(item => item.result === resultFilter.value);
-  }
-  
-  // 排序
-  if (sortBy.value) {
-    result = [...result].sort((a, b) => {
-      if (sortOrder.value === 'ascending') {
-        return a[sortBy.value] > b[sortBy.value] ? 1 : -1;
-      } else {
-        return a[sortBy.value] < b[sortBy.value] ? 1 : -1;
-      }
+  // 跳转到AI助手页面并传递数据
+  router.push({
+    path: '/ai-assistant',
+    query: {
+      materialCode: row.materialCode,
+      testId: row.id,
+      action: 'analyze'
+    }
+  });
+};
+
+// 处理行点击
+const handleRowClick = (row) => {
+  selectedMaterial.value = {
+    materialCode: row.materialCode,
+    materialName: row.materialName
+  };
+};
+
+// 处理导出
+const handleExport = (command) => {
+  ElMessage({
+    type: 'success',
+    message: `已${command === 'excel' ? '导出Excel文件' : '生成PDF报告'}`
+  });
+};
+
+// 处理关闭质量预警
+const handleDismissAlert = () => {
+  showQualityAlert.value = false;
+};
+
+// 处理风险分析
+const handleRiskAnalysis = () => {
+  selectedMaterialForRisk.value = riskAnalysisData.value['38501375']; // 示例数据
+  riskAnalysisDialogVisible.value = true;
+};
+
+// 处理风险操作
+const handleRiskAction = () => {
+  ElMessageBox.confirm(
+    '系统将自动创建处理措施工单并通知相关责任人，是否继续？',
+    '风险处理确认',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(() => {
+    ElMessage({
+      type: 'success',
+      message: '已创建处理工单并推送给相关责任人'
     });
-  } else {
-    // 默认按测试日期降序排序
-    result = [...result].sort((a, b) => 
-      new Date(b.test_date) - new Date(a.test_date)
-    );
-  }
+    riskAnalysisDialogVisible.value = false;
+  }).catch(() => {});
+};
+
+// 处理发送AI
+const handleSendToAI = () => {
+  ElMessage({
+    type: 'success',
+    message: '已将风险分析数据发送至AI助手进行深度分析'
+  });
   
-  return result;
-});
+  // 跳转到AI助手页面
+  router.push({
+    path: '/ai-assistant',
+    query: {
+      materialCode: selectedMaterialForRisk.value?.materialCode,
+      action: 'risk-analysis'
+    }
+  });
+};
 
-// 分页数据
-const pagedData = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value;
-  const end = start + pageSize.value;
-  return filteredData.value.slice(start, end);
-});
+// 生成报告
+const handleGenerateReport = () => {
+  ElMessage({
+    type: 'success',
+    message: '风险分析报告生成中，完成后将发送至您的邮箱'
+  });
+};
 
-// 统计信息
-const passCount = computed(() => {
-  return labData.value.filter(item => item.result === '合格').length;
-});
-
-const failCount = computed(() => {
-  return labData.value.filter(item => item.result === '不合格').length;
-});
-
-const passRate = computed(() => {
-  return labData.value.length ? 
-    ((passCount.value / labData.value.length) * 100).toFixed(1) : 0;
-});
-
-const failRate = computed(() => {
-  return labData.value.length ? 
-    ((failCount.value / labData.value.length) * 100).toFixed(1) : 0;
-});
-
-const uniqueMaterialCount = computed(() => {
-  const uniqueMaterials = new Set(labData.value.map(item => item.material_code));
-  return uniqueMaterials.size;
-});
-
-// 方法
-function refreshData() {
-  // 真实环境中会从API获取刷新数据
-  // 这里简单模拟更新
-  labData.value = [...labDataJson];
-  initCharts();
-}
-
-function handleSortChange(val) {
-  if (val.prop) {
-    sortBy.value = val.prop;
-    sortOrder.value = val.order;
-  } else {
-    sortBy.value = '';
-    sortOrder.value = '';
-  }
-}
-
-function handleSizeChange(val) {
-  pageSize.value = val;
-  currentPage.value = 1;
-}
-
-function handleCurrentChange(val) {
-  currentPage.value = val;
-}
-
-function handleRowClick(row) {
-  viewDetail(row);
-}
-
-function viewDetail(test) {
-  selectedTest.value = {
-    ...test,
-    images: generateMockImages(test)
-  };
-  detailDialogVisible.value = true;
-}
-
-function retest(test) {
-  // 模拟复测操作，真实环境下打开复测表单或跳转复测页面
-  console.log('复测物料:', test.material_code, '测试ID:', test.test_id);
-}
-
-function openAnalysisDialog() {
-  // 模拟高级分析操作
-  console.log('打开高级分析');
-}
-
-function exportData() {
-  // 模拟导出操作
-  console.log('导出数据');
-}
-
-function getCategoryNameById(categoryId) {
-  return getCategoryName(categoryId);
-}
-
-function testResultRowClassName({ row }) {
-  return row.result === '不合格' ? 'fail-row' : '';
-}
-
-function formatDate(dateString) {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function generateMockImages(test) {
-  // 模拟测试图片，实际应从后端获取
-  if (test.result === '不合格') {
-    return [
-      'https://via.placeholder.com/300x200?text=测试图片1',
-      'https://via.placeholder.com/300x200?text=缺陷检测'
-    ];
-  }
-  return ['https://via.placeholder.com/300x200?text=测试图片1'];
-}
-
-function getTestItemsDetail(test) {
-  // 模拟测试项目详情，实际应从后端获取完整数据
-  return test.test_items.map(item => {
-    const isFailed = test.failed_items && test.failed_items.includes(item);
-    return {
-      item: item,
-      standard: getRandomStandard(item),
-      result: isFailed ? getRandomFailResult(item) : getRandomPassResult(item),
-      status: isFailed ? '不合格' : '合格'
+// 初始化
+onMounted(async () => {
+  // 加载数据(如果需要)
+  await store.refreshData();
+  
+  // 初始化风险数据
+  pendingRisks.value = store.qualityPredictionData.filter(item => item.predictedResult === 'NG');
+  
+  // 默认选择第一条记录
+  if (labTestData.value.length > 0) {
+    selectedMaterial.value = {
+      materialCode: labTestData.value[0].materialCode,
+      materialName: labTestData.value[0].materialName
     };
-  });
-}
-
-function getRandomStandard(item) {
-  // 模拟标准要求
-  const standards = {
-    '外观': '无明显划痕、变形',
-    '尺寸': '公差范围±0.2mm',
-    '重量': '误差范围±2%',
-    '硬度': '硬度值HV 240±20',
-    '强度': '抗拉强度≥500MPa',
-    '电阻': '电阻值20Ω±5%',
-    '耐压': '击穿电压≥1000V',
-    '绝缘': '绝缘电阻≥100MΩ',
-    '耐候性': '紫外线照射48h无变形',
-    '应力': '应力测试通过'
-  };
-  return standards[item] || '符合标准要求';
-}
-
-function getRandomPassResult(item) {
-  // 模拟合格的结果
-  const results = {
-    '外观': '无缺陷',
-    '尺寸': '偏差+0.1mm',
-    '重量': '偏差+1.2%',
-    '硬度': 'HV 245',
-    '强度': '520MPa',
-    '电阻': '19.8Ω',
-    '耐压': '1050V',
-    '绝缘': '120MΩ',
-    '耐候性': '48h无变化',
-    '应力': '通过'
-  };
-  return results[item] || '合格';
-}
-
-function getRandomFailResult(item) {
-  // 模拟不合格的结果
-  const results = {
-    '外观': '发现表面划痕',
-    '尺寸': '偏差-0.3mm',
-    '重量': '偏差+3.5%',
-    '硬度': 'HV 210',
-    '强度': '480MPa',
-    '电阻': '22.6Ω',
-    '耐压': '950V',
-    '绝缘': '80MΩ',
-    '耐候性': '48h出现轻微变色',
-    '应力': '出现微裂缝'
-  };
-  return results[item] || '不合格';
-}
-
-// 图表初始化
-function initCategoryChart() {
-  if (!categoryChartRef.value) return;
-  
-  // 销毁旧实例
-  if (categoryChart) categoryChart.dispose();
-  
-  // 计算每个类别的测试数量和合格率
-  const categoryStats = {};
-  materialCategories.forEach(category => {
-    categoryStats[category.id] = {
-      name: category.name,
-      total: 0,
-      pass: 0
-    };
-  });
-  
-  labData.value.forEach(item => {
-    if (categoryStats[item.category_id]) {
-      categoryStats[item.category_id].total++;
-      if (item.result === '合格') {
-        categoryStats[item.category_id].pass++;
-      }
-    }
-  });
-  
-  const categories = [];
-  const passRates = [];
-  
-  Object.values(categoryStats).forEach(stat => {
-    if (stat.total > 0) {
-      categories.push(stat.name);
-      passRates.push(((stat.pass / stat.total) * 100).toFixed(1));
-    }
-  });
-  
-  // 创建图表
-  categoryChart = echarts.init(categoryChartRef.value);
-  const option = {
-    tooltip: {
-      trigger: 'axis',
-      formatter: '{b}: {c}%'
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      data: categories,
-      axisLabel: {
-        rotate: 30,
-        interval: 0
-      }
-    },
-    yAxis: {
-      type: 'value',
-      name: '合格率(%)',
-      axisLabel: {
-        formatter: '{value}%'
-      },
-      max: 100
-    },
-    series: [
-      {
-        name: '合格率',
-        type: 'bar',
-        data: passRates,
-        itemStyle: {
-          color: function(params) {
-            const value = parseFloat(params.value);
-            if (value >= 90) return '#67c23a';  // 高
-            if (value >= 80) return '#e6a23c';  // 中
-            return '#f56c6c';  // 低
-          }
-        },
-        label: {
-          show: true,
-          position: 'top',
-          formatter: '{c}%'
-        }
-      }
-    ]
-  };
-  
-  categoryChart.setOption(option);
-}
-
-function initFailureTypeChart() {
-  if (!failureTypeChartRef.value) return;
-  
-  // 销毁旧实例
-  if (failureTypeChart) failureTypeChart.dispose();
-  
-  // 计算不合格项目分布
-  const failureStats = {};
-  labData.value.forEach(item => {
-    if (item.failed_items && item.failed_items.length > 0) {
-      item.failed_items.forEach(failItem => {
-        failureStats[failItem] = (failureStats[failItem] || 0) + 1;
-      });
-    }
-  });
-  
-  const failureData = Object.entries(failureStats)
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value);
-  
-  // 创建图表
-  failureTypeChart = echarts.init(failureTypeChartRef.value);
-  const option = {
-    tooltip: {
-      trigger: 'item',
-      formatter: '{b}: {c} ({d}%)'
-    },
-    legend: {
-      orient: 'vertical',
-      right: 10,
-      top: 'center',
-      type: 'scroll'
-    },
-    series: [
-      {
-        name: '不合格项目',
-        type: 'pie',
-        radius: ['40%', '70%'],
-        center: ['40%', '50%'],
-        avoidLabelOverlap: false,
-        itemStyle: {
-          borderRadius: 10,
-          borderColor: '#fff',
-          borderWidth: 2
-        },
-        label: {
-          show: false,
-          position: 'center'
-        },
-        emphasis: {
-          label: {
-            show: true,
-            fontSize: 14,
-            fontWeight: 'bold'
-          }
-        },
-        labelLine: {
-          show: false
-        },
-        data: failureData
-      }
-    ]
-  };
-  
-  failureTypeChart.setOption(option);
-}
-
-function initTrendChart() {
-  if (!trendChartRef.value) return;
-  
-  // 销毁旧实例
-  if (trendChart) trendChart.dispose();
-  
-  // 计算日期范围
-  const now = new Date();
-  let startDate;
-  
-  switch (timeRange.value) {
-    case 'month':
-      startDate = new Date(now);
-      startDate.setMonth(now.getMonth() - 1);
-      break;
-    case 'quarter':
-      startDate = new Date(now);
-      startDate.setMonth(now.getMonth() - 3);
-      break;
-    case 'year':
-      startDate = new Date(now);
-      startDate.setFullYear(now.getFullYear() - 1);
-      break;
   }
-  
-  // 筛选日期范围内的数据
-  const rangeData = labData.value.filter(item => {
-    const testDate = new Date(item.test_date);
-    return testDate >= startDate && testDate <= now;
-  });
-  
-  // 按日期分组
-  const dateGroups = {};
-  rangeData.forEach(item => {
-    const dateStr = item.test_date.substring(0, 10);
-    if (!dateGroups[dateStr]) {
-      dateGroups[dateStr] = {
-        total: 0,
-        pass: 0,
-        fail: 0
-      };
-    }
-    
-    dateGroups[dateStr].total++;
-    if (item.result === '合格') {
-      dateGroups[dateStr].pass++;
-    } else {
-      dateGroups[dateStr].fail++;
-    }
-  });
-  
-  // 处理数据
-  const dates = Object.keys(dateGroups).sort();
-  const totalData = [];
-  const passData = [];
-  const failData = [];
-  
-  dates.forEach(date => {
-    totalData.push(dateGroups[date].total);
-    passData.push(dateGroups[date].pass);
-    failData.push(dateGroups[date].fail);
-  });
-  
-  // 创建图表
-  trendChart = echarts.init(trendChartRef.value);
-  const option = {
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: {
-        type: 'shadow'
-      }
-    },
-    legend: {
-      data: ['合格', '不合格', '总数']
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      data: dates.map(d => formatDate(d)),
-      axisLabel: {
-        rotate: 45,
-        interval: Math.ceil(dates.length / 10)
-      }
-    },
-    yAxis: {
-      type: 'value'
-    },
-    series: [
-      {
-        name: '合格',
-        type: 'bar',
-        stack: 'total',
-        data: passData,
-        itemStyle: {
-          color: '#67c23a'
-        }
-      },
-      {
-        name: '不合格',
-        type: 'bar',
-        stack: 'total',
-        data: failData,
-        itemStyle: {
-          color: '#f56c6c'
-        }
-      },
-      {
-        name: '总数',
-        type: 'line',
-        data: totalData,
-        symbol: 'circle',
-        symbolSize: 8,
-        itemStyle: {
-          color: '#409EFF'
-        },
-        lineStyle: {
-          width: 2
-        }
-      }
-    ]
-  };
-  
-  trendChart.setOption(option);
-}
-
-function initCharts() {
-  nextTick(() => {
-    initCategoryChart();
-    initFailureTypeChart();
-    initTrendChart();
-  });
-}
-
-// 监听时间范围变化，更新趋势图
-watch(timeRange, () => {
-  initTrendChart();
-});
-
-// 生命周期钩子
-onMounted(() => {
-  initCharts();
-  
-  // 窗口大小变化时重绘图表
-  window.addEventListener('resize', () => {
-    categoryChart && categoryChart.resize();
-    failureTypeChart && failureTypeChart.resize();
-    trendChart && trendChart.resize();
-  });
 });
 </script>
 
 <style scoped>
-.lab-container {
+.lab-view {
   padding: 20px;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-/* 页面标题与工具栏 */
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-  gap: 15px;
 }
 
 .page-title {
-  margin: 0;
-  font-size: 24px;
-  color: #409EFF;
+  font-size: 22px;
+  margin-bottom: 20px;
+  color: #303133;
+  font-weight: 600;
 }
 
-.toolbar {
+.quality-alert {
+  margin-bottom: 20px;
+}
+
+.alert-content {
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
 }
 
-.search-input {
-  width: 240px;
+.alert-message p {
+  margin: 5px 0;
 }
 
-.filter-select {
-  width: 140px;
-}
-
-/* 统计卡片 */
-.statistics-cards {
+.stat-cards {
   margin-bottom: 20px;
 }
 
 .stat-card {
-  margin-bottom: 15px;
-  transition: transform 0.3s;
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  height: 100px;
+  transition: all 0.3s;
 }
 
 .stat-card:hover {
   transform: translateY(-5px);
 }
 
-.stat-content {
-  display: flex;
-  align-items: center;
-}
-
-.stat-icon {
-  font-size: 24px;
+.card-icon {
+  font-size: 28px;
   margin-right: 15px;
-  width: 48px;
-  height: 48px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
 }
 
-.total-icon {
-  background-color: #ecf5ff;
+.stat-card.primary .card-icon {
+  background-color: rgba(64, 158, 255, 0.1);
   color: #409EFF;
 }
 
-.pass-icon {
-  background-color: #f0f9eb;
-  color: #67c23a;
+.stat-card.danger .card-icon {
+  background-color: rgba(245, 108, 108, 0.1);
+  color: #F56C6C;
 }
 
-.fail-icon {
-  background-color: #fef0f0;
-  color: #f56c6c;
+.stat-card.warning .card-icon {
+  background-color: rgba(230, 162, 60, 0.1);
+  color: #E6A23C;
 }
 
-.category-icon {
-  background-color: #f4f4f5;
+.stat-card.info .card-icon {
+  background-color: rgba(144, 147, 153, 0.1);
   color: #909399;
 }
 
-.stat-info {
-  flex: 1;
+.card-content {
+  flex-grow: 1;
 }
 
-.stat-title {
+.card-label {
   font-size: 14px;
-  color: #909399;
+  color: #606266;
   margin-bottom: 5px;
 }
 
-.stat-value {
-  font-size: 24px;
-  font-weight: bold;
+.card-value {
+  font-size: 20px;
+  font-weight: 600;
   color: #303133;
 }
 
-.stat-rate {
-  font-size: 14px;
+.card-trend {
+  font-size: 13px;
+  color: #909399;
+  margin-top: 5px;
 }
 
-.success .stat-rate {
-  color: #67c23a;
-}
-
-.danger .stat-rate {
-  color: #f56c6c;
-}
-
-/* 图表卡片 */
-.chart-card {
+.filter-container {
+  background-color: #f5f7fa;
+  border-radius: 8px;
+  padding: 15px;
   margin-bottom: 20px;
 }
 
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.charts-container {
+  margin-bottom: 20px;
 }
 
-.card-header h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: bold;
-  color: #606266;
-}
-
-.chart-wrapper {
+.empty-chart {
   height: 300px;
-  width: 100%;
-}
-
-.trend-chart {
-  height: 350px;
-}
-
-/* 表格卡片 */
-.table-card {
-  margin-bottom: 20px;
-}
-
-.pagination-wrapper {
-  margin-top: 20px;
   display: flex;
   justify-content: center;
-}
-
-/* 表格样式 */
-.fail-row {
-  background-color: rgba(245, 108, 108, 0.1) !important;
-}
-
-.expanded-content {
-  padding: 10px 20px;
-}
-
-/* 测试详情 */
-.test-detail {
-  padding: 10px;
+  align-items: center;
+  background-color: #f8f9fc;
+  border-radius: 8px;
+  color: #909399;
 }
 
 .section-title {
-  margin: 20px 0 10px;
-  font-size: 16px;
-  color: #606266;
-  border-left: 4px solid #409EFF;
-  padding-left: 10px;
+  font-size: 18px;
+  margin: 15px 0;
+  color: #303133;
+  font-weight: 500;
 }
 
-.test-images {
+.table-container {
+  background-color: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+}
+
+.pagination-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.error-row {
+  background-color: rgba(245, 108, 108, 0.1);
+}
+
+.warning-row {
+  background-color: rgba(230, 162, 60, 0.1);
+}
+
+.test-details {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.related-records {
+  margin-top: 15px;
+}
+
+.related-records h4 {
+  font-size: 15px;
+  margin-bottom: 10px;
+  color: #303133;
+}
+
+.related-records .el-tag {
+  margin-right: 10px;
+  margin-bottom: 10px;
+}
+
+.test-images h4 {
+  font-size: 15px;
+  margin-bottom: 15px;
+  color: #303133;
+}
+
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.image-item {
+  text-align: center;
+}
+
+.image-caption {
+  text-align: center;
+  margin-top: 8px;
+  color: #606266;
+}
+
+.test-procedure h4 {
+  font-size: 15px;
+  margin-bottom: 15px;
+  color: #303133;
+}
+
+.param-item {
+  margin-bottom: 5px;
+}
+
+.image-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.carousel-image-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.carousel-image {
+  max-height: 350px;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.carousel-caption {
+  margin-top: 15px;
+  text-align: center;
+  color: #606266;
+  font-size: 14px;
+}
+
+.image-thumbnails {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 10px;
+  justify-content: center;
 }
 
-.test-image {
-  width: 150px;
-  height: 100px;
-  border-radius: 4px;
+.thumbnail-item {
+  width: 80px;
+  height: 80px;
+  overflow: hidden;
   cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.3s;
+}
+
+.thumbnail-item:hover {
+  border-color: #409EFF;
+}
+
+.thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.risk-analysis-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.risk-score {
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.high-risk {
+  color: #F56C6C;
+}
+
+.medium-risk {
+  color: #E6A23C;
+}
+
+.low-risk {
+  color: #67C23A;
+}
+
+.risk-tabs {
+  margin-top: 20px;
+}
+
+.risk-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.analysis-tabs {
+  height: 100%;
 }
 
 /* 响应式调整 */
 @media (max-width: 768px) {
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
+  .filter-form :deep(.el-form-item) {
+    margin-right: 0;
+    margin-bottom: 15px;
   }
   
-  .toolbar {
-    width: 100%;
-  }
-  
-  .search-input,
-  .filter-select {
-    width: 100%;
-  }
-  
-  .chart-wrapper {
-    height: 250px;
+  .image-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   }
 }
 </style> 

@@ -3,5 +3,9 @@
   "private": true,
   "scripts": {
     "dev": "pnpm --filter ai-inspection-dashboard run dev"
+  },
+  "dependencies": {
+    "dompurify": "^3.2.6",
+    "marked": "^15.0.12"
   }
-} 
+}
