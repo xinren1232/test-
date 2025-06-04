@@ -1,0 +1,160 @@
+/* 全局样式定义 */
+
+/* 主题色变量 */
+:root {
+  --primary-color: #409EFF;
+  --primary-light: #ecf5ff;
+  --success-color: #67c23a;
+  --success-light: #f0f9eb;
+  --warning-color: #e6a23c;
+  --warning-light: #fdf6ec;
+  --danger-color: #f56c6c;
+  --danger-light: #fef0f0;
+  --info-color: #909399;
+  --info-light: #f4f4f5;
+  
+  --text-primary: #303133;
+  --text-regular: #606266;
+  --text-secondary: #909399;
+  --text-placeholder: #c0c4cc;
+  
+  --border-color: #dcdfe6;
+  --border-light: #e4e7ed;
+  --border-lighter: #ebeef5;
+  
+  --background-color: #f5f7fa;
+  --header-height: 60px;
+  --footer-height: 50px;
+}
+
+/* 元素样式重置 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--text-primary);
+  background-color: var(--background-color);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* 卡片样式增强 */
+.el-card {
+  transition: all 0.3s;
+  border: none;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+}
+
+.el-card:hover {
+  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.1);
+}
+
+.el-card__header {
+  padding: 15px 20px;
+  font-weight: bold;
+  border-bottom: 1px solid var(--border-lighter);
+}
+
+/* 按钮样式增强 */
+.el-button {
+  transition: all 0.3s;
+}
+
+.el-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 页面通用布局 */
+.page-container {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 24px;
+  color: var(--primary-color);
+  position: relative;
+}
+
+.page-title::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -5px;
+  width: 30px;
+  height: 3px;
+  background-color: var(--primary-color);
+  border-radius: 3px;
+}
+
+/* 数据为空状态 */
+.empty-data-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+  color: var(--text-secondary);
+}
+
+/* 动画效果 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .page-container {
+    padding: 10px;
+  }
+  
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #999;
+} 

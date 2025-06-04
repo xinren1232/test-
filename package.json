@@ -1,0 +1,7 @@
+{
+  "name": "iqe-root",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter ai-inspection-dashboard run dev"
+  }
+} 
