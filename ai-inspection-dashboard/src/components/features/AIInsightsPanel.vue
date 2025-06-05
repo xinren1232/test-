@@ -1,536 +1,887 @@
 <template>
   <div class="ai-insights-panel">
     <div class="panel-header">
-      <h3>IQE智能分析</h3>
-      <div class="status-indicator">
-        <el-tag :type="aiStatus.connected ? 'success' : 'danger'" size="small">
-          {{ aiStatus.connected ? 'AI引擎已连接' : 'AI引擎未连接' }}
-        </el-tag>
-        <el-tooltip content="AI引擎详细信息" placement="top">
-          <el-button type="primary" size="small" circle @click="showStatusDialog = true">
-            <el-icon><InfoFilled /></el-icon>
-          </el-button>
-        </el-tooltip>
+      <h2>AI 智能分析</h2>
+      <div class="panel-actions">
+        <button @click="refreshInsights" class="refresh-btn">
+          <i class="fas fa-sync-alt"></i> 刷新分析
+        </button>
       </div>
     </div>
-
-    <el-tabs v-model="activeTab" class="insight-tabs">
-      <el-tab-pane label="风险分析" name="risk">
-        <div class="tab-content">
-          <el-skeleton :loading="loading.risk" animated>
-            <template #template>
-              <div style="padding: 15px">
-                <el-skeleton-item variant="text" style="width: 100%" />
-                <el-skeleton-item variant="text" style="width: 90%; margin-top: 15px" />
-                <el-skeleton-item variant="text" style="width: 80%; margin-top: 15px" />
-                <el-skeleton-item variant="h3" style="width: 50%; margin-top: 20px" />
-              </div>
-            </template>
-            <template #default>
-              <risk-analysis-card 
-                :risk-data="insights.risk" 
-                @action-triggered="handleRiskAction"
-              />
-            </template>
-          </el-skeleton>
+    
+    <div v-if="loading" class="loading-container">
+      <div class="spinner"></div>
+      <p>AI正在分析数据...</p>
+    </div>
+    
+    <div v-else class="panel-content">
+      <!-- 自然语言查询界面 -->
+      <div class="nlp-query-section">
+        <div class="query-input-container">
+          <input 
+            v-model="queryInput" 
+            @input="handleQueryInput"
+            @keyup.enter="executeQuery"
+            placeholder="使用自然语言提问，例如：查询最近一周的产线异常" 
+            class="query-input"
+          />
+          <button @click="executeQuery" class="query-btn">
+            <i class="fas fa-search"></i>
+          </button>
         </div>
-      </el-tab-pane>
-
-      <el-tab-pane label="趋势预测" name="trend">
-        <div class="tab-content">
-          <el-skeleton :loading="loading.trend" animated>
-            <template #template>
-              <div style="padding: 15px">
-                <el-skeleton-item variant="h3" style="width: 50%" />
-                <div style="height: 200px; margin-top: 20px; background: #f5f7fa"></div>
-                <el-skeleton-item variant="text" style="width: 90%; margin-top: 15px" />
-              </div>
-            </template>
-            <template #default>
-              <trend-prediction-card 
-                :trend-data="insights.trend" 
-                @action-triggered="handleTrendAction"
-              />
-            </template>
-          </el-skeleton>
-        </div>
-      </el-tab-pane>
-
-      <el-tab-pane label="异常检测" name="anomaly">
-        <div class="tab-content">
-          <el-skeleton :loading="loading.anomaly" animated>
-            <template #template>
-              <div style="padding: 15px">
-                <el-skeleton-item variant="h3" style="width: 60%" />
-                <div style="margin-top: 20px">
-                  <el-skeleton-item variant="text" style="width: 100%" />
-                  <el-skeleton-item variant="text" style="width: 95%; margin-top: 15px" />
-                </div>
-              </div>
-            </template>
-            <template #default>
-              <anomaly-detection-card 
-                :anomaly-data="insights.anomaly" 
-                @action-triggered="handleAnomalyAction"
-              />
-            </template>
-          </el-skeleton>
-        </div>
-      </el-tab-pane>
-
-      <el-tab-pane label="决策推荐" name="recommendation">
-        <div class="tab-content">
-          <el-skeleton :loading="loading.recommendation" animated>
-            <template #template>
-              <div style="padding: 15px">
-                <el-skeleton-item variant="h3" style="width: 70%" />
-                <div style="margin-top: 20px">
-                  <el-skeleton-item variant="text" style="width: 100%" />
-                  <el-skeleton-item variant="text" style="width: 90%; margin-top: 15px" />
-                </div>
-              </div>
-            </template>
-            <template #default>
-              <recommendation-card 
-                :recommendation-data="insights.recommendation" 
-                @action-triggered="handleRecommendationAction"
-              />
-            </template>
-          </el-skeleton>
-        </div>
-      </el-tab-pane>
-    </el-tabs>
-
-    <!-- AI状态对话框 -->
-    <el-dialog
-      v-model="showStatusDialog"
-      title="AI引擎状态"
-      width="550px"
-    >
-      <el-descriptions :column="1" border>
-        <el-descriptions-item label="连接状态">
-          <el-tag :type="aiStatus.connected ? 'success' : 'danger'">
-            {{ aiStatus.connected ? '已连接' : '未连接' }}
-          </el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="响应时间">
-          {{ aiStatus.latency ? `${aiStatus.latency}ms` : '未知' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="已加载模型数">
-          {{ aiStatus.modelCount }}
-        </el-descriptions-item>
-        <el-descriptions-item label="可用模型类型">
-          <el-tag 
-            v-for="type in aiStatus.modelTypes" 
-            :key="type" 
-            style="margin-right: 5px"
+        
+        <div v-if="suggestions.length > 0" class="suggestions">
+          <div 
+            v-for="(suggestion, index) in suggestions" 
+            :key="index"
+            @click="selectSuggestion(suggestion)"
+            class="suggestion-item"
           >
-            {{ type }}
-          </el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="缓存状态">
-          {{ aiStatus.cacheEnabled ? '已启用' : '已禁用' }} 
-          ({{ aiStatus.cacheSize }}项)
-        </el-descriptions-item>
-      </el-descriptions>
-      
-      <div class="dialog-footer">
-        <el-button @click="refreshAIStatus">刷新状态</el-button>
-        <el-button @click="showStatusDialog = false">关闭</el-button>
+            {{ suggestion }}
+          </div>
+        </div>
       </div>
-    </el-dialog>
+      
+      <!-- 当前查询意图显示 -->
+      <div v-if="currentIntent" class="current-intent">
+        <div class="intent-header">
+          <span class="intent-label">当前查询:</span>
+          <span class="intent-description">{{ intentDescription }}</span>
+        </div>
+      </div>
+      
+      <!-- 卡片式分析结果展示 -->
+      <div class="insights-cards">
+        <!-- 风险分析卡片 -->
+        <risk-analysis-card 
+          v-if="showRiskAnalysis"
+          :risk-data="riskData"
+          @action-click="handleRiskAction"
+        />
+        
+        <!-- 趋势预测卡片 -->
+        <trend-prediction-card 
+          v-if="showTrendPrediction"
+          :trend-data="trendData"
+          @action-click="handleTrendAction"
+        />
+        
+        <!-- 异常检测卡片 -->
+        <anomaly-detection-card 
+          v-if="showAnomalyDetection"
+          :anomaly-data="anomalyData"
+          @action-click="handleAnomalyAction"
+        />
+        
+        <!-- 智能推荐卡片 -->
+        <recommendation-card 
+          v-if="showRecommendations"
+          :recommendations="recommendations"
+          @action-click="handleRecommendationAction"
+        />
+      </div>
+      
+      <!-- 查询结果显示区域 -->
+      <div v-if="queryResults.length > 0" class="query-results">
+        <h3>查询结果</h3>
+        <div class="results-container">
+          <div 
+            v-for="(result, index) in queryResults" 
+            :key="index"
+            class="result-item"
+          >
+            <!-- 根据结果类型渲染不同内容 -->
+            <template v-if="result.type === 'inventory'">
+              <div class="inventory-result">
+                <div class="result-header">
+                  <span class="material-code">{{ result.materialCode }}</span>
+                  <span class="material-name">{{ result.materialName }}</span>
+                  <span class="batch-number">批次: {{ result.batchNumber }}</span>
+                </div>
+                <div class="result-details">
+                  <div class="detail-item">
+                    <span class="label">库存数量:</span>
+                    <span class="value">{{ result.quantity }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="label">状态:</span>
+                    <span class="value" :class="'status-' + result.status">{{ formatStatus(result.status) }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="label">风险等级:</span>
+                    <span class="value" :class="'risk-' + result.riskLevel">{{ formatRiskLevel(result.riskLevel) }}</span>
+                  </div>
+                </div>
+              </div>
+            </template>
+            
+            <template v-else-if="result.type === 'anomaly'">
+              <div class="anomaly-result">
+                <div class="result-header">
+                  <span class="date">{{ formatDate(result.date) }}</span>
+                  <span class="production-line">产线: {{ result.productionLine }}</span>
+                  <span class="severity" :class="'severity-' + result.severity">{{ formatSeverity(result.severity) }}</span>
+                </div>
+                <div class="result-details">
+                  <div class="detail-item">
+                    <span class="label">物料:</span>
+                    <span class="value">{{ result.materialCode }} / {{ result.batchNumber }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="label">异常类型:</span>
+                    <span class="value">{{ result.anomalyType }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="label">描述:</span>
+                    <span class="value">{{ result.description }}</span>
+                  </div>
+                </div>
+              </div>
+            </template>
+            
+            <template v-else-if="result.type === 'labTest'">
+              <div class="lab-test-result">
+                <div class="result-header">
+                  <span class="date">{{ formatDate(result.date) }}</span>
+                  <span class="material-info">{{ result.materialCode }} / {{ result.batchNumber }}</span>
+                  <span class="overall-result" :class="'result-' + result.overallResult">{{ formatTestResult(result.overallResult) }}</span>
+                </div>
+                <div class="result-details">
+                  <div class="detail-item">
+                    <span class="label">测试类型:</span>
+                    <span class="value">{{ result.testType }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="label">检验员:</span>
+                    <span class="value">{{ result.inspector }}</span>
+                  </div>
+                  <div class="detail-item test-items-summary">
+                    <span class="label">测试项目:</span>
+                    <span class="value">通过 {{ countPassedItems(result.testItems) }}/{{ result.testItems.length }}</span>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
-<script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue';
-import { InfoFilled } from '@element-plus/icons-vue';
-import { ElMessage } from 'element-plus';
-
-// 导入组件
+<script>
+import { ref, computed, onMounted, watch } from 'vue';
 import RiskAnalysisCard from './insight-cards/RiskAnalysisCard.vue';
 import TrendPredictionCard from './insight-cards/TrendPredictionCard.vue';
 import AnomalyDetectionCard from './insight-cards/AnomalyDetectionCard.vue';
 import RecommendationCard from './insight-cards/RecommendationCard.vue';
+import { NLPService } from '../../services/ai/NLPService';
+import { AnomalyDetectionService } from '../../services/ai/AnomalyDetectionService';
+import { RecommendationService } from '../../services/ai/RecommendationService';
 
-// 导入AI服务
-import AIServiceInitializer from '../../services/AIServiceInitializer';
-import { MaterialAIService } from '../../services/MaterialAIService';
-
-// 定义属性
-const props = defineProps({
-  materialCode: {
-    type: String,
-    default: ''
+export default {
+  name: 'AIInsightsPanel',
+  components: {
+    RiskAnalysisCard,
+    TrendPredictionCard,
+    AnomalyDetectionCard,
+    RecommendationCard
   },
-  materialData: {
-    type: Object,
-    default: () => ({})
-  },
-  autoRefresh: {
-    type: Boolean,
-    default: false
-  },
-  refreshInterval: {
-    type: Number,
-    default: 60000 // 1分钟
-  }
-});
-
-// 定义事件
-const emit = defineEmits([
-  'insight-loaded', 
-  'action-triggered', 
-  'error'
-]);
-
-// 状态管理
-const activeTab = ref('risk');
-const showStatusDialog = ref(false);
-const aiStatus = reactive({
-  connected: false,
-  latency: null,
-  modelCount: 0,
-  modelTypes: [],
-  cacheEnabled: false,
-  cacheSize: 0
-});
-
-const loading = reactive({
-  risk: true,
-  trend: true,
-  anomaly: true,
-  recommendation: true
-});
-
-const insights = reactive({
-  risk: null,
-  trend: null,
-  anomaly: null,
-  recommendation: null
-});
-
-let refreshTimer = null;
-
-// 初始化函数
-onMounted(async () => {
-  try {
-    // 初始化AI服务
-    await ensureAIServicesInitialized();
-    
-    // 获取AI状态
-    await refreshAIStatus();
-    
-    // 加载数据
-    if (props.materialCode) {
-      await refreshInsights();
+  props: {
+    selectedMaterialCode: {
+      type: String,
+      default: null
+    },
+    selectedBatchNumber: {
+      type: String,
+      default: null
     }
+  },
+  setup(props) {
+    // 服务实例
+    const nlpService = new NLPService();
+    const anomalyService = new AnomalyDetectionService();
+    const recommendationService = new RecommendationService();
     
-    // 设置自动刷新
-    if (props.autoRefresh) {
-      startAutoRefresh();
-    }
-  } catch (error) {
-    console.error('AI面板初始化失败:', error);
-    ElMessage.error('AI分析面板初始化失败，请稍后重试');
-    emit('error', error);
-  }
-});
-
-// 确保AI服务已初始化
-async function ensureAIServicesInitialized() {
-  if (!AIServiceInitializer.isInitialized()) {
-    await AIServiceInitializer.initialize();
-  }
-  return AIServiceInitializer.isInitialized();
-}
-
-// 刷新AI状态
-async function refreshAIStatus() {
-  try {
-    const status = await AIServiceInitializer.getStatus();
+    // 状态
+    const loading = ref(false);
+    const queryInput = ref('');
+    const suggestions = ref([]);
+    const currentIntent = ref(null);
+    const queryResults = ref([]);
     
-    aiStatus.connected = status.initialized && status.connector.available;
-    aiStatus.latency = status.connector.latency;
-    aiStatus.modelCount = status.models.count;
-    aiStatus.modelTypes = status.models.types;
-    aiStatus.cacheEnabled = status.cache.enabled;
-    aiStatus.cacheSize = status.cache.size;
+    // 分析数据
+    const riskData = ref(null);
+    const trendData = ref(null);
+    const anomalyData = ref([]);
+    const recommendations = ref([]);
     
-    return true;
-  } catch (error) {
-    console.error('获取AI状态失败:', error);
-    return false;
-  }
-}
-
-// 刷新所有分析结果
-async function refreshInsights() {
-  if (!props.materialCode) {
-    ElMessage.warning('请先选择物料');
-    return;
-  }
-  
-  try {
-    // 重置加载状态
-    Object.keys(loading).forEach(key => loading[key] = true);
+    // 显示控制
+    const showRiskAnalysis = ref(false);
+    const showTrendPrediction = ref(false);
+    const showAnomalyDetection = ref(false);
+    const showRecommendations = ref(false);
     
-    // 获取物料数据
-    const materialData = props.materialData || { materialCode: props.materialCode };
-    
-    // 并行加载各个分析结果
-    await Promise.all([
-      loadRiskAnalysis(materialData),
-      loadTrendPrediction(materialData),
-      loadAnomalyDetection(materialData),
-      loadRecommendations(materialData)
-    ]);
-    
-    emit('insight-loaded', { 
-      materialCode: props.materialCode,
-      insights
+    // 计算属性
+    const intentDescription = computed(() => {
+      if (!currentIntent.value) return '';
+      return nlpService.getIntentDescription(currentIntent.value);
     });
     
-    return true;
-  } catch (error) {
-    console.error('刷新分析结果失败:', error);
-    ElMessage.error('加载分析结果失败，请稍后重试');
-    emit('error', error);
-    return false;
-  }
-}
-
-// 加载风险分析
-async function loadRiskAnalysis(materialData) {
-  try {
-    const result = await MaterialAIService.assessRisk([materialData]);
+    // 初始化
+    onMounted(() => {
+      refreshInsights();
+    });
     
-    insights.risk = {
-      materialCode: props.materialCode,
-      riskScore: result.riskScore,
-      riskLevel: result.riskLevel,
-      factors: result.factors,
-      recommendedStrategy: result.recommendedStrategy,
-      historicalComparison: result.historicalComparison,
-      timestamp: new Date()
-    };
-  } catch (error) {
-    console.error('加载风险分析失败:', error);
-    insights.risk = null;
-  } finally {
-    loading.risk = false;
-  }
-}
-
-// 加载趋势预测
-async function loadTrendPrediction(materialData) {
-  try {
-    // 准备时间范围(未来30天)
-    const now = new Date();
-    const futureDate = new Date();
-    futureDate.setDate(now.getDate() + 30);
+    // 监听属性变化
+    watch(() => [props.selectedMaterialCode, props.selectedBatchNumber], () => {
+      if (props.selectedMaterialCode && props.selectedBatchNumber) {
+        analyzeSelectedMaterial();
+      }
+    });
     
-    const timeRange = {
-      start: now.getTime(),
-      end: futureDate.getTime()
+    // 方法
+    const refreshInsights = async () => {
+      loading.value = true;
+      
+      try {
+        // 获取推荐数据
+        recommendations.value = await recommendationService.getTopRecommendations(3);
+        showRecommendations.value = recommendations.value.length > 0;
+        
+        // 获取其他分析数据
+        // 注意: 这里需要实际的数据源来支持这些分析
+        // 示例中使用模拟数据
+        loadMockData();
+        
+      } catch (error) {
+        console.error('加载AI分析数据失败:', error);
+      } finally {
+        loading.value = false;
+      }
     };
     
-    const result = await MaterialAIService.predictQualityTrend([materialData], timeRange);
-    
-    insights.trend = {
-      materialCode: props.materialCode,
-      trend: result.trend,
-      prediction: result.prediction,
-      confidence: result.confidence,
-      timestamp: new Date()
+    const analyzeSelectedMaterial = async () => {
+      if (!props.selectedMaterialCode || !props.selectedBatchNumber) return;
+      
+      loading.value = true;
+      
+      try {
+        // 获取物料风险分析
+        // 实际应用中，应从API获取真实数据
+        riskData.value = {
+          materialCode: props.selectedMaterialCode,
+          batchNumber: props.selectedBatchNumber,
+          riskLevel: 'medium',
+          riskScore: 65,
+          riskFactors: [
+            { factor: '物料质量评分', contribution: 0.3 },
+            { factor: '历史异常记录', contribution: 0.2 },
+            { factor: '供应商可靠性', contribution: 0.15 }
+          ],
+          projectedIssues: [
+            { issue: '尺寸规格问题', probability: 0.75 },
+            { issue: '外观缺陷', probability: 0.45 }
+          ]
+        };
+        showRiskAnalysis.value = true;
+        
+        // 获取物料的推荐措施
+        recommendations.value = await recommendationService.getRecommendationsForMaterial(
+          props.selectedMaterialCode, 
+          props.selectedBatchNumber
+        );
+        showRecommendations.value = recommendations.value.length > 0;
+        
+      } catch (error) {
+        console.error('分析物料数据失败:', error);
+      } finally {
+        loading.value = false;
+      }
     };
-  } catch (error) {
-    console.error('加载趋势预测失败:', error);
-    insights.trend = null;
-  } finally {
-    loading.trend = false;
-  }
-}
-
-// 加载异常检测
-async function loadAnomalyDetection(materialData) {
-  try {
-    const result = await MaterialAIService.detectAnomalies([materialData]);
     
-    insights.anomaly = {
-      materialCode: props.materialCode,
-      anomalies: result,
-      timestamp: new Date()
+    const handleQueryInput = () => {
+      if (queryInput.value.length > 2) {
+        suggestions.value = nlpService.generateSuggestions(queryInput.value);
+      } else {
+        suggestions.value = [];
+      }
     };
-  } catch (error) {
-    console.error('加载异常检测失败:', error);
-    insights.anomaly = null;
-  } finally {
-    loading.anomaly = false;
-  }
-}
-
-// 加载推荐决策
-async function loadRecommendations(materialData) {
-  try {
-    const result = await MaterialAIService.recommendInspectionStrategy(
-      props.materialCode,
-      { currentData: materialData }
-    );
     
-    insights.recommendation = {
-      materialCode: props.materialCode,
-      recommendations: result.recommendations,
-      context: result.context,
-      timestamp: new Date()
+    const selectSuggestion = (suggestion) => {
+      queryInput.value = suggestion;
+      suggestions.value = [];
+      executeQuery();
     };
-  } catch (error) {
-    console.error('加载推荐决策失败:', error);
-    insights.recommendation = null;
-  } finally {
-    loading.recommendation = false;
+    
+    const executeQuery = async () => {
+      if (!queryInput.value.trim()) return;
+      
+      loading.value = true;
+      suggestions.value = [];
+      
+      try {
+        // 解析查询意图
+        currentIntent.value = nlpService.processQuery(queryInput.value);
+        
+        // 根据意图类型执行不同操作
+        if (currentIntent.value.action === 'query') {
+          // 示例查询结果
+          await executeDataQuery();
+        } else if (currentIntent.value.action === 'analyze') {
+          // 执行分析操作
+          await executeAnalysisAction();
+        } else if (currentIntent.value.action === 'recommend') {
+          // 获取推荐
+          await executeRecommendationAction();
+        }
+        
+      } catch (error) {
+        console.error('执行查询失败:', error);
+      } finally {
+        loading.value = false;
+      }
+    };
+    
+    // 执行数据查询
+    const executeDataQuery = async () => {
+      // 示例查询结果 - 实际应用中应从API获取
+      queryResults.value = getMockQueryResults(currentIntent.value);
+    };
+    
+    // 执行分析操作
+    const executeAnalysisAction = async () => {
+      if (currentIntent.value.entity === 'risk') {
+        showRiskAnalysis.value = true;
+      } else if (currentIntent.value.entity === 'trend') {
+        showTrendPrediction.value = true;
+      } else if (currentIntent.value.entity === 'anomaly') {
+        showAnomalyDetection.value = true;
+      }
+    };
+    
+    // 执行推荐操作
+    const executeRecommendationAction = async () => {
+      // 示例 - 获取推荐
+      recommendations.value = await recommendationService.getTopRecommendations(5);
+      showRecommendations.value = true;
+    };
+    
+    // 处理卡片操作
+    const handleRiskAction = (action) => {
+      console.log('风险分析操作:', action);
+      // 实现风险操作的处理逻辑
+    };
+    
+    const handleTrendAction = (action) => {
+      console.log('趋势预测操作:', action);
+      // 实现趋势操作的处理逻辑
+    };
+    
+    const handleAnomalyAction = (action) => {
+      console.log('异常检测操作:', action);
+      // 实现异常操作的处理逻辑
+    };
+    
+    const handleRecommendationAction = (action, recommendationId) => {
+      console.log('推荐操作:', action, recommendationId);
+      // 实现推荐操作的处理逻辑
+    };
+    
+    // 格式化方法
+    const formatDate = (date) => {
+      if (!date) return '';
+      const d = new Date(date);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+    
+    const formatStatus = (status) => {
+      const statusMap = {
+        'normal': '正常',
+        'frozen': '冻结',
+        'inspection': '检验中'
+      };
+      return statusMap[status] || status;
+    };
+    
+    const formatRiskLevel = (level) => {
+      const levelMap = {
+        'low': '低风险',
+        'medium': '中风险',
+        'high': '高风险'
+      };
+      return levelMap[level] || level;
+    };
+    
+    const formatSeverity = (severity) => {
+      const severityMap = {
+        'low': '轻微',
+        'medium': '一般',
+        'high': '严重',
+        'critical': '紧急'
+      };
+      return severityMap[severity] || severity;
+    };
+    
+    const formatTestResult = (result) => {
+      const resultMap = {
+        'pass': '通过',
+        'fail': '不通过',
+        'warning': '警告'
+      };
+      return resultMap[result] || result;
+    };
+    
+    const countPassedItems = (items) => {
+      if (!items || !Array.isArray(items)) return 0;
+      return items.filter(item => item.result === 'pass').length;
+    };
+    
+    // 加载模拟数据
+    const loadMockData = () => {
+      // 风险分析数据
+      riskData.value = {
+        materialCode: 'M12345',
+        batchNumber: 'B20230501',
+        riskLevel: 'medium',
+        riskScore: 58,
+        riskFactors: [
+          { factor: '物料质量评分', contribution: 0.25 },
+          { factor: '历史异常记录', contribution: 0.15 },
+          { factor: '供应商可靠性', contribution: 0.18 }
+        ],
+        projectedIssues: [
+          { issue: '尺寸规格问题', probability: 0.65 },
+          { issue: '外观缺陷', probability: 0.40 }
+        ]
+      };
+      showRiskAnalysis.value = true;
+      
+      // 趋势预测数据
+      trendData.value = {
+        predictedAnomalies: 12,
+        historicalAverage: 8,
+        trend: 'increasing',
+        confidenceLevel: 0.85,
+        timeframe: '未来30天',
+        categories: [
+          { name: '尺寸问题', count: 5, percentage: 41.7 },
+          { name: '外观缺陷', count: 3, percentage: 25.0 },
+          { name: '功能异常', count: 2, percentage: 16.7 },
+          { name: '其他', count: 2, percentage: 16.7 }
+        ]
+      };
+      showTrendPrediction.value = true;
+      
+      // 异常检测数据
+      anomalyData.value = [
+        {
+          entityType: 'inventory',
+          entityId: 'INV123',
+          anomalyType: 'low_quality_score',
+          confidence: 0.89,
+          suggestedActions: [
+            '建议增加抽检比例',
+            '检查供应商质量体系'
+          ]
+        },
+        {
+          entityType: 'labTest',
+          entityId: 'LT456',
+          anomalyType: 'critical_test_item_failure',
+          confidence: 0.95,
+          suggestedActions: [
+            '立即冻结相关批次',
+            '通知生产部门停止使用'
+          ]
+        }
+      ];
+      showAnomalyDetection.value = true;
+    };
+    
+    // 模拟查询结果
+    const getMockQueryResults = (intent) => {
+      // 根据意图返回不同的模拟数据
+      if (intent.entity === 'inventory') {
+        return [
+          {
+            type: 'inventory',
+            id: 'INV001',
+            materialCode: 'M12345',
+            materialName: '标准螺丝5mm',
+            batchNumber: 'B20230501',
+            quantity: 5000,
+            status: 'normal',
+            location: 'A区-12-3',
+            supplier: '优质五金供应商',
+            riskLevel: 'low'
+          },
+          {
+            type: 'inventory',
+            id: 'INV002',
+            materialCode: 'M12346',
+            materialName: '标准螺丝8mm',
+            batchNumber: 'B20230502',
+            quantity: 3000,
+            status: 'inspection',
+            location: 'A区-12-4',
+            supplier: '优质五金供应商',
+            riskLevel: 'medium'
+          }
+        ];
+      } else if (intent.entity === 'anomaly') {
+        return [
+          {
+            type: 'anomaly',
+            id: 'ANO001',
+            date: new Date('2023-05-10'),
+            productionLine: 'A线-1',
+            materialCode: 'M12345',
+            batchNumber: 'B20230501',
+            anomalyType: '尺寸规格问题',
+            severity: 'medium',
+            description: '螺丝直径超出公差范围'
+          },
+          {
+            type: 'anomaly',
+            id: 'ANO002',
+            date: new Date('2023-05-12'),
+            productionLine: 'B线-2',
+            materialCode: 'M12346',
+            batchNumber: 'B20230502',
+            anomalyType: '外观缺陷',
+            severity: 'low',
+            description: '表面镀层不均匀'
+          }
+        ];
+      } else if (intent.entity === 'labTest') {
+        return [
+          {
+            type: 'labTest',
+            id: 'LT001',
+            date: new Date('2023-05-09'),
+            materialCode: 'M12345',
+            materialName: '标准螺丝5mm',
+            batchNumber: 'B20230501',
+            testType: '尺寸检测',
+            inspector: '张工',
+            overallResult: 'pass',
+            testItems: [
+              { name: '直径', result: 'pass' },
+              { name: '长度', result: 'pass' },
+              { name: '螺纹间距', result: 'pass' }
+            ]
+          },
+          {
+            type: 'labTest',
+            id: 'LT002',
+            date: new Date('2023-05-11'),
+            materialCode: 'M12346',
+            materialName: '标准螺丝8mm',
+            batchNumber: 'B20230502',
+            testType: '强度测试',
+            inspector: '李工',
+            overallResult: 'fail',
+            testItems: [
+              { name: '抗拉强度', result: 'pass' },
+              { name: '抗弯强度', result: 'fail' },
+              { name: '硬度', result: 'pass' }
+            ]
+          }
+        ];
+      }
+      
+      return [];
+    };
+    
+    return {
+      loading,
+      queryInput,
+      suggestions,
+      currentIntent,
+      intentDescription,
+      queryResults,
+      riskData,
+      trendData,
+      anomalyData,
+      recommendations,
+      showRiskAnalysis,
+      showTrendPrediction,
+      showAnomalyDetection,
+      showRecommendations,
+      refreshInsights,
+      handleQueryInput,
+      selectSuggestion,
+      executeQuery,
+      handleRiskAction,
+      handleTrendAction,
+      handleAnomalyAction,
+      handleRecommendationAction,
+      formatDate,
+      formatStatus,
+      formatRiskLevel,
+      formatSeverity,
+      formatTestResult,
+      countPassedItems
+    };
   }
-}
-
-// 处理风险分析操作
-function handleRiskAction(action) {
-  emit('action-triggered', {
-    type: 'risk',
-    action,
-    materialCode: props.materialCode,
-    data: insights.risk
-  });
-}
-
-// 处理趋势预测操作
-function handleTrendAction(action) {
-  emit('action-triggered', {
-    type: 'trend',
-    action,
-    materialCode: props.materialCode,
-    data: insights.trend
-  });
-}
-
-// 处理异常检测操作
-function handleAnomalyAction(action) {
-  emit('action-triggered', {
-    type: 'anomaly',
-    action,
-    materialCode: props.materialCode,
-    data: insights.anomaly
-  });
-}
-
-// 处理推荐决策操作
-function handleRecommendationAction(action) {
-  emit('action-triggered', {
-    type: 'recommendation',
-    action,
-    materialCode: props.materialCode,
-    data: insights.recommendation
-  });
-}
-
-// 启动自动刷新
-function startAutoRefresh() {
-  if (refreshTimer) {
-    clearInterval(refreshTimer);
-  }
-  
-  refreshTimer = setInterval(() => {
-    refreshInsights();
-  }, props.refreshInterval);
-}
-
-// 停止自动刷新
-function stopAutoRefresh() {
-  if (refreshTimer) {
-    clearInterval(refreshTimer);
-    refreshTimer = null;
-  }
-}
-
-// 监听属性变化
-watch(() => props.materialCode, (newValue) => {
-  if (newValue) {
-    refreshInsights();
-  }
-});
-
-watch(() => props.autoRefresh, (newValue) => {
-  if (newValue) {
-    startAutoRefresh();
-  } else {
-    stopAutoRefresh();
-  }
-});
-
-// 在组件销毁时清理
-onUnmounted(() => {
-  stopAutoRefresh();
-});
-
-// 暴露方法
-defineExpose({
-  refreshInsights,
-  refreshAIStatus,
-  startAutoRefresh,
-  stopAutoRefresh
-});
+};
 </script>
 
 <style scoped>
 .ai-insights-panel {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  border-radius: 8px;
-  background-color: #fff;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 }
 
 .panel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 20px;
-  border-bottom: 1px solid #ebeef5;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #eaeaea;
 }
 
-.panel-header h3 {
+.panel-header h2 {
   margin: 0;
-  font-size: 18px;
-  color: #303133;
+  font-size: 1.5rem;
+  color: #333;
 }
 
-.status-indicator {
+.refresh-btn {
+  background-color: #f5f5f5;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
 
-.insight-tabs {
-  flex: 1;
+.refresh-btn:hover {
+  background-color: #e8e8e8;
+}
+
+.loading-container {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  flex-grow: 1;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.panel-content {
+  flex-grow: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.nlp-query-section {
+  position: relative;
+}
+
+.query-input-container {
+  display: flex;
+  width: 100%;
+  border: 1px solid #ddd;
+  border-radius: 6px;
   overflow: hidden;
 }
 
-.insight-tabs :deep(.el-tabs__content) {
-  flex: 1;
-  overflow: auto;
-  padding: 0;
+.query-input {
+  flex-grow: 1;
+  padding: 0.75rem 1rem;
+  border: none;
+  outline: none;
+  font-size: 1rem;
 }
 
-.tab-content {
-  padding: 15px;
-  height: 100%;
-  overflow: auto;
+.query-btn {
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  padding: 0 1.25rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
 
-.dialog-footer {
-  margin-top: 20px;
-  text-align: right;
+.query-btn:hover {
+  background-color: #3367d6;
+}
+
+.suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: white;
+  border: 1px solid #ddd;
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  z-index: 10;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.suggestion-item {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.suggestion-item:hover {
+  background-color: #f5f5f5;
+}
+
+.current-intent {
+  background-color: #f8f9fa;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+}
+
+.intent-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.intent-label {
+  font-weight: 500;
+  color: #555;
+}
+
+.intent-description {
+  color: #333;
+}
+
+.insights-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.query-results {
+  margin-top: 1rem;
+}
+
+.query-results h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+}
+
+.results-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.result-item {
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  padding: 1rem;
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.result-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.detail-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.detail-item .label {
+  color: #666;
+  min-width: 100px;
+}
+
+.status-normal {
+  color: #28a745;
+}
+
+.status-frozen {
+  color: #dc3545;
+}
+
+.status-inspection {
+  color: #ffc107;
+}
+
+.risk-low {
+  color: #28a745;
+}
+
+.risk-medium {
+  color: #ffc107;
+}
+
+.risk-high {
+  color: #dc3545;
+}
+
+.severity-low {
+  color: #28a745;
+}
+
+.severity-medium {
+  color: #ffc107;
+}
+
+.severity-high {
+  color: #fd7e14;
+}
+
+.severity-critical {
+  color: #dc3545;
+}
+
+.result-pass {
+  color: #28a745;
+}
+
+.result-fail {
+  color: #dc3545;
+}
+
+.result-warning {
+  color: #ffc107;
 }
 </style> 

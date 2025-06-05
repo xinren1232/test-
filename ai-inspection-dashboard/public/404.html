@@ -8,7 +8,7 @@
     // 将404页面重定向到index.html
     var segmentCount = 1; // 根据你的仓库名调整这个值，例如 /repo-name/ 是 1
     var l = window.location;
-    var repo = l.pathname.split('/')[1]; // 获取仓库名
+    var repo = 'IQE'; // 使用固定的仓库名
     l.replace(
       l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
       '/' + repo + '/?p=/' + 

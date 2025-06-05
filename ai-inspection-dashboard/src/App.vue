@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <el-header class="app-header">
       <div class="logo-container">
-        <img src="./assets/logo.png" alt="Logo" class="logo" />
+        <el-icon class="logo-icon"><Monitor /></el-icon>
         <h1 class="title">IQE动态检验系统</h1>
       </div>
       <el-menu
@@ -31,7 +31,7 @@
       <div class="user-container">
         <el-dropdown>
           <span class="user-profile">
-            <el-avatar :size="32" src="./assets/avatar.png" />
+            <el-avatar :size="32" :icon="UserFilled" />
             <span class="username">管理员</span>
           </span>
           <template #dropdown>
@@ -63,6 +63,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { Monitor, UserFilled } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const activeRoute = computed(() => route.path)
@@ -110,6 +111,12 @@ body {
   display: flex;
   align-items: center;
   justify-self: start;
+}
+
+.logo-icon {
+  font-size: 28px;
+  color: #409EFF;
+  margin-right: 10px;
 }
 
 .logo {

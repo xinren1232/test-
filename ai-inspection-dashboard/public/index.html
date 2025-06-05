@@ -46,5 +46,37 @@
 <body>
   <div id="app"></div>
   <!-- 构建的脚本会自动注入 -->
+
+  <!-- 展示欢迎语 -->
+  <div id="user-info" style="font-size: 18px; margin-top: 10px; color: #444;"></div>
+  <!-- 引入飞书 SDK -->
+  <script src="https://lf1-cdn-tos.bytegoofy.com/goofy/lark/lark.js"></script>
+  <script>
+    (async function () {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+
+      if (code) {
+        try {
+          const resp = await fetch("https://feishu-sso-vercel.vercel.app/api/feishu-login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code })
+          });
+          const data = await resp.json();
+          const name = data.name || data.name_cn || data.en_name || "飞书用户";
+          document.getElementById("user-info").innerText = `欢迎你，${name}`;
+        } catch (err) {
+          document.getElementById("user-info").innerText = "登录失败，请重试";
+        }
+        return;
+      }
+
+      LarkWeb.login({
+        appId: "cli_a7dd270320635013",
+        redirectUri: window.location.href,
+      });
+    })();
+  </script>
 </body>
 </html> 

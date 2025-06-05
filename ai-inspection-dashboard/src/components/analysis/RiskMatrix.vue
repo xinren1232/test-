@@ -568,4 +568,3 @@ onMounted(() => {
   gap: 12px;
 }
 </style>
-</rewritten_file>
