@@ -10,6 +10,16 @@ const router = createRouter({
       component: HomeView
     },
     {
+      path: '/dashboard',
+      name: 'dashboard',
+      component: () => import('./pages/MonitoringDashboard.vue')
+    },
+    {
+      path: '/inventory',
+      name: 'inventory',
+      component: () => import('./pages/InventoryManagement.vue')
+    },
+    {
       path: '/factory',
       name: 'factory',
       component: () => import('./pages/FactoryView.vue')
@@ -28,11 +38,6 @@ const router = createRouter({
       path: '/online',
       name: 'online',
       component: () => import('./pages/OnlineView.vue')
-    },
-    {
-      path: '/ai',
-      name: 'ai',
-      component: () => import('./pages/AiAssistant.vue')
     },
     {
       path: '/batch',
@@ -59,6 +64,21 @@ const router = createRouter({
       path: '/analysis',
       name: 'analysis',
       component: () => import('./pages/AnalysisView.vue')
+    },
+    {
+      path: '/quality',
+      name: 'quality',
+      component: () => import('./pages/QualityManagement.vue')
+    },
+    {
+      path: '/knowledge-qa',
+      name: 'knowledgeQA',
+      component: () => import('./pages/KnowledgeQAView.vue')
+    },
+    // 添加通配符路由，处理所有未匹配的路径
+    {
+      path: '/:pathMatch(.*)*',
+      redirect: '/'
     }
     // 设置页面暂未实现，需要时再添加
     // {

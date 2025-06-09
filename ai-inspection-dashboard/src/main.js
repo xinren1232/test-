@@ -1,114 +1,25 @@
-import { createApp } from 'vue'
-import App from './App.vue'
-import router from './router'
-import { pinia } from './store'
-import ElementPlus from 'element-plus'
-import 'element-plus/dist/index.css'
-import * as ElementPlusIconsVue from '@element-plus/icons-vue'
-import './assets/main.css'
-import { ElMessage } from 'element-plus'
+import { createApp } from 'vue';
+import App from './App.vue';
+import router from './router';
+import ElementPlus from 'element-plus';
+import 'element-plus/dist/index.css';
+import * as ElementPlusIconsVue from '@element-plus/icons-vue';
+import { createPinia } from 'pinia';
+import { APIService } from './services/api/APIService';
 
-// 导入图表和增强组件
-import * as echarts from 'echarts/core'
-import { BarChart, LineChart, PieChart, RadarChart } from 'echarts/charts'
-import { 
-  GridComponent,
-  TitleComponent,
-  TooltipComponent,
-  LegendComponent,
-  ToolboxComponent,
-  DataZoomComponent,
-  VisualMapComponent,
-  MarkLineComponent
-} from 'echarts/components'
-import { CanvasRenderer } from 'echarts/renderers'
+const app = createApp(App);
+const pinia = createPinia();
 
-// 注册ECharts组件
-echarts.use([
-  CanvasRenderer,
-  BarChart,
-  LineChart,
-  PieChart,
-  RadarChart,
-  GridComponent,
-  TitleComponent,
-  TooltipComponent,
-  LegendComponent,
-  ToolboxComponent,
-  DataZoomComponent,
-  VisualMapComponent,
-  MarkLineComponent
-])
-
-// 全局图标
-import {
-  Search,
-  DataAnalysis,
-  Check,
-  Warning,
-  Timer,
-  Reading,
-  DataLine,
-  Odometer,
-  RefreshRight,
-  Refresh,
-  Setting,
-  Download,
-  Upload,
-  Share,
-  Delete,
-  Edit,
-  Plus,
-  Minus,
-  InfoFilled,
-  QuestionFilled,
-  ChatLineRound,
-  Document,
-  More
-} from '@element-plus/icons-vue'
-
-const app = createApp(App)
-
-// 注册全局图标组件
-const icons = {
-  Search,
-  DataAnalysis,
-  Check,
-  Warning,
-  Timer,
-  Reading,
-  DataLine,
-  Odometer,
-  RefreshRight,
-  Refresh,
-  Setting,
-  Download,
-  Upload,
-  Share,
-  Delete,
-  Edit,
-  Plus,
-  Minus,
-  InfoFilled,
-  QuestionFilled,
-  ChatLineRound,
-  Document,
-  More
+// 注册所有图标
+for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+  app.component(key, component);
 }
 
-Object.entries(icons).forEach(([key, component]) => {
-  app.component(key, component)
-})
+// 初始化API服务
+APIService.init();
 
-// 全局对象
-app.config.globalProperties.$message = ElMessage
-app.config.globalProperties.$echarts = echarts
+app.use(router);
+app.use(ElementPlus);
+app.use(pinia);
 
-// 使用插件
-app.use(pinia)
-app.use(router)
-app.use(ElementPlus, { size: 'default' })
-
-app.mount('#app') 
- 
- 
+app.mount('#app');

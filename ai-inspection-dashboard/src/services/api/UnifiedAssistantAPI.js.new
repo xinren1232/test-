@@ -1,0 +1,175 @@
+/**
+ * 统一助手API服务
+ * 为外部系统提供集成接口，可处理质量检验、实验室测试和生产线相关的查询
+ */
+import aiService from '../ai/aiService.js';
+import { AICommandProcessor } from '../ai/AICommandProcessor.js';
+import dataInterface from '../data/DataInterface.js';
+
+/**
+ * 统一助手API服务
+ * 处理来自前端的查询请求
+ */
+class UnifiedAssistantAPI {
+  constructor() {
+    console.log('初始化统一助手API');
+    this.sessions = new Map();
+    this.initialized = false;
+  }
+
+  /**
+   * 初始化API服务
+   */
+  init() {
+    this.initialized = true;
+    console.log('统一助手API已初始化');
+    return true;
+  }
+
+  /**
+   * 处理查询请求
+   * @param {Object} params 查询参数
+   * @returns {Promise<Object>} 查询结果
+   */
+  async handleQuery(params) {
+    try {
+      const { query, sessionId = 'default', mode = 'auto', options = {} } = params;
+      
+      if (!query) {
+        return { success: false, error: '缺少查询内容' };
+      }
+      
+      // 获取会话上下文
+      const sessionContext = this.getSessionContext(sessionId);
+      
+      // 更新会话上下文
+      sessionContext.history.push({ role: 'user', content: query });
+      
+      // 根据模式选择不同的系统提示词
+      let systemPrompt;
+      switch (mode) {
+        case 'quality':
+          systemPrompt = '你是IQE质量智能助手，一个专业的质量检验分析专家。请使用简洁专业的语言回答问题，提供数据和实用的质量改进建议。';
+          break;
+        case 'lab':
+          systemPrompt = '你是IQE实验室助手，一个专业的实验数据分析专家。请帮助用户解读实验数据，找出异常值和趋势，提供改进建议。';
+          break;
+        case 'production':
+          systemPrompt = '你是IQE生产线助手，一个专业的生产质量专家。请帮助用户分析生产质量数据，识别异常状况，提供改进生产流程的建议。';
+          break;
+        default:
+          systemPrompt = '你是IQE智能助手，一个专业的质量检验分析专家。请使用简洁专业的语言回答问题。';
+      }
+      
+      // 如果查询包含命令关键词，尝试作为命令处理
+      if (this.isCommand(query)) {
+        const commandResult = await AICommandProcessor.processCommand(query);
+        if (commandResult.success) {
+          // 更新会话上下文
+          sessionContext.history.push({ 
+            role: 'assistant', 
+            content: commandResult.result.message || '命令执行成功'
+          });
+          return { 
+            success: true, 
+            response: commandResult.result.message || '命令执行成功',
+            result: commandResult.result,
+            mode,
+            sessionId
+          };
+        }
+      }
+      
+      // 使用AI服务处理查询
+      const response = await aiService.sendMessage(
+        query,
+        sessionContext.history.slice(0, -1), // 不包括当前查询
+        systemPrompt,
+        options
+      );
+      
+      // 更新会话上下文
+      sessionContext.history.push({ role: 'assistant', content: response.content });
+      
+      // 如果历史记录过长，删除最早的对话
+      if (sessionContext.history.length > 20) {
+        sessionContext.history = sessionContext.history.slice(-20);
+      }
+      
+      return {
+        success: true,
+        response: response.content,
+        model: response.model,
+        mode,
+        sessionId
+      };
+    } catch (error) {
+      console.error('处理查询失败:', error);
+      return {
+        success: false,
+        error: error.message || '处理查询时发生错误'
+      };
+    }
+  }
+  
+  /**
+   * 判断是否为命令
+   * @param {string} text 用户输入
+   * @returns {boolean} 是否为命令
+   */
+  isCommand(text) {
+    if (!text) return false;
+    
+    const commandPatterns = [
+      /冻结.*(批次|物料)/i,
+      /释放.*(批次|物料)/i,
+      /查询.*(库存|物料|批次)/i,
+      /查看.*(测试|检验|实验).*(结果|数据)/i,
+      /创建.*(质量问题|缺陷|不良)/i
+    ];
+    
+    return commandPatterns.some(pattern => pattern.test(text));
+  }
+
+  /**
+   * 获取会话上下文
+   * @param {string} sessionId 会话ID
+   * @returns {Object} 会话上下文
+   */
+  getSessionContext(sessionId) {
+    if (!this.sessions.has(sessionId)) {
+      this.sessions.set(sessionId, {
+        id: sessionId,
+        history: [],
+        createdAt: new Date().toISOString(),
+        lastAccessedAt: new Date().toISOString()
+      });
+    }
+    
+    const session = this.sessions.get(sessionId);
+    session.lastAccessedAt = new Date().toISOString();
+    
+    return session;
+  }
+
+  /**
+   * 清除会话上下文
+   * @param {string} sessionId 会话ID
+   * @returns {boolean} 是否成功
+   */
+  clearSessionContext(sessionId) {
+    if (this.sessions.has(sessionId)) {
+      const session = this.sessions.get(sessionId);
+      session.history = [];
+      session.lastAccessedAt = new Date().toISOString();
+      return true;
+    }
+    return false;
+  }
+}
+
+// 创建实例
+const unifiedAssistantAPI = new UnifiedAssistantAPI();
+
+// 导出API实例
+export default unifiedAssistantAPI;

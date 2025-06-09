@@ -159,6 +159,36 @@
           </div>
         </el-card>
       </el-col>
+      
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="feature-card" shadow="hover" @click="goToPage('/dashboard')">
+          <div class="feature-icon">
+            <el-icon><el-icon-data-board /></el-icon>
+          </div>
+          <div class="feature-info">
+            <h3>监控仪表板</h3>
+            <p>质量数据与风险实时监控</p>
+          </div>
+          <div class="feature-action">
+            <el-button type="primary" text>进入仪表板</el-button>
+          </div>
+        </el-card>
+      </el-col>
+      
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="feature-card" shadow="hover" @click="goToPage('/inventory')">
+          <div class="feature-icon">
+            <el-icon><el-icon-goods /></el-icon>
+          </div>
+          <div class="feature-info">
+            <h3>库存管理</h3>
+            <p>物料库存状态与批次管理</p>
+          </div>
+          <div class="feature-action">
+            <el-button type="warning" text>管理库存</el-button>
+          </div>
+        </el-card>
+      </el-col>
     </el-row>
   </div>
 </template>

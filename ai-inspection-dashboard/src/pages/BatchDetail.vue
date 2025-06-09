@@ -226,8 +226,8 @@
         </el-form-item>
         <el-form-item label="结论" prop="conclusion">
           <el-radio-group v-model="inspectionForm.conclusion">
-            <el-radio label="合格">合格</el-radio>
-            <el-radio label="不合格">不合格</el-radio>
+            <el-radio value="合格">合格</el-radio>
+            <el-radio value="不合格">不合格</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="备注" prop="remarks">

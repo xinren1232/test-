@@ -60,7 +60,7 @@
           <template #header>
             <div class="card-header">
               <h3>智能决策支持</h3>
-              <el-button type="text" @click="showDecisionSupport = false">关闭</el-button>
+              <el-button link @click="showDecisionSupport = false">关闭</el-button>
             </div>
           </template>
           <div class="decision-content">

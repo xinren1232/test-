@@ -1,14 +1,14 @@
 /**
- * 模型注册管理模块 - 管理AI模型的注册和使用
- * 提供模型的注册、获取、版本控制等功能
+ * AI模型注册表 - 负责管理和跟踪所有AI模型
+ * 提供模型注册、获取、版本控制和性能监控功能
  */
 
 // 模型注册错误类
 export class ModelRegistryError extends Error {
-  constructor(message, modelName) {
+  constructor(message, modelId) {
     super(message);
     this.name = 'ModelRegistryError';
-    this.modelName = modelName;
+    this.modelId = modelId;
     this.timestamp = new Date();
   }
 }
@@ -30,10 +30,15 @@ export class ModelMetadata {
   }
 }
 
-// 模型注册管理类
+// 模型注册表类
 export class ModelRegistry {
-  // 存储模型和元数据
+  // 模型存储
   static models = new Map();
+  
+  // 模型性能指标
+  static metrics = new Map();
+  
+  // 模型元数据存储
   static metadata = new Map();
   
   // 默认模型
@@ -42,54 +47,161 @@ export class ModelRegistry {
   // 模型事件监听器
   static listeners = [];
   
-  // 注册模型
-  static registerModel(name, model, metadata = {}) {
+  /**
+   * 注册模型
+   * @param {string} modelId 模型ID
+   * @param {Object} model 模型对象
+   */
+  static registerModel(modelId, model) {
+    if (this.models.has(modelId)) {
+      console.warn(`模型 ${modelId} 已存在，将被覆盖`);
+    }
+    
+    // 确保模型有必要的属性
+    const validatedModel = {
+      name: model.name || modelId,
+      version: model.version || '1.0',
+      type: model.type || 'unknown',
+      createdAt: model.createdAt || new Date(),
+      ...model
+    };
+    
+    this.models.set(modelId, validatedModel);
+    
+    // 初始化性能指标
+    this.metrics.set(modelId, {
+      invocations: 0,
+      successCount: 0,
+      errorCount: 0,
+      totalResponseTime: 0,
+      lastUsed: null
+    });
+    
+    console.log(`[ModelRegistry] 已注册模型 ${modelId} (${validatedModel.name} v${validatedModel.version})`);
+    
+    return validatedModel;
+  }
+  
+  /**
+   * 获取模型
+   * @param {string} modelId 模型ID
+   * @return {Object} 模型对象
+   */
+  static getModel(modelId) {
+    const model = this.models.get(modelId);
+    
+    if (!model) {
+      throw new Error(`未找到模型: ${modelId}`);
+    }
+    
+    return model;
+  }
+  
+  /**
+   * 执行模型
+   * @param {string} modelId 模型ID
+   * @param {string} method 模型方法
+   * @param {Object} data 输入数据
+   * @param {Object} options 执行选项
+   * @return {Promise<any>} 模型执行结果
+   */
+  static async executeModel(modelId, method, data, options = {}) {
+    const model = this.getModel(modelId);
+    const metrics = this.metrics.get(modelId);
+    
+    // 验证模型方法
+    if (!model[method]) {
+      throw new Error(`模型 ${modelId} 不支持方法 ${method}`);
+    }
+    
+    // 更新指标
+    metrics.invocations++;
+    metrics.lastUsed = new Date();
+    
+    const startTime = Date.now();
+    
     try {
-      if (!name || typeof name !== 'string') {
-        throw new Error('模型名称必须是非空字符串');
-      }
+      // 执行模型
+      const result = await model[method](data, options);
       
-      if (!model) {
-        throw new Error('模型不能为空');
-      }
+      // 更新成功指标
+      metrics.successCount++;
+      metrics.totalResponseTime += Date.now() - startTime;
       
-      // 创建元数据
-      const modelMetadata = new ModelMetadata({
-        name,
-        ...metadata,
-        updatedAt: new Date()
-      });
-      
-      // 存储模型和元数据
-      this.models.set(name, model);
-      this.metadata.set(name, modelMetadata);
-      
-      // 如果是默认模型，设置为默认
-      if (metadata.isDefault && metadata.type) {
-        this.defaultModels.set(metadata.type, name);
-      }
-      
-      // 触发事件
-      this.notifyListeners('register', name, modelMetadata);
-      
-      console.log(`[ModelRegistry] 注册模型: ${name} (${modelMetadata.version})`);
-      return true;
+      return result;
     } catch (error) {
-      throw new ModelRegistryError(`注册模型失败: ${error.message}`, name);
+      // 更新错误指标
+      metrics.errorCount++;
+      console.error(`[ModelRegistry] 模型 ${modelId} 执行失败:`, error);
+      
+      throw error;
     }
   }
   
-  // 获取模型
-  static getModel(name) {
-    try {
-      if (!this.models.has(name)) {
-        throw new Error(`模型不存在: ${name}`);
-      }
-      
-      return this.models.get(name);
-    } catch (error) {
-      throw new ModelRegistryError(`获取模型失败: ${error.message}`, name);
+  /**
+   * 获取所有模型
+   * @return {Array} 模型列表
+   */
+  static getAllModels() {
+    return Array.from(this.models.entries()).map(([id, model]) => ({
+      id,
+      ...model
+    }));
+  }
+  
+  /**
+   * 获取模型性能指标
+   * @param {string} modelId 模型ID
+   * @return {Object} 性能指标
+   */
+  static getModelMetrics(modelId) {
+    const model = this.getModel(modelId);
+    const metrics = this.metrics.get(modelId);
+    
+    if (!metrics) {
+      throw new Error(`未找到模型 ${modelId} 的性能指标`);
     }
+    
+    // 计算派生指标
+    const successRate = metrics.invocations > 0 
+      ? (metrics.successCount / metrics.invocations) * 100
+      : 0;
+    const avgResponseTime = metrics.successCount > 0
+      ? metrics.totalResponseTime / metrics.successCount
+      : 0;
+    
+    return {
+      modelId,
+      modelName: model.name,
+      modelVersion: model.version,
+      invocations: metrics.invocations,
+      successRate: successRate.toFixed(2) + '%',
+      avgResponseTime: avgResponseTime.toFixed(2) + 'ms',
+      lastUsed: metrics.lastUsed
+    };
+  }
+  
+  /**
+   * 获取所有模型的性能指标
+   * @return {Array} 性能指标列表
+   */
+  static getAllMetrics() {
+    return Array.from(this.models.keys()).map(modelId => this.getModelMetrics(modelId));
+  }
+  
+  /**
+   * 删除模型
+   * @param {string} modelId 模型ID
+   */
+  static deleteModel(modelId) {
+    if (!this.models.has(modelId)) {
+      throw new Error(`未找到模型: ${modelId}`);
+    }
+    
+    this.models.delete(modelId);
+    this.metrics.delete(modelId);
+    
+    console.log(`[ModelRegistry] 已删除模型 ${modelId}`);
   }
   
   // 获取模型元数据
@@ -172,35 +284,6 @@ export class ModelRegistry {
       return true;
     } catch (error) {
       throw new ModelRegistryError(`更新模型失败: ${error.message}`, name);
-    }
-  }
-  
-  // 删除模型
-  static deleteModel(name) {
-    try {
-      if (!this.models.has(name)) {
-        throw new Error(`模型不存在: ${name}`);
-      }
-      
-      // 获取元数据
-      const metadata = this.metadata.get(name);
-      
-      // 如果是默认模型，移除默认设置
-      if (metadata.isDefault && metadata.type) {
-        this.defaultModels.delete(metadata.type);
-      }
-      
-      // 删除模型和元数据
-      this.models.delete(name);
-      this.metadata.delete(name);
-      
-      // 触发事件
-      this.notifyListeners('delete', name, metadata);
-      
-      console.log(`[ModelRegistry] 删除模型: ${name}`);
-      return true;
-    } catch (error) {
-      throw new ModelRegistryError(`删除模型失败: ${error.message}`, name);
     }
   }
   
@@ -297,15 +380,6 @@ export class ModelRegistry {
     }
     
     return this.metadata.get(name).version;
-  }
-  
-  // 获取模型性能指标
-  static getModelMetrics(name) {
-    if (!this.metadata.has(name)) {
-      throw new ModelRegistryError(`模型元数据不存在: ${name}`, name);
-    }
-    
-    return this.metadata.get(name).metrics;
   }
   
   // 更新模型性能指标

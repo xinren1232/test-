@@ -74,7 +74,7 @@
 <script setup>
 import { ref, reactive, onMounted, watch, nextTick, computed } from 'vue';
 import * as echarts from 'echarts/core';
-import { useIQEStore } from '../../store';
+import { useIQEStore } from '../../stores';
 import { analyzeBatchQualityTrend } from '../../services/analysisService';
 
 // 数据存储

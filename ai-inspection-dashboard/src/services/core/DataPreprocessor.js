@@ -1,6 +1,6 @@
 /**
- * 数据预处理模块 - 为AI模型准备数据
- * 提供数据清洗、转换、标准化、特征工程等功能
+ * 数据预处理器 - 提供数据清洗、转换、标准化和特征工程功能
+ * 用于AI模型训练和预测前的数据准备
  */
 
 // 数据预处理错误类
@@ -13,142 +13,240 @@ export class DataPreprocessorError extends Error {
   }
 }
 
-// 数据预处理类
 export class DataPreprocessor {
-  // 数据清洗
-  static cleanData(data, options = {}) {
-    try {
-      const { 
-        removeNulls = true, 
-        removeDuplicates = true, 
-        removeOutliers = false,
-        outlierMethod = 'zscore',
-        outlierThreshold = 3
-      } = options;
+  // 数据清洗策略
+  static cleaningStrategies = new Map();
+  
+  // 数据转换策略
+  static transformStrategies = new Map();
+  
+  // 特征工程策略
+  static featureStrategies = new Map();
+  
+  /**
+   * 注册数据清洗策略
+   * @param {string} name 策略名称
+   * @param {Function} strategy 策略函数
+   */
+  static registerCleaningStrategy(name, strategy) {
+    if (typeof strategy !== 'function') {
+      throw new Error('清洗策略必须是函数');
+    }
+    
+    this.cleaningStrategies.set(name, strategy);
+    console.log(`[DataPreprocessor] 注册清洗策略: ${name}`);
+  }
+  
+  /**
+   * 注册数据转换策略
+   * @param {string} name 策略名称
+   * @param {Function} strategy 策略函数
+   */
+  static registerTransformStrategy(name, strategy) {
+    if (typeof strategy !== 'function') {
+      throw new Error('转换策略必须是函数');
+    }
+    
+    this.transformStrategies.set(name, strategy);
+    console.log(`[DataPreprocessor] 注册转换策略: ${name}`);
+  }
+  
+  /**
+   * 注册特征工程策略
+   * @param {string} name 策略名称
+   * @param {Function} strategy 策略函数
+   */
+  static registerFeatureStrategy(name, strategy) {
+    if (typeof strategy !== 'function') {
+      throw new Error('特征工程策略必须是函数');
+    }
+    
+    this.featureStrategies.set(name, strategy);
+    console.log(`[DataPreprocessor] 注册特征工程策略: ${name}`);
+  }
+  
+  /**
+   * 执行数据清洗
+   * @param {Array|Object} data 待清洗数据
+   * @param {string|Array} strategies 清洗策略名称或名称数组
+   * @param {Object} options 清洗选项
+   * @return {Array|Object} 清洗后的数据
+   */
+  static clean(data, strategies, options = {}) {
+    if (!data) return data;
+    
+    const strategyNames = Array.isArray(strategies) ? strategies : [strategies];
+    let processedData = JSON.parse(JSON.stringify(data)); // 深拷贝
+    
+    for (const name of strategyNames) {
+      const strategy = this.cleaningStrategies.get(name);
       
-      if (!data || !Array.isArray(data)) {
-        throw new Error('输入数据必须是数组');
+      if (!strategy) {
+        console.warn(`[DataPreprocessor] 未找到清洗策略: ${name}`);
+        continue;
       }
       
-      let processedData = [...data];
+      try {
+        processedData = strategy(processedData, options);
+      } catch (error) {
+        console.error(`[DataPreprocessor] 清洗策略 ${name} 执行失败:`, error);
+        throw error;
+      }
+    }
+    
+    return processedData;
+  }
+  
+  /**
+   * 执行数据转换
+   * @param {Array|Object} data 待转换数据
+   * @param {string|Array} strategies 转换策略名称或名称数组
+   * @param {Object} options 转换选项
+   * @return {Array|Object} 转换后的数据
+   */
+  static transform(data, strategies, options = {}) {
+    if (!data) return data;
+    
+    const strategyNames = Array.isArray(strategies) ? strategies : [strategies];
+    let processedData = JSON.parse(JSON.stringify(data)); // 深拷贝
+    
+    for (const name of strategyNames) {
+      const strategy = this.transformStrategies.get(name);
       
-      // 移除空值
-      if (removeNulls) {
-        processedData = this.removeNullValues(processedData);
+      if (!strategy) {
+        console.warn(`[DataPreprocessor] 未找到转换策略: ${name}`);
+        continue;
       }
       
-      // 移除重复项
-      if (removeDuplicates) {
-        processedData = this.removeDuplicateValues(processedData);
+      try {
+        processedData = strategy(processedData, options);
+      } catch (error) {
+        console.error(`[DataPreprocessor] 转换策略 ${name} 执行失败:`, error);
+        throw error;
+      }
+    }
+    
+    return processedData;
+  }
+  
+  /**
+   * 执行特征工程
+   * @param {Array|Object} data 待处理数据
+   * @param {string|Array} strategies 特征工程策略名称或名称数组
+   * @param {Object} options 特征工程选项
+   * @return {Array|Object} 处理后的数据
+   */
+  static engineerFeatures(data, strategies, options = {}) {
+    if (!data) return data;
+    
+    const strategyNames = Array.isArray(strategies) ? strategies : [strategies];
+    let processedData = JSON.parse(JSON.stringify(data)); // 深拷贝
+    
+    for (const name of strategyNames) {
+      const strategy = this.featureStrategies.get(name);
+      
+      if (!strategy) {
+        console.warn(`[DataPreprocessor] 未找到特征工程策略: ${name}`);
+        continue;
       }
       
-      // 移除离群值
-      if (removeOutliers) {
-        processedData = this.removeOutliers(processedData, outlierMethod, outlierThreshold);
+      try {
+        processedData = strategy(processedData, options);
+      } catch (error) {
+        console.error(`[DataPreprocessor] 特征工程策略 ${name} 执行失败:`, error);
+        throw error;
       }
-      
-      return processedData;
-    } catch (error) {
-      throw new DataPreprocessorError(`数据清洗失败: ${error.message}`, 'cleanData');
+    }
+    
+    return processedData;
+  }
+  
+  /**
+   * 完整的数据预处理流程
+   * @param {Array|Object} data 原始数据
+   * @param {Object} pipeline 预处理流水线配置
+   * @return {Array|Object} 预处理后的数据
+   */
+  static process(data, pipeline = {}) {
+    const {
+      cleaning = [],
+      transformation = [],
+      featureEngineering = [],
+      options = {}
+    } = pipeline;
+    
+    // 应用清洗策略
+    const cleanedData = this.clean(data, cleaning, options.cleaning || {});
+    
+    // 应用转换策略
+    const transformedData = this.transform(cleanedData, transformation, options.transformation || {});
+    
+    // 应用特征工程策略
+    const engineeredData = this.engineerFeatures(transformedData, featureEngineering, options.featureEngineering || {});
+    
+    return engineeredData;
+  }
+  
+  /**
+   * 标准化数据
+   * @param {Array} data 数组数据
+   * @param {Object} options 标准化选项
+   * @return {Array} 标准化后的数据
+   */
+  static normalize(data, options = {}) {
+    if (!Array.isArray(data)) {
+      throw new Error('标准化方法需要数组数据');
+    }
+    
+    const { method = 'minmax', featureIndices = null } = options;
+    
+    switch (method) {
+      case 'minmax':
+        return this.minMaxNormalization(data, featureIndices);
+      case 'zscore':
+        return this.zScoreNormalization(data, featureIndices);
+      default:
+        throw new Error(`未知的标准化方法: ${method}`);
     }
   }
   
-  // 数据转换
-  static transformData(data, transformations = []) {
-    try {
-      if (!data || !Array.isArray(data)) {
-        throw new Error('输入数据必须是数组');
+  /**
+   * 最小-最大标准化
+   * @param {Array} data 数组数据
+   * @param {Array} featureIndices 要标准化的特征索引
+   * @return {Array} 标准化后的数据
+   */
+  static minMaxNormalization(data, featureIndices = null) {
+    // 简单实现，实际应用中可以更复杂
+    return data.map(item => {
+      // 对每个数值进行最小-最大标准化
+      if (typeof item === 'number') {
+        return (item - Math.min(...data)) / (Math.max(...data) - Math.min(...data));
       }
-      
-      if (!transformations || !Array.isArray(transformations) || transformations.length === 0) {
-        return data;
-      }
-      
-      let processedData = [...data];
-      
-      // 应用每个转换
-      for (const transformation of transformations) {
-        const { type, field, params = {} } = transformation;
-        
-        switch (type) {
-          case 'normalize':
-            processedData = this.normalizeField(processedData, field, params);
-            break;
-          case 'standardize':
-            processedData = this.standardizeField(processedData, field, params);
-            break;
-          case 'log':
-            processedData = this.logTransform(processedData, field, params);
-            break;
-          case 'onehot':
-            processedData = this.oneHotEncode(processedData, field, params);
-            break;
-          case 'discretize':
-            processedData = this.discretize(processedData, field, params);
-            break;
-          case 'custom':
-            if (params.transformFn && typeof params.transformFn === 'function') {
-              processedData = params.transformFn(processedData);
-            }
-            break;
-          default:
-            console.warn(`未知的转换类型: ${type}`);
-        }
-      }
-      
-      return processedData;
-    } catch (error) {
-      throw new DataPreprocessorError(`数据转换失败: ${error.message}`, 'transformData');
-    }
+      return item;
+    });
   }
   
-  // 特征工程
-  static engineerFeatures(data, featureDefinitions = []) {
-    try {
-      if (!data || !Array.isArray(data)) {
-        throw new Error('输入数据必须是数组');
+  /**
+   * Z-score标准化
+   * @param {Array} data 数组数据
+   * @param {Array} featureIndices 要标准化的特征索引
+   * @return {Array} 标准化后的数据
+   */
+  static zScoreNormalization(data, featureIndices = null) {
+    // 简单实现，实际应用中可以更复杂
+    const numericData = data.filter(item => typeof item === 'number');
+    if (numericData.length === 0) return data;
+    
+    const mean = numericData.reduce((sum, val) => sum + val, 0) / numericData.length;
+    const stdDev = Math.sqrt(numericData.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / numericData.length);
+    
+    return data.map(item => {
+      if (typeof item === 'number') {
+        return stdDev === 0 ? 0 : (item - mean) / stdDev;
       }
-      
-      if (!featureDefinitions || !Array.isArray(featureDefinitions) || featureDefinitions.length === 0) {
-        return data;
-      }
-      
-      let processedData = [...data];
-      
-      // 应用每个特征工程定义
-      for (const featureDef of featureDefinitions) {
-        const { name, type, fields, params = {} } = featureDef;
-        
-        switch (type) {
-          case 'ratio':
-            processedData = this.createRatioFeature(processedData, name, fields, params);
-            break;
-          case 'aggregate':
-            processedData = this.createAggregateFeature(processedData, name, fields, params);
-            break;
-          case 'window':
-            processedData = this.createWindowFeature(processedData, name, fields, params);
-            break;
-          case 'polynomial':
-            processedData = this.createPolynomialFeature(processedData, name, fields, params);
-            break;
-          case 'interaction':
-            processedData = this.createInteractionFeature(processedData, name, fields, params);
-            break;
-          case 'custom':
-            if (params.featureFn && typeof params.featureFn === 'function') {
-              processedData = params.featureFn(processedData, name);
-            }
-            break;
-          default:
-            console.warn(`未知的特征工程类型: ${type}`);
-        }
-      }
-      
-      return processedData;
-    } catch (error) {
-      throw new DataPreprocessorError(`特征工程失败: ${error.message}`, 'engineerFeatures');
-    }
+      return item;
+    });
   }
   
   // 数据拆分

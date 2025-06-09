@@ -1,202 +1,346 @@
 <template>
   <div class="app-container">
-    <!-- 顶部导航栏 -->
-    <el-header class="app-header">
-      <div class="logo-container">
-        <el-icon class="logo-icon"><Monitor /></el-icon>
-        <h1 class="title">IQE动态检验系统</h1>
+    <!-- 导航栏 -->
+    <header class="app-header">
+      <div class="logo">
+        <img src="@/assets/logo.png" alt="IQE Logo" class="logo-img" @error="handleLogoError" v-if="!logoError" />
+        <div v-else class="logo-placeholder">IQE</div>
+        <h1>IQE质量智能助手</h1>
       </div>
+      
       <el-menu
-        mode="horizontal"
-        :router="true"
         :default-active="activeRoute"
         class="app-menu"
+        mode="horizontal"
+        router
+        background-color="#001529"
+        text-color="#ffffff"
+        active-text-color="#409EFF"
       >
-        <el-menu-item index="/">首页</el-menu-item>
-        <el-menu-item index="/factory">库存管理</el-menu-item>
-        
-        <el-sub-menu index="/lab-group">
-          <template #title>实验室数据</template>
-          <el-menu-item index="/lab">常规检验</el-menu-item>
-          <el-menu-item index="/lab-inspection">送样检验</el-menu-item>
-        </el-sub-menu>
-        
-        <el-menu-item index="/online">生产现场</el-menu-item>
-        <el-menu-item index="/batch">批次管理</el-menu-item>
-        <el-menu-item index="/monitoring">实时监控</el-menu-item>
-        <el-menu-item index="/analysis">高级分析</el-menu-item>
-        <el-menu-item index="/ai">AI助手</el-menu-item>
-        <el-menu-item index="/architecture">架构视图</el-menu-item>
+        <el-menu-item index="/dashboard">
+          <el-icon><DataBoard /></el-icon>
+          <span>仪表盘</span>
+        </el-menu-item>
+        <el-menu-item index="/inventory">
+          <el-icon><Box /></el-icon>
+          <span>库存管理</span>
+        </el-menu-item>
+        <el-menu-item index="/lab">
+          <el-icon><Monitor /></el-icon>
+          <span>实验室</span>
+        </el-menu-item>
+        <el-menu-item index="/knowledge-qa">
+          <el-icon><ChatLineRound /></el-icon>
+          <span>知识库问答</span>
+        </el-menu-item>
+        <el-menu-item index="/quality">
+          <el-icon><Histogram /></el-icon>
+          <span>质量管理</span>
+        </el-menu-item>
       </el-menu>
-      <div class="user-container">
-        <el-dropdown>
-          <span class="user-profile">
-            <el-avatar :size="32" :icon="UserFilled" />
-            <span class="username">管理员</span>
+      
+      <div class="header-right">
+        <!-- AI模型信息 -->
+        <div class="model-info">
+          <span class="model-label">当前AI模型:</span>
+          <el-tag size="small" :type="activeModel.id === 'r1' ? 'primary' : 'warning'">
+            {{ activeModel.name }}
+          </el-tag>
+        </div>
+        
+        <!-- 用户信息 -->
+        <el-dropdown trigger="click" @command="handleCommand">
+          <span class="user-info">
+            <el-avatar :size="32" :icon="User" v-if="avatarError"></el-avatar>
+            <el-avatar :size="32" src="@/assets/avatar.png" @error="handleAvatarError" v-else></el-avatar>
+            <span>管理员</span>
+            <el-icon><ArrowDown /></el-icon>
           </span>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item>个人信息</el-dropdown-item>
-              <el-dropdown-item>系统设置</el-dropdown-item>
-              <el-dropdown-item divided>退出登录</el-dropdown-item>
+              <el-dropdown-item command="settings">
+                <el-icon><Setting /></el-icon>
+                <span>设置</span>
+              </el-dropdown-item>
+              <el-dropdown-item command="help">
+                <el-icon><QuestionFilled /></el-icon>
+                <span>帮助</span>
+              </el-dropdown-item>
+              <el-dropdown-item divided command="logout">
+                <el-icon><SwitchButton /></el-icon>
+                <span>退出登录</span>
+              </el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
       </div>
-    </el-header>
+    </header>
     
     <!-- 主内容区域 -->
-    <el-main class="app-main">
-      <router-view />
-    </el-main>
+    <main class="app-main">
+      <router-view v-slot="{ Component }">
+        <transition name="fade" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </router-view>
+    </main>
     
     <!-- 页脚 -->
-    <el-footer class="app-footer">
-      <div class="footer-content">
-        <span>IQE动态检验系统 v1.0.0</span>
-        <span>© 2023 质量工程实验室</span>
-      </div>
-    </el-footer>
+    <footer class="app-footer">
+      <p>IQE质量智能助手系统 &copy; {{ currentYear }}</p>
+    </footer>
+    
+    <!-- AI助手悬浮按钮 -->
+    <AIFloatingButton />
   </div>
 </template>
 
-<script setup>
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
-import { Monitor, UserFilled } from '@element-plus/icons-vue'
+<script>
+import { computed, ref, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { ChatRound, DataBoard, Box, SetUp, Histogram, ArrowDown, Setting, 
+         QuestionFilled, SwitchButton, MessageBox, Operation, User, Monitor, ChatLineRound } from '@element-plus/icons-vue';
+import { AIModelConfigService } from './services/ai/AIModelConfigService';
+import AIFloatingButton from './components/AIFloatingButton.vue';
+import { DataSyncService } from './services/DataSyncService';
 
-const route = useRoute()
-const activeRoute = computed(() => route.path)
+export default {
+  name: 'App',
+  
+  components: {
+    ChatRound,
+    DataBoard,
+    Box,
+    SetUp,
+    Histogram,
+    ArrowDown,
+    Setting,
+    QuestionFilled,
+    SwitchButton,
+    MessageBox,
+    Operation,
+    User,
+    AIFloatingButton,
+    Monitor,
+    ChatLineRound
+  },
+  
+  setup() {
+    const router = useRouter();
+    const route = useRoute();
+    
+    // 当前年份
+    const currentYear = new Date().getFullYear();
+    
+    // 资源错误处理
+    const avatarError = ref(false);
+    const logoError = ref(false);
+    
+    const handleAvatarError = () => {
+      avatarError.value = true;
+    };
+    
+    const handleLogoError = () => {
+      logoError.value = true;
+    };
+    
+    // 获取当前活跃的路由
+    const activeRoute = computed(() => route.path);
+    
+    // 获取当前活跃的AI模型
+    const activeModel = computed(() => AIModelConfigService.getActiveModel());
+    
+    // 处理下拉菜单命令
+    function handleCommand(command) {
+      switch (command) {
+        case 'settings':
+          router.push('/settings');
+          break;
+        case 'help':
+          showHelp();
+          break;
+        case 'logout':
+          confirmLogout();
+          break;
+      }
+    }
+    
+    // 显示帮助
+    function showHelp() {
+      ElMessageBox.alert(
+        '这是IQE质量智能助手系统，集成了AI能力来协助质量检验工作。' +
+        '您可以通过左侧菜单访问各个功能模块，或者直接与AI助手交流获取帮助。',
+        '帮助信息',
+        {
+          confirmButtonText: '我知道了',
+          type: 'info'
+        }
+      );
+    }
+    
+    // 确认退出
+    function confirmLogout() {
+      ElMessageBox.confirm(
+        '确定要退出登录吗？',
+        '提示',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      )
+        .then(() => {
+          ElMessage.success('已退出登录');
+          // 这里应该有实际的登出逻辑
+        })
+        .catch(() => {
+          // 取消操作
+        });
+    }
+    
+    onMounted(async () => {
+      // 初始化时同步数据
+      try {
+        await DataSyncService.syncAllData();
+        console.log('数据同步完成');
+      } catch (error) {
+        console.error('数据同步失败:', error);
+      }
+    });
+    
+    return {
+      currentYear,
+      activeRoute,
+      activeModel,
+      handleCommand,
+      avatarError,
+      logoError,
+      handleAvatarError,
+      handleLogoError
+    };
+  }
+};
 </script>
 
 <style>
-/* 全局重置 */
-* {
+html, body {
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
+  height: 100%;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
-body {
-  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB',
-    'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: #f5f7fa;
-  color: #303133;
+#app {
+  height: 100%;
 }
 
-/* 应用容器 */
 .app-container {
-  min-height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
 
-/* 头部样式 */
 .app-header {
-  background-color: #fff;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  display: grid;
-  grid-template-columns: 1fr 2fr 1fr;
+  background-color: #001529;
+  color: white;
+  display: flex;
   align-items: center;
   padding: 0 20px;
   height: 60px;
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-}
-
-.logo-container {
-  display: flex;
-  align-items: center;
-  justify-self: start;
-}
-
-.logo-icon {
-  font-size: 28px;
-  color: #409EFF;
-  margin-right: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04);
 }
 
 .logo {
+  display: flex;
+  align-items: center;
+  margin-right: 40px;
+}
+
+.logo-img {
   height: 36px;
-  width: auto;
   margin-right: 10px;
 }
 
-.title {
-  font-size: 20px;
+.logo-placeholder {
+  width: 36px;
+  height: 36px;
+  background-color: #409EFF;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   font-weight: bold;
-  color: #409EFF;
+  border-radius: 4px;
+  margin-right: 10px;
+  font-size: 14px;
+}
+
+.logo h1 {
+  font-size: 18px;
   margin: 0;
+  font-weight: 600;
   white-space: nowrap;
 }
 
 .app-menu {
-  border-bottom: none;
-  justify-content: center;
+  flex: 1;
+  border-bottom: none !important;
 }
 
-.user-container {
-  margin-left: 20px;
-  cursor: pointer;
-  justify-self: end;
-}
-
-.user-profile {
+.header-right {
   display: flex;
   align-items: center;
 }
 
-.username {
-  margin-left: 8px;
-  font-size: 14px;
-  color: #606266;
+.model-info {
+  margin-right: 24px;
+  display: flex;
+  align-items: center;
 }
 
-/* 主内容区域样式 */
+.model-label {
+  margin-right: 8px;
+  font-size: 12px;
+  color: #e9e9e9;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: #ffffff;
+}
+
+.user-info span {
+  margin: 0 8px;
+}
+
 .app-main {
   flex: 1;
-  padding: 0;
+  overflow-y: auto;
   background-color: #f5f7fa;
 }
 
-/* 页脚样式 */
 .app-footer {
-  background-color: #fff;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
-  height: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background-color: #001529;
+  color: #adbac7;
+  text-align: center;
+  padding: 12px 0;
+  font-size: 12px;
 }
 
-.footer-content {
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-  max-width: 1200px;
-  padding: 0 20px;
-  color: #909399;
-  font-size: 14px;
+/* 页面过渡效果 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
 }
 
-/* 响应式调整 */
-@media (max-width: 768px) {
-  .logo-container .title {
-    display: none;
-  }
-  
-  .user-container .username {
-    display: none;
-  }
-  
-  .app-header {
-    grid-template-columns: auto 1fr auto;
-    padding: 0 10px;
-  }
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style> 
+ 
  
  

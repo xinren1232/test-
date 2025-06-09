@@ -70,6 +70,77 @@
         </el-col>
       </el-row>
       
+      <!-- 在表格上方添加智能预警模块 -->
+      <el-row :gutter="20" style="margin-bottom: 20px;">
+        <el-col :span="24">
+          <el-card shadow="hover" class="ai-recommendation-card" v-if="aiRecommendations.length > 0">
+            <template #header>
+              <div class="card-header">
+                <h3><el-icon><warning /></el-icon> AI物料预警</h3>
+              </div>
+            </template>
+            <el-alert
+              v-for="(rec, index) in aiRecommendations"
+              :key="index"
+              :title="rec.title"
+              :type="rec.type"
+              :description="rec.description"
+              :closable="false"
+              show-icon
+              style="margin-bottom: 10px;"
+            >
+              <template #default>
+                <div class="ai-recommendation-actions">
+                  <el-button size="small" @click="handleRecommendation(rec)">查看详情</el-button>
+                  <el-button size="small" type="text" @click="dismissRecommendation(index)">忽略</el-button>
+                </div>
+              </template>
+            </el-alert>
+          </el-card>
+        </el-col>
+      </el-row>
+      
+      <!-- 在原有统计卡片下方添加智能预测卡片 -->
+      <el-row :gutter="20" style="margin-bottom: 20px;">
+        <el-col :span="12">
+          <el-card shadow="hover" class="prediction-card">
+            <template #header>
+              <div class="card-header">
+                <h3>库存智能预测</h3>
+                <el-tooltip content="基于历史数据的AI预测模型">
+                  <el-icon><info-filled /></el-icon>
+                </el-tooltip>
+              </div>
+            </template>
+            <div id="inventoryPredictionChart" style="height: 300px;"></div>
+          </el-card>
+        </el-col>
+        <el-col :span="12">
+          <el-card shadow="hover" class="recommendation-card">
+            <template #header>
+              <div class="card-header">
+                <h3>智能挪库建议</h3>
+                <el-tooltip content="基于库存利用率和物流效率的优化建议">
+                  <el-icon><info-filled /></el-icon>
+                </el-tooltip>
+              </div>
+            </template>
+            <el-table :data="moveSuggestions" style="width: 100%" size="small">
+              <el-table-column prop="material_code" label="物料编码" width="120"></el-table-column>
+              <el-table-column prop="batch_id" label="批次号" width="120"></el-table-column>
+              <el-table-column prop="current_location" label="当前库位" width="100"></el-table-column>
+              <el-table-column prop="suggested_location" label="建议库位" width="100"></el-table-column>
+              <el-table-column prop="reason" label="建议原因"></el-table-column>
+              <el-table-column label="操作" width="100">
+                <template #default="scope">
+                  <el-button type="primary" size="small" @click="handleMoveSuggestion(scope.row)">执行</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-card>
+        </el-col>
+      </el-row>
+      
       <!-- 库存表格 -->
       <el-table 
         :data="displayData" 
@@ -243,9 +314,10 @@
 </template>
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Search, WarningFilled, CircleCheckFilled, Clock } from '@element-plus/icons-vue'
+import { Search, WarningFilled, CircleCheckFilled, Clock, InfoFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import factoryDataJson from '../data/factory_data.json'
+import * as echarts from 'echarts'
 
 // 数据状态
 const inventoryData = ref([])
@@ -282,6 +354,53 @@ const moveForm = ref({
 // 工厂和库位选项
 const factoryOptions = ref(['深圳工厂', '惠州工厂', '东莞工厂', '中央仓库'])
 const locationOptions = ref(['原料区', '成品区', '半成品区', '待检区', '不良品区'])
+
+// 在setup中添加AI相关数据和功能
+const aiRecommendations = ref([
+  {
+    title: "库存预警：3个批次即将过期",
+    type: "warning",
+    description: "批次ID: BT2023-008, BT2023-012, BT2023-015将在7天内到期，建议优先使用",
+    action: "checkExpiry"
+  },
+  {
+    title: "库存优化建议",
+    type: "info",
+    description: "检测到5个物料存在多库位存储情况，建议整合以提高库位利用率",
+    action: "optimizeStorage"
+  },
+  {
+    title: "供应风险预警",
+    type: "error",
+    description: "物料M2023-056的供应商已连续3次延期交付，建议寻找备选供应商",
+    action: "supplierRisk"
+  }
+]);
+
+// 移库建议数据
+const moveSuggestions = ref([
+  {
+    material_code: "M2023-056",
+    batch_id: "BT2023-056",
+    current_location: "A-12-03",
+    suggested_location: "B-05-01",
+    reason: "靠近生产线，减少物料搬运时间"
+  },
+  {
+    material_code: "M2023-102",
+    batch_id: "BT2023-102",
+    current_location: "C-08-05",
+    suggested_location: "C-02-02",
+    reason: "合并同类物料，提高库位利用率"
+  },
+  {
+    material_code: "M2023-078",
+    batch_id: "BT2023-078",
+    current_location: "D-15-07",
+    suggested_location: "A-03-04",
+    reason: "当前环境温度过高，建议移至温控区"
+  }
+]);
 
 // 根据搜索条件过滤数据
 const filteredData = computed(() => {
@@ -542,6 +661,151 @@ function calculateStatistics() {
   statisticsData.value = stats
 }
 
+// 处理AI建议
+function handleRecommendation(rec) {
+  switch(rec.action) {
+    case 'checkExpiry':
+      ElMessage({
+        message: '正在为您筛选即将过期的批次...',
+        type: 'info'
+      });
+      // 这里可以添加筛选逻辑
+      break;
+    case 'optimizeStorage':
+      ElMessage({
+        message: '正在分析库位优化方案...',
+        type: 'info'
+      });
+      // 这里可以添加库位优化逻辑
+      break;
+    case 'supplierRisk':
+      ElMessage({
+        message: '正在加载供应商风险详情...',
+        type: 'info'
+      });
+      // 这里可以添加供应商风险分析逻辑
+      break;
+  }
+}
+
+// 忽略AI建议
+function dismissRecommendation(index) {
+  aiRecommendations.value.splice(index, 1);
+  ElMessage({
+    message: '已忽略该建议',
+    type: 'success'
+  });
+}
+
+// 处理移库建议
+function handleMoveSuggestion(suggestion) {
+  moveForm.targetFactory = suggestion.suggested_location.split('-')[0];
+  moveForm.targetLocation = suggestion.suggested_location;
+  moveForm.quantity = getItemQuantity(suggestion.material_code, suggestion.batch_id);
+  moveForm.reason = suggestion.reason;
+  
+  // 找到对应物料
+  const material = inventoryData.value.find(item => 
+    item.material_code === suggestion.material_code && 
+    item.batch_id === suggestion.batch_id
+  );
+  
+  if (material) {
+    selectedMaterial.value = material;
+    moveDialogVisible.value = true;
+  }
+}
+
+// 辅助函数：获取物料数量
+function getItemQuantity(materialCode, batchId) {
+  const item = inventoryData.value.find(i => 
+    i.material_code === materialCode && 
+    i.batch_id === batchId
+  );
+  return item ? item.quantity : 0;
+}
+
+// 添加onMounted中初始化图表的代码
+onMounted(() => {
+  // ... 已有的onMounted代码 ...
+  
+  // 初始化库存预测图表
+  initInventoryPredictionChart();
+});
+
+// 初始化库存预测图表
+function initInventoryPredictionChart() {
+  const chartDom = document.getElementById('inventoryPredictionChart');
+  if (!chartDom) return;
+  
+  const myChart = echarts.init(chartDom);
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow'
+      }
+    },
+    legend: {
+      data: ['当前库存', '预测用量', '预测补货', '建议库存']
+    },
+    xAxis: {
+      type: 'category',
+      data: ['本周', '下周', '第3周', '第4周', '第5周', '第6周']
+    },
+    yAxis: {
+      type: 'value',
+      name: '数量'
+    },
+    series: [
+      {
+        name: '当前库存',
+        type: 'bar',
+        stack: 'total',
+        emphasis: {
+          focus: 'series'
+        },
+        data: [320, 280, 230, 180, 120, 70]
+      },
+      {
+        name: '预测用量',
+        type: 'line',
+        emphasis: {
+          focus: 'series'
+        },
+        data: [40, 50, 50, 60, 50, 40]
+      },
+      {
+        name: '预测补货',
+        type: 'bar',
+        stack: 'total',
+        emphasis: {
+          focus: 'series'
+        },
+        data: [0, 0, 0, 0, 150, 0]
+      },
+      {
+        name: '建议库存',
+        type: 'line',
+        emphasis: {
+          focus: 'series'
+        },
+        lineStyle: {
+          type: 'dashed'
+        },
+        data: [300, 300, 300, 300, 300, 300]
+      }
+    ]
+  };
+  
+  option && myChart.setOption(option);
+  
+  // 监听窗口大小变化，调整图表大小
+  window.addEventListener('resize', () => {
+    myChart.resize();
+  });
+}
+
 // 初始化数据
 function initData() {
   // 转换工厂数据为库存数据
@@ -722,6 +986,9 @@ onMounted(() => {
     initData()
     loading.value = false
   }, 500)
+  
+  // 初始化库存预测图表
+  initInventoryPredictionChart();
 })
 </script>
 <style scoped>
@@ -790,6 +1057,24 @@ onMounted(() => {
     margin-right: 0 !important;
     margin-bottom: 10px;
   }
+}
+
+.ai-recommendation-card {
+  margin-bottom: 20px;
+}
+
+.ai-recommendation-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.prediction-card {
+  margin-bottom: 20px;
+}
+
+.recommendation-card {
+  margin-bottom: 20px;
 }
 </style> 
  

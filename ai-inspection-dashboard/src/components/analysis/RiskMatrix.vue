@@ -47,7 +47,7 @@
     <div v-if="selectedItem" class="detail-panel">
       <div class="detail-header">
         <h4>详细信息</h4>
-        <el-button type="text" @click="selectedItem = null">关闭</el-button>
+        <el-button link @click="selectedItem = null">关闭</el-button>
       </div>
       
       <el-descriptions :column="2" border size="small">
@@ -74,7 +74,7 @@
 <script setup>
 import { ref, reactive, onMounted, watch, nextTick, computed } from 'vue';
 import * as echarts from 'echarts/core';
-import { useIQEStore } from '../../store';
+import { useIQEStore } from '../../stores';
 import { useRouter } from 'vue-router';
 
 // 数据存储

@@ -138,6 +138,113 @@
           </el-tab-pane>
         </el-tabs>
       </el-col>
+      
+      <!-- 新增AI实验解析模块 -->
+      <el-col :span="24" style="margin-top: 20px;">
+        <el-card shadow="hover" class="ai-analysis-card">
+          <template #header>
+            <div class="card-header">
+              <h3><el-icon><magic-stick /></el-icon> AI实验结果解析</h3>
+              <el-button type="primary" size="small" @click="startNewAnalysis">开始新分析</el-button>
+            </div>
+          </template>
+          
+          <div v-if="!activeAnalysis" class="empty-analysis">
+            <el-empty description="选择检测记录或上传数据以开始AI分析">
+              <el-button type="primary" @click="showAnalysisOptions">开始分析</el-button>
+            </el-empty>
+          </div>
+          
+          <div v-else class="active-analysis">
+            <el-row :gutter="20">
+              <!-- 实验数据 -->
+              <el-col :span="12">
+                <el-card shadow="hover" class="inner-card">
+                  <template #header>
+                    <h4>实验数据</h4>
+                  </template>
+                  <div class="data-preview">
+                    <el-descriptions :column="2" border>
+                      <el-descriptions-item label="物料代码">{{ activeAnalysis.materialCode }}</el-descriptions-item>
+                      <el-descriptions-item label="批次号">{{ activeAnalysis.batchId }}</el-descriptions-item>
+                      <el-descriptions-item label="测试日期">{{ activeAnalysis.testDate }}</el-descriptions-item>
+                      <el-descriptions-item label="测试项目">{{ activeAnalysis.testItem }}</el-descriptions-item>
+                    </el-descriptions>
+                    
+                    <div class="data-table-wrapper">
+                      <h5>测试数据</h5>
+                      <el-table :data="activeAnalysis.testData" border size="small">
+                        <el-table-column prop="parameter" label="参数"></el-table-column>
+                        <el-table-column prop="value" label="测量值"></el-table-column>
+                        <el-table-column prop="unit" label="单位"></el-table-column>
+                        <el-table-column prop="standard" label="标准值"></el-table-column>
+                        <el-table-column label="状态">
+                          <template #default="scope">
+                            <el-tag :type="scope.row.status === 'OK' ? 'success' : scope.row.status === 'NG' ? 'danger' : 'warning'">
+                              {{ scope.row.status }}
+                            </el-tag>
+                          </template>
+                        </el-table-column>
+                      </el-table>
+                    </div>
+                  </div>
+                </el-card>
+              </el-col>
+              
+              <!-- AI分析结果 -->
+              <el-col :span="12">
+                <el-card shadow="hover" class="inner-card analysis-results">
+                  <template #header>
+                    <h4>AI分析结果</h4>
+                  </template>
+                  
+                  <div class="ai-score-container">
+                    <div class="ai-score-circle" :class="getQualityScoreClass(activeAnalysis.qualityScore)">
+                      <span class="score-number">{{ activeAnalysis.qualityScore }}</span>
+                      <span class="score-label">质量评分</span>
+                    </div>
+                    
+                    <div class="ai-score-detail">
+                      <div class="score-item">
+                        <div class="score-name">稳定性</div>
+                        <el-progress :percentage="activeAnalysis.stabilityScore" :color="getScoreColor(activeAnalysis.stabilityScore)"></el-progress>
+                      </div>
+                      <div class="score-item">
+                        <div class="score-name">一致性</div>
+                        <el-progress :percentage="activeAnalysis.consistencyScore" :color="getScoreColor(activeAnalysis.consistencyScore)"></el-progress>
+                      </div>
+                      <div class="score-item">
+                        <div class="score-name">安全性</div>
+                        <el-progress :percentage="activeAnalysis.safetyScore" :color="getScoreColor(activeAnalysis.safetyScore)"></el-progress>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="ai-conclusions">
+                    <h5>核心发现</h5>
+                    <ul class="finding-list">
+                      <li v-for="(finding, idx) in activeAnalysis.findings" :key="idx">
+                        <el-icon :color="finding.type === 'positive' ? '#67C23A' : finding.type === 'negative' ? '#F56C6C' : '#E6A23C'">
+                          <component :is="finding.type === 'positive' ? 'CircleCheck' : finding.type === 'negative' ? 'CircleClose' : 'Warning'" />
+                        </el-icon>
+                        {{ finding.content }}
+                      </li>
+                    </ul>
+                    
+                    <h5>改进建议</h5>
+                    <div class="recommendations">
+                      <div v-for="(rec, idx) in activeAnalysis.recommendations" :key="idx" class="recommendation-item">
+                        <div class="recommendation-title">{{ idx + 1 }}. {{ rec.title }}</div>
+                        <div class="recommendation-content">{{ rec.content }}</div>
+                      </div>
+                    </div>
+                  </div>
+                </el-card>
+              </el-col>
+            </el-row>
+          </div>
+        </el-card>
+      </el-col>
     </el-row>
     
     <!-- 检测结果表格 -->
@@ -167,11 +274,11 @@
         <el-table-column prop="supplier" label="供应商" width="120"></el-table-column>
         <el-table-column label="操作" width="180">
           <template #default="scope">
-            <el-button type="text" size="small" @click.stop="viewDetails(scope.row)">详情</el-button>
-            <el-button type="text" size="small" @click.stop="viewImages(scope.row)" :disabled="!scope.row.images || !scope.row.images.length">
-              查看图片
+            <el-button link size="small" @click.stop="viewDetails(scope.row)">详情</el-button>
+            <el-button link size="small" @click.stop="viewImages(scope.row)" :disabled="!scope.row.images || !scope.row.images.length">
+              图片
             </el-button>
-            <el-button type="text" size="small" @click.stop="sendToAiAnalysis(scope.row)">AI分析</el-button>
+            <el-button link size="small" @click.stop="sendToAiAnalysis(scope.row)">AI分析</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -342,6 +449,87 @@
         </div>
       </div>
     </el-dialog>
+
+    <!-- 添加AI分析对话框 -->
+    <el-dialog
+      v-model="analysisDialogVisible"
+      title="开始AI分析"
+      width="50%"
+      destroy-on-close
+    >
+      <el-form :model="analysisForm" label-width="120px">
+        <el-form-item label="分析方式">
+          <el-radio-group v-model="analysisForm.mode">
+            <el-radio label="select">选择已有检测记录</el-radio>
+            <el-radio label="upload">上传新检测数据</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        
+        <template v-if="analysisForm.mode === 'select'">
+          <el-form-item label="检测记录">
+            <el-select v-model="analysisForm.testId" placeholder="选择检测记录">
+              <el-option
+                v-for="test in recentLabTests"
+                :key="test.id"
+                :label="`${test.id} - ${test.materialName} (${test.testDate})`"
+                :value="test.id"
+              ></el-option>
+            </el-select>
+          </el-form-item>
+        </template>
+        
+        <template v-else>
+          <el-form-item label="物料代码">
+            <el-input v-model="analysisForm.materialCode"></el-input>
+          </el-form-item>
+          <el-form-item label="批次号">
+            <el-input v-model="analysisForm.batchId"></el-input>
+          </el-form-item>
+          <el-form-item label="测试项目">
+            <el-select v-model="analysisForm.testItem" placeholder="选择测试项目">
+              <el-option
+                v-for="item in testItemOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              ></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item label="数据文件">
+            <el-upload
+              action="#"
+              :auto-upload="false"
+              :on-change="handleFileChange"
+              :limit="1"
+            >
+              <el-button type="primary">选择文件</el-button>
+              <template #tip>
+                <div class="el-upload__tip">支持Excel或CSV格式的数据文件</div>
+              </template>
+            </el-upload>
+          </el-form-item>
+        </template>
+        
+        <el-form-item label="分析重点">
+          <el-checkbox-group v-model="analysisForm.focusAreas">
+            <el-checkbox label="stability">稳定性</el-checkbox>
+            <el-checkbox label="outliers">异常值</el-checkbox>
+            <el-checkbox label="trend">趋势分析</el-checkbox>
+            <el-checkbox label="comparison">历史对比</el-checkbox>
+            <el-checkbox label="recommendation">改进建议</el-checkbox>
+          </el-checkbox-group>
+        </el-form-item>
+      </el-form>
+      
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="analysisDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="runAiAnalysis" :loading="analysisLoading">
+            开始分析
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -349,6 +537,7 @@
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { MagicStick, Warning, CircleCheck, CircleClose } from '@element-plus/icons-vue';
 
 // 引入自定义组件
 import QualityTrendChart from '../components/features/QualityTrendChart.vue';
@@ -356,7 +545,7 @@ import BatchComparisonRadar from '../components/features/BatchComparisonRadar.vu
 import RiskFactorChart from '../components/features/RiskFactorChart.vue';
 
 // 引入数据存储
-import { useIQEStore } from '../store';
+import { useIQEStore } from '../stores';
 
 // 创建路由和数据存储实例
 const router = useRouter();
@@ -607,6 +796,211 @@ const handleGenerateReport = () => {
     message: '风险分析报告生成中，完成后将发送至您的邮箱'
   });
 };
+
+// AI分析相关
+const analysisDialogVisible = ref(false);
+const analysisLoading = ref(false);
+const activeAnalysis = ref(null);
+
+const analysisForm = reactive({
+  mode: 'select',
+  testId: '',
+  materialCode: '',
+  batchId: '',
+  testItem: '',
+  dataFile: null,
+  focusAreas: ['stability', 'outliers', 'recommendation']
+});
+
+const recentLabTests = computed(() => {
+  return filteredLabTests.value.slice(0, 10);
+});
+
+// 显示分析选项对话框
+function showAnalysisOptions() {
+  analysisDialogVisible.value = true;
+}
+
+// 处理文件上传
+function handleFileChange(file) {
+  analysisForm.dataFile = file.raw;
+}
+
+// 开始新的分析
+function startNewAnalysis() {
+  showAnalysisOptions();
+}
+
+// 运行AI分析
+async function runAiAnalysis() {
+  analysisLoading.value = true;
+  
+  try {
+    // 模拟异步分析过程
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    if (analysisForm.mode === 'select' && analysisForm.testId) {
+      // 根据选择的检测ID获取数据
+      const selectedTest = filteredLabTests.value.find(test => test.id === analysisForm.testId);
+      if (selectedTest) {
+        generateAnalysisResults(selectedTest);
+      }
+    } else if (analysisForm.mode === 'upload' && analysisForm.materialCode && analysisForm.testItem) {
+      // 处理上传的数据
+      // 这里应该会有实际的文件处理逻辑
+      // 为演示创建测试数据
+      generateAnalysisResultsFromUpload();
+    }
+    
+    analysisDialogVisible.value = false;
+    ElMessage.success('分析完成');
+  } catch (error) {
+    console.error('AI分析失败', error);
+    ElMessage.error('分析过程出错，请重试');
+  } finally {
+    analysisLoading.value = false;
+  }
+}
+
+// 根据选择的测试记录生成分析结果
+function generateAnalysisResults(test) {
+  const qualityScore = Math.floor(Math.random() * 30) + 70; // 70-99之间的随机数
+  
+  activeAnalysis.value = {
+    materialCode: test.materialCode,
+    materialName: test.materialName,
+    batchId: test.batchId || 'BT-' + test.materialCode,
+    testDate: test.testDate,
+    testItem: test.testItem,
+    qualityScore: qualityScore,
+    stabilityScore: Math.floor(Math.random() * 40) + 60,
+    consistencyScore: Math.floor(Math.random() * 30) + 70,
+    safetyScore: Math.floor(Math.random() * 20) + 80,
+    testData: [
+      {
+        parameter: '抗拉强度',
+        value: '450',
+        unit: 'MPa',
+        standard: '≥420',
+        status: 'OK'
+      },
+      {
+        parameter: '屈服强度',
+        value: '310',
+        unit: 'MPa',
+        standard: '≥300',
+        status: 'OK'
+      },
+      {
+        parameter: '延伸率',
+        value: '18',
+        unit: '%',
+        standard: '≥20',
+        status: 'NG'
+      },
+      {
+        parameter: '硬度',
+        value: '65',
+        unit: 'HRC',
+        standard: '60-70',
+        status: 'OK'
+      }
+    ],
+    findings: [
+      {
+        type: 'positive',
+        content: '抗拉强度和屈服强度均达到标准要求，且表现稳定'
+      },
+      {
+        type: 'negative',
+        content: '延伸率低于标准要求，可能影响材料韧性'
+      },
+      {
+        type: 'warning',
+        content: '相比上批次，硬度数据波动增大，达到±5%'
+      }
+    ],
+    recommendations: [
+      {
+        title: '热处理参数调整',
+        content: '建议将热处理温度范围从940-960°C调整至950-960°C，以提高延伸率'
+      },
+      {
+        title: '增加中间检测点',
+        content: '在热处理过程中增加中间点检测，以便及时发现硬度波动问题'
+      }
+    ]
+  };
+}
+
+// 根据上传的数据生成分析结果
+function generateAnalysisResultsFromUpload() {
+  const qualityScore = Math.floor(Math.random() * 30) + 70;
+  
+  activeAnalysis.value = {
+    materialCode: analysisForm.materialCode,
+    materialName: '上传数据',
+    batchId: analysisForm.batchId || '未知批次',
+    testDate: new Date().toLocaleDateString(),
+    testItem: analysisForm.testItem,
+    qualityScore: qualityScore,
+    stabilityScore: Math.floor(Math.random() * 40) + 60,
+    consistencyScore: Math.floor(Math.random() * 30) + 70,
+    safetyScore: Math.floor(Math.random() * 20) + 80,
+    testData: [
+      {
+        parameter: '参数1',
+        value: '值1',
+        unit: '单位',
+        standard: '标准值',
+        status: Math.random() > 0.5 ? 'OK' : 'NG'
+      },
+      {
+        parameter: '参数2',
+        value: '值2',
+        unit: '单位',
+        standard: '标准值',
+        status: Math.random() > 0.5 ? 'OK' : 'NG'
+      }
+    ],
+    findings: [
+      {
+        type: Math.random() > 0.7 ? 'positive' : Math.random() > 0.5 ? 'negative' : 'warning',
+        content: '基于上传数据的分析发现1'
+      },
+      {
+        type: Math.random() > 0.7 ? 'positive' : Math.random() > 0.5 ? 'negative' : 'warning',
+        content: '基于上传数据的分析发现2'
+      }
+    ],
+    recommendations: [
+      {
+        title: '针对上传数据的建议1',
+        content: '详细建议内容...'
+      },
+      {
+        title: '针对上传数据的建议2',
+        content: '详细建议内容...'
+      }
+    ]
+  };
+}
+
+// 根据分数获取颜色
+function getScoreColor(score) {
+  if (score >= 80) return '#67C23A';
+  if (score >= 60) return '#E6A23C';
+  return '#F56C6C';
+}
+
+// 根据质量评分获取类名
+function getQualityScoreClass(score) {
+  if (score >= 90) return 'score-excellent';
+  if (score >= 80) return 'score-good';
+  if (score >= 70) return 'score-average';
+  if (score >= 60) return 'score-poor';
+  return 'score-bad';
+}
 
 // 初始化
 onMounted(async () => {
@@ -913,6 +1307,141 @@ onMounted(async () => {
 
 .analysis-tabs {
   height: 100%;
+}
+
+.ai-analysis-card {
+  margin-top: 20px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.empty-analysis {
+  padding: 20px;
+  text-align: center;
+}
+
+.active-analysis {
+  padding: 10px 0;
+}
+
+.inner-card {
+  height: 100%;
+}
+
+.data-preview {
+  margin-bottom: 15px;
+}
+
+.data-table-wrapper {
+  margin-top: 15px;
+}
+
+.ai-score-container {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.ai-score-circle {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin-right: 20px;
+  color: white;
+}
+
+.score-excellent {
+  background-color: #67C23A;
+}
+
+.score-good {
+  background-color: #85ce61;
+}
+
+.score-average {
+  background-color: #E6A23C;
+}
+
+.score-poor {
+  background-color: #F56C6C;
+}
+
+.score-bad {
+  background-color: #ff4949;
+}
+
+.score-number {
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.score-label {
+  font-size: 12px;
+}
+
+.ai-score-detail {
+  flex: 1;
+}
+
+.score-item {
+  margin-bottom: 10px;
+}
+
+.score-name {
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.ai-conclusions {
+  margin-top: 20px;
+}
+
+.finding-list {
+  margin: 10px 0;
+  padding-left: 0;
+  list-style-type: none;
+}
+
+.finding-list li {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 5px;
+  border-radius: 4px;
+  background-color: #f8f8f8;
+}
+
+.finding-list li .el-icon {
+  margin-right: 8px;
+}
+
+.recommendations {
+  margin-top: 10px;
+}
+
+.recommendation-item {
+  margin-bottom: 15px;
+  padding: 10px;
+  border-radius: 4px;
+  background-color: #f0f9eb;
+}
+
+.recommendation-title {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.recommendation-content {
+  color: #606266;
+  font-size: 14px;
 }
 
 /* 响应式调整 */

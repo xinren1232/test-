@@ -33,7 +33,7 @@
           <p>{{ insight.content }}</p>
           <div class="insight-footer">
             <el-tag size="small" :type="getInsightTagType(insight.type)">{{ insight.category }}</el-tag>
-            <el-button type="text" size="small">了解更多</el-button>
+            <el-button link size="small">了解更多</el-button>
           </div>
         </el-card>
       </div>

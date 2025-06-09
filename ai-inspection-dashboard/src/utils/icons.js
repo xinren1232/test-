@@ -29,7 +29,8 @@ export function getCommonIcons() {
     DocumentChecked: ElementPlusIconsVue.DocumentChecked,
     Plus: ElementPlusIconsVue.Plus,
     Download: ElementPlusIconsVue.Download,
-    Refresh: ElementPlusIconsVue.Refresh
+    Refresh: ElementPlusIconsVue.Refresh,
+    Send: ElementPlusIconsVue.Position
   }
 }
 

@@ -31,7 +31,7 @@
 <script setup>
 import { ref, reactive, onMounted, watch, nextTick } from 'vue';
 import * as echarts from 'echarts/core';
-import { useIQEStore } from '../../store';
+import { useIQEStore } from '../../stores';
 
 // 数据存储
 const store = useIQEStore();
