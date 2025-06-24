@@ -14,7 +14,7 @@ mysql -u root -p%MYSQL_ROOT_PASSWORD% -e "CREATE DATABASE IF NOT EXISTS iqe_insp
 mysql -u root -p%MYSQL_ROOT_PASSWORD% -e "CREATE USER IF NOT EXISTS 'iqe_user'@'localhost' IDENTIFIED BY 'iqe_password';"
 mysql -u root -p%MYSQL_ROOT_PASSWORD% -e "GRANT ALL PRIVILEGES ON iqe_inspection.* TO 'iqe_user'@'localhost';"
 mysql -u root -p%MYSQL_ROOT_PASSWORD% -e "FLUSH PRIVILEGES;"
-mysql -u root -p%MYSQL_ROOT_PASSWORD% iqe_inspection < db-schema.sql
+mysql -u root -p%MYSQL_ROOT_PASSWORD% iqe_inspection < db-schema-optimized.sql
 echo 数据库创建完成!
 echo.
 
@@ -50,6 +50,13 @@ echo VITE_API_BASE_URL=http://localhost:3000/api > .env.local
 echo 前端环境变量文件创建完成!
 echo.
 
+REM 创建Windows服务
+echo 创建Windows服务...
+nssm install IQE-Inspection "C:\Program Files\nodejs\node.exe" "C:\Program Files\IQE-Inspection\backend\server.js"
+nssm set IQE-Inspection DisplayName "IQE动态检验系统"
+nssm set IQE-Inspection Description "智能质量检验系统"
+nssm set IQE-Inspection Start SERVICE_AUTO_START
+
 echo ===================================
 echo 部署完成!
 echo.
@@ -60,4 +67,10 @@ echo.
 echo 启动前端:
 echo cd ai-inspection-dashboard
 echo npm run dev
-echo =================================== 
+echo ===================================
+
+echo 系统已安装到 C:\Program Files\IQE-Inspection
+echo 服务名称: IQE-Inspection
+echo 可以通过 http://localhost:3000 访问系统
+
+pause 

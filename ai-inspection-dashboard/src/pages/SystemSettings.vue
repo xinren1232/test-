@@ -277,6 +277,120 @@
             </el-row>
           </div>
         </el-tab-pane>
+        
+        <!-- 数据管理 -->
+        <el-tab-pane label="数据管理" name="data">
+          <h3 class="section-title">数据管理</h3>
+          
+          <el-card class="data-card">
+            <template #header>
+              <div class="card-header">
+                <h4>数据统计</h4>
+                <el-button type="primary" size="small" @click="refreshDataStats">
+                  <el-icon><Refresh /></el-icon> 刷新统计
+                </el-button>
+              </div>
+            </template>
+            
+            <div class="data-stats">
+              <div class="data-stat-item">
+                <span class="stat-label">物料测试数据：</span>
+                <span class="stat-value">{{ dataStats.labCount }} 条</span>
+                <span class="stat-timestamp" v-if="dataStats.labTimestamp">
+                  更新时间：{{ formatTimestamp(dataStats.labTimestamp) }}
+                </span>
+              </div>
+              <div class="data-stat-item">
+                <span class="stat-label">物料上线数据：</span>
+                <span class="stat-value">{{ dataStats.factoryCount }} 条</span>
+                <span class="stat-timestamp" v-if="dataStats.factoryTimestamp">
+                  更新时间：{{ formatTimestamp(dataStats.factoryTimestamp) }}
+                </span>
+              </div>
+              <div class="data-stat-item">
+                <span class="stat-label">库存数据：</span>
+                <span class="stat-value">{{ dataStats.inventoryCount }} 条</span>
+                <span class="stat-timestamp" v-if="dataStats.inventoryTimestamp">
+                  更新时间：{{ formatTimestamp(dataStats.inventoryTimestamp) }}
+                </span>
+              </div>
+              <div class="data-stat-item">
+                <span class="stat-label">数据总量：</span>
+                <span class="stat-value">{{ dataStats.totalCount }} 条</span>
+              </div>
+              <div class="data-stat-item">
+                <span class="stat-label">存储使用：</span>
+                <span class="stat-value">{{ dataStats.storageUsage.totalSize }}KB ({{ dataStats.storageUsage.usagePercentage }})</span>
+              </div>
+              <div class="data-stat-item">
+                <span class="stat-label">统计时间：</span>
+                <span class="stat-value">{{ dataStats.lastUpdated ? formatTimestamp(dataStats.lastUpdated) : '未知' }}</span>
+              </div>
+            </div>
+            
+            <div class="data-actions">
+              <el-button type="primary" @click="generateAllData" :loading="isGenerating">
+                <el-icon><Plus /></el-icon> 生成测试数据
+              </el-button>
+              <el-button type="success" @click="exportAllData">
+                <el-icon><Download /></el-icon> 导出数据
+              </el-button>
+              <el-button type="warning" @click="confirmCleanupOldData">
+                <el-icon><Delete /></el-icon> 清理旧数据
+              </el-button>
+              <el-button type="primary" @click="clearAllData" :loading="isClearing">
+                <el-icon><Delete /></el-icon> 清空所有数据
+              </el-button>
+              <el-button type="danger" @click="resetSystem" :loading="isResetting">
+                <el-icon><RefreshLeft /></el-icon> 重置系统
+              </el-button>
+            </div>
+          </el-card>
+          
+          <el-card class="data-card">
+            <template #header>
+              <div class="card-header">
+                <h4>数据操作</h4>
+              </div>
+            </template>
+            
+            <div class="data-actions">
+              <el-button type="primary" @click="confirmClearData('lab')">
+                清空物料测试数据
+              </el-button>
+              <el-button type="primary" @click="confirmClearData('factory')">
+                清空物料上线数据
+              </el-button>
+              <el-button type="primary" @click="confirmClearData('inventory')">
+                清空库存数据
+              </el-button>
+              <el-button type="warning" @click="fixDataIssues">
+                修复数据问题
+              </el-button>
+            </div>
+          </el-card>
+          
+          <!-- 清理旧数据对话框 -->
+          <el-dialog
+            v-model="showCleanupDialog"
+            title="清理旧数据"
+            width="500px"
+          >
+            <div class="cleanup-form">
+              <p>此操作将保留每种数据类型的最新记录，并清除旧记录以释放存储空间。</p>
+              <el-form>
+                <el-form-item label="保留记录数量">
+                  <el-input-number v-model="cleanupConfig.keepCount" :min="50" :max="1000" />
+                  <span class="operation-hint">每种数据类型保留的最新记录数量</span>
+                </el-form-item>
+              </el-form>
+            </div>
+            <template #footer>
+              <el-button @click="showCleanupDialog = false">取消</el-button>
+              <el-button type="primary" @click="cleanupOldData">确认清理</el-button>
+            </template>
+          </el-dialog>
+        </el-tab-pane>
       </el-tabs>
     </el-card>
   </div>
@@ -286,6 +400,9 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import * as echarts from 'echarts';
+import unifiedDataService from '../services/UnifiedDataService';
+import SystemDataUpdater from '../services/SystemDataUpdater';
+import { Download, Plus, Refresh, Delete, RefreshLeft } from '@element-plus/icons-vue';
 
 // 当前激活的标签页
 const activeTab = ref('basic');
@@ -396,9 +513,41 @@ const systemStatus = reactive({
 // 日志图表实例
 let logChartInstance = null;
 
+// 新增：数据管理相关
+const dataStats = reactive({
+  labCount: 0,
+  factoryCount: 0,
+  inventoryCount: 0,
+  totalCount: 0,
+  lastUpdated: null,
+  labTimestamp: null,
+  factoryTimestamp: null,
+  inventoryTimestamp: null,
+  storageUsage: {
+    totalSize: '0',
+    usagePercentage: '0%'
+  }
+});
+
+// 新增：数据清理配置
+const showCleanupDialog = ref(false);
+const cleanupConfig = reactive({
+  keepCount: 100
+});
+
+// 新增：SystemDataUpdater实例
+const systemDataUpdater = new SystemDataUpdater();
+
+// 系统重置状态
+const isResetting = ref(false);
+const isClearing = ref(false);
+const isExporting = ref(false);
+const isGenerating = ref(false);
+
 // 生命周期钩子
 onMounted(() => {
   initLogStatsChart();
+  refreshDataStats();
 });
 
 onBeforeUnmount(() => {
@@ -609,6 +758,304 @@ function initLogStatsChart() {
     logChartInstance.resize();
   });
 }
+
+// 新增：刷新数据统计
+function refreshDataStats() {
+  try {
+    // 获取统计信息
+    const stats = unifiedDataService.getStats();
+    
+    // 更新统计数据
+    dataStats.labCount = stats.labCount || 0;
+    dataStats.factoryCount = stats.factoryCount || 0;
+    dataStats.inventoryCount = stats.inventoryCount || 0;
+    dataStats.totalCount = stats.totalCount || 0;
+    dataStats.lastUpdated = new Date();
+    dataStats.storageUsage = stats.storageUsage || {
+      totalSize: '0',
+      usagePercentage: '0%'
+    };
+    
+    ElMessage.success('数据统计已刷新');
+  } catch (error) {
+    console.error('刷新数据统计失败:', error);
+    ElMessage.error('刷新数据统计失败');
+  }
+}
+
+// 新增：格式化时间戳
+function formatTimestamp(timestamp) {
+  if (!timestamp) return '未知';
+  
+  const date = new Date(timestamp);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
+}
+
+// 新增：确认清空特定类型数据
+function confirmClearData(type) {
+  let typeName = '';
+  switch (type) {
+    case 'lab':
+      typeName = '物料测试数据';
+      break;
+    case 'factory':
+      typeName = '物料上线数据';
+      break;
+    case 'inventory':
+      typeName = '库存数据';
+      break;
+    default:
+      typeName = '未知类型数据';
+  }
+  
+  ElMessageBox.confirm(
+    `确定要清空所有${typeName}吗？此操作不可恢复！`,
+    '清空确认',
+    {
+      confirmButtonText: '确定清空',
+      cancelButtonText: '取消',
+      type: 'error',
+      closeOnClickModal: false
+    }
+  ).then(() => {
+    clearData(type);
+  }).catch(() => {
+    // 用户取消操作
+  });
+}
+
+// 新增：清空特定类型数据
+function clearData(type) {
+  try {
+    let success = false;
+    let typeName = '';
+    
+    switch (type) {
+      case 'lab':
+        success = unifiedDataService.clearData(unifiedDataService.STORAGE_KEYS.LAB);
+        typeName = '物料测试数据';
+        break;
+      case 'factory':
+        success = unifiedDataService.clearData(unifiedDataService.STORAGE_KEYS.FACTORY);
+        typeName = '物料上线数据';
+        break;
+      case 'inventory':
+        success = unifiedDataService.clearData(unifiedDataService.STORAGE_KEYS.INVENTORY);
+        typeName = '库存数据';
+        break;
+      default:
+        throw new Error('未知数据类型');
+    }
+    
+    if (success) {
+      ElMessage.success(`${typeName}已清空`);
+      refreshDataStats();
+    } else {
+      throw new Error(`清空${typeName}失败`);
+    }
+  } catch (error) {
+    console.error('清空数据失败:', error);
+    ElMessage.error('清空数据失败，请重试');
+  }
+}
+
+// 新增：确认清空所有数据
+function confirmClearAllData() {
+  ElMessageBox.confirm(
+    '确定要清空所有数据吗？此操作将删除所有物料测试数据、上线数据和库存数据，且不可恢复！',
+    '清空确认',
+    {
+      confirmButtonText: '确定清空',
+      cancelButtonText: '取消',
+      type: 'error',
+      closeOnClickModal: false,
+      distinguishCancelAndClose: true
+    }
+  ).then(() => {
+    clearAllData();
+  }).catch(() => {
+    // 用户取消操作
+  });
+}
+
+// 新增：清空所有数据
+function clearAllData() {
+  try {
+    const success = unifiedDataService.clearAllData();
+    
+    if (success) {
+      ElMessage.success('所有数据已清空');
+      refreshDataStats();
+    } else {
+      throw new Error('清空所有数据失败');
+    }
+  } catch (error) {
+    console.error('清空所有数据失败:', error);
+    ElMessage.error('清空所有数据失败，请重试');
+  }
+}
+
+// 新增：确认清理旧数据
+function confirmCleanupOldData() {
+  showCleanupDialog.value = true;
+}
+
+// 新增：清理旧数据
+function cleanupOldData() {
+  try {
+    const success = unifiedDataService.cleanupOldData(cleanupConfig.keepCount);
+    
+    if (success) {
+      ElMessage.success(`旧数据清理完成，每种数据保留最新的${cleanupConfig.keepCount}条记录`);
+      refreshDataStats();
+      showCleanupDialog.value = false;
+    } else {
+      throw new Error('清理旧数据失败');
+    }
+  } catch (error) {
+    console.error('清理旧数据失败:', error);
+    ElMessage.error('清理旧数据失败，请重试');
+  }
+}
+
+// 新增：导出所有数据
+function exportAllData() {
+  ElMessage.info('正在准备导出数据...');
+  
+  try {
+    // 获取所有数据
+    const inventoryData = unifiedDataService.getInventoryData();
+    const labData = unifiedDataService.getLabData();
+    const factoryData = unifiedDataService.getFactoryData();
+    
+    // 创建导出对象
+    const exportData = {
+      inventory: inventoryData,
+      lab: labData,
+      factory: factoryData,
+      exportTime: new Date().toISOString(),
+      version: '2.5.3'
+    };
+    
+    // 转换为JSON字符串
+    const jsonString = JSON.stringify(exportData, null, 2);
+    
+    // 创建Blob对象
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    
+    // 创建下载链接
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `iqe_data_export_${new Date().toISOString().split('T')[0]}.json`;
+    
+    // 触发下载
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    ElMessage.success('数据导出成功');
+  } catch (error) {
+    console.error('导出数据失败:', error);
+    ElMessage.error('导出数据失败，请重试');
+  }
+}
+
+// 新增：修复数据问题
+function fixDataIssues() {
+  try {
+    // 清除旧的存储键
+    localStorage.removeItem('lab_test_data');
+    localStorage.removeItem('lab_data');
+    localStorage.removeItem('online_data');
+    localStorage.removeItem('factory_data');
+    localStorage.removeItem('inventory_data');
+    
+    // 迁移数据到统一数据服务
+    unifiedDataService.migrateOldData();
+    
+    // 刷新统计
+    refreshDataStats();
+    
+    ElMessage.success('数据问题修复完成');
+  } catch (error) {
+    console.error('修复数据问题失败:', error);
+    ElMessage.error('修复数据问题失败，请重试');
+  }
+}
+
+// 新增：生成所有测试数据
+async function generateAllData() {
+  try {
+    // 确认对话框
+    await ElMessageBox.confirm(
+      '生成测试数据将创建包含所有10个项目的测试数据，可能需要一些时间，是否继续？',
+      '确认',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'info',
+      }
+    );
+    
+    isGenerating.value = true;
+    
+    // 调用数据生成服务
+    const result = await systemDataUpdater.updateAllSystemData({
+      ensureAllProjects: true, // 确保所有项目都有数据
+      clearExisting: true     // 清除现有数据
+    });
+    
+    if (result.success) {
+      ElMessage.success(`数据生成成功: ${result.message}`);
+      // 刷新数据统计
+      refreshDataStats();
+    } else {
+      ElMessage.error(`数据生成失败: ${result.message}`);
+    }
+  } catch (e) {
+    // 用户取消操作
+    console.log('用户取消了数据生成操作', e);
+  } finally {
+    isGenerating.value = false;
+  }
+}
+
+/**
+ * 重置系统
+ */
+async function resetSystem() {
+  // 确认对话框
+  try {
+    await ElMessageBox.confirm(
+      '重置系统将清空所有数据并恢复默认设置，此操作不可逆，是否继续？',
+      '警告',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    );
+    
+    isResetting.value = true;
+    
+    // 清空所有数据
+    localStorage.clear();
+    
+    // 显示成功消息
+    ElMessage.success('系统已重置，请刷新页面');
+    
+    // 延迟2秒后刷新页面
+    setTimeout(() => {
+      window.location.reload();
+    }, 2000);
+  } catch (e) {
+    // 用户取消操作
+    console.log('用户取消了重置操作');
+  } finally {
+    isResetting.value = false;
+  }
+}
 </script>
 
 <style scoped>
@@ -722,5 +1169,115 @@ function initLogStatsChart() {
 
 .log-chart {
   height: 300px;
+}
+
+/* 新增：数据管理样式 */
+.data-management-section {
+  margin-top: 20px;
+}
+
+.data-card {
+  margin-bottom: 20px;
+}
+
+.data-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.data-stat-item {
+  display: flex;
+  align-items: center;
+}
+
+.stat-label {
+  width: 150px;
+  color: #606266;
+}
+
+.stat-value {
+  flex: 1;
+  font-weight: bold;
+  color: #303133;
+  margin-right: 15px;
+}
+
+.data-actions {
+  margin-top: 25px;
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.cleanup-form {
+  padding: 0 20px;
+}
+
+.operation-hint {
+  margin-left: 10px;
+  color: #606266;
+  font-size: 0.8em;
+}
+</style> 
+.mt-20 {
+  margin-top: 20px;
+}
+
+.log-stats {
+  width: 100%;
+}
+
+.log-chart {
+  height: 300px;
+}
+
+/* 新增：数据管理样式 */
+.data-management-section {
+  margin-top: 20px;
+}
+
+.data-card {
+  margin-bottom: 20px;
+}
+
+.data-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.data-stat-item {
+  display: flex;
+  align-items: center;
+}
+
+.stat-label {
+  width: 150px;
+  color: #606266;
+}
+
+.stat-value {
+  flex: 1;
+  font-weight: bold;
+  color: #303133;
+  margin-right: 15px;
+}
+
+.data-actions {
+  margin-top: 25px;
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.cleanup-form {
+  padding: 0 20px;
+}
+
+.operation-hint {
+  margin-left: 10px;
+  color: #606266;
+  font-size: 0.8em;
 }
 </style> 

@@ -46,9 +46,9 @@
         <el-col :span="12">
           <el-form-item label="主题">
             <el-radio-group v-model="currentTheme" size="small" @change="updateTheme">
-              <el-radio-button label="default">默认</el-radio-button>
-              <el-radio-button label="dark">暗色</el-radio-button>
-              <el-radio-button label="vintage">复古</el-radio-button>
+              <el-radio-button value="default" label="默认">默认</el-radio-button>
+              <el-radio-button value="dark" label="暗色">暗色</el-radio-button>
+              <el-radio-button value="vintage" label="复古">复古</el-radio-button>
             </el-radio-group>
           </el-form-item>
         </el-col>
@@ -321,14 +321,33 @@ export default {
     });
     
     // 初始化图表
-    const initChart = () => {
+    const initChart = async () => {
       if (chartInstance.value) {
         chartInstance.value.dispose();
       }
       
-      const dom = document.getElementById(chartId);
-      if (!dom) return;
+      // 等待DOM渲染完成
+      await nextTick();
       
+      const dom = document.getElementById(chartId);
+      if (!dom) {
+        console.warn(`Chart container with ID ${chartId} not found`);
+        return;
+      }
+      
+      // 确保DOM元素有尺寸
+      if (dom.clientWidth === 0 || dom.clientHeight === 0) {
+        console.warn('Chart container has zero width or height');
+        
+        // 设置最小尺寸
+        if (dom.clientWidth === 0) dom.style.width = '100%';
+        if (dom.clientHeight === 0) dom.style.height = '300px';
+        
+        // 再次等待DOM更新
+        await nextTick();
+      }
+      
+      try {
       chartInstance.value = echarts.init(dom);
       
       // 应用主题
@@ -341,6 +360,16 @@ export default {
       chartInstance.value.on('click', params => {
         emit('chart-click', params);
       });
+        
+        // 添加窗口大小调整监听
+        window.addEventListener('resize', () => {
+          if (chartInstance.value) {
+            chartInstance.value.resize();
+          }
+        });
+      } catch (error) {
+        console.error('Failed to initialize chart:', error);
+      }
     };
     
     // 更新图表

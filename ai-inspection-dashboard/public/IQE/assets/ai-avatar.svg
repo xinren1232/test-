@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#409EFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#007FFF;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#FFFFFF;stop-opacity:0.2" />
+    </linearGradient>
+  </defs>
+  <circle cx="50" cy="50" r="46" fill="url(#grad1)" />
+  <circle cx="50" cy="50" r="38" fill="#2E5C8A" />
+  <circle cx="50" cy="50" r="34" fill="#1C4673" />
+  <!-- Circuit Board Pattern -->
+  <path d="M30,50 L70,50 M50,30 L50,70 M35,35 L65,65 M35,65 L65,35" stroke="#409EFF" stroke-width="1" />
+  <circle cx="30" cy="50" r="3" fill="#5EACFF" />
+  <circle cx="50" cy="30" r="3" fill="#5EACFF" />
+  <circle cx="70" cy="50" r="3" fill="#5EACFF" />
+  <circle cx="50" cy="70" r="3" fill="#5EACFF" />
+  <circle cx="35" cy="35" r="2" fill="#5EACFF" />
+  <circle cx="65" cy="35" r="2" fill="#5EACFF" />
+  <circle cx="35" cy="65" r="2" fill="#5EACFF" />
+  <circle cx="65" cy="65" r="2" fill="#5EACFF" />
+  <!-- Brain Icon -->
+  <path d="M50,42 C56,42 60,46 60,52 C60,58 56,62 50,62 C44,62 40,58 40,52 C40,46 44,42 50,42 Z" fill="none" stroke="#5EACFF" stroke-width="2" />
+  <path d="M42,52 C42,48 45,45 49,45 C53,45 56,48 56,52 C56,56 53,59 49,59 C45,59 42,56 42,52 Z" fill="none" stroke="#5EACFF" stroke-width="1" />
+  <path d="M44,52 C44,49 47,47 50,47 C53,47 56,49 56,52" fill="none" stroke="#5EACFF" stroke-width="1" />
+  <circle cx="50" cy="50" r="2" fill="#FFFFFF" />
+  <circle cx="58" cy="52" r="1.5" fill="#FFFFFF" />
+  <circle cx="42" cy="52" r="1.5" fill="#FFFFFF" />
+  <path d="M50,38 L50,42 M38,50 L42,50 M62,50 L58,50" stroke="#5EACFF" stroke-width="1" />
+  <!-- Shine Effect -->
+  <circle cx="35" cy="35" r="15" fill="url(#grad2)" opacity="0.3" />
+</svg> 

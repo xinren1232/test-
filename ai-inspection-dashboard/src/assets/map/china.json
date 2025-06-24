@@ -1,0 +1,108 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "北京"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [116.4, 39.9]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "上海"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [121.47, 31.23]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "广州"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [113.27, 23.13]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "深圳"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [114.05, 22.55]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "成都"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [104.06, 30.67]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "武汉"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [114.31, 30.59]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "天津"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [117.2, 39.13]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "重庆"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [106.55, 29.56]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "西安"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [108.95, 34.27]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "南京"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [118.78, 32.04]
+      }
+    }
+  ]
+} 
+ 
+ 
+ 

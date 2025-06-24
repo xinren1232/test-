@@ -5,12 +5,12 @@
         <el-card class="welcome-card">
           <template #header>
             <div class="card-header">
-              <h2>欢迎使用IQE动态检验系统</h2>
+              <h2>欢迎使用QMS智能管理系统</h2>
             </div>
           </template>
           <div class="welcome-content">
             <p class="system-intro">
-              本系统基于各工厂、仓库检验状态，结合上线使用情况和实验室测试情况，智能推荐物料类别动态检验方案。
+              本系统基于各工厂、仓库检验状态，结合上线使用情况和实验室测试情况，智能推荐质量管理与检验方案。
             </p>
             <el-button type="primary" class="architecture-btn" @click="goToPage('/architecture')">
               查看系统架构图解
@@ -35,7 +35,7 @@
               <el-col :xs="24" :sm="12" :md="6">
                 <div class="data-card">
                   <div class="data-icon factory-icon">
-                    <el-icon><el-icon-goods /></el-icon>
+                    <el-icon><Goods /></el-icon>
                   </div>
                   <div class="data-info">
                     <div class="data-title">工厂物料</div>
@@ -50,7 +50,7 @@
               <el-col :xs="24" :sm="12" :md="6">
                 <div class="data-card">
                   <div class="data-icon lab-icon">
-                    <el-icon><el-icon-data-analysis /></el-icon>
+                    <el-icon><DataAnalysis /></el-icon>
                   </div>
                   <div class="data-info">
                     <div class="data-title">实验室测试</div>
@@ -65,7 +65,7 @@
               <el-col :xs="24" :sm="12" :md="6">
                 <div class="data-card">
                   <div class="data-icon online-icon">
-                    <el-icon><el-icon-monitor /></el-icon>
+                    <el-icon><Monitor /></el-icon>
                   </div>
                   <div class="data-info">
                     <div class="data-title">上线使用</div>
@@ -80,7 +80,7 @@
               <el-col :xs="24" :sm="12" :md="6">
                 <div class="data-card">
                   <div class="data-icon risk-icon">
-                    <el-icon><el-icon-warning /></el-icon>
+                    <el-icon><Warning /></el-icon>
                   </div>
                   <div class="data-info">
                     <div class="data-title">高风险物料</div>
@@ -133,7 +133,7 @@
       <el-col :xs="24" :sm="12" :md="6">
         <el-card class="feature-card" shadow="hover" @click="goToPage('/batch')">
           <div class="feature-icon">
-            <el-icon><el-icon-document-copy /></el-icon>
+            <el-icon><DocumentCopy /></el-icon>
           </div>
           <div class="feature-info">
             <h3>批次管理</h3>
@@ -148,7 +148,7 @@
       <el-col :xs="24" :sm="12" :md="6">
         <el-card class="feature-card" shadow="hover" @click="goToPage('/monitoring')">
           <div class="feature-icon">
-            <el-icon><el-icon-monitor /></el-icon>
+            <el-icon><Monitor /></el-icon>
           </div>
           <div class="feature-info">
             <h3>实时监控</h3>
@@ -163,7 +163,7 @@
       <el-col :xs="24" :sm="12" :md="6">
         <el-card class="feature-card" shadow="hover" @click="goToPage('/dashboard')">
           <div class="feature-icon">
-            <el-icon><el-icon-data-board /></el-icon>
+            <el-icon><DataBoard /></el-icon>
           </div>
           <div class="feature-info">
             <h3>监控仪表板</h3>
@@ -178,7 +178,7 @@
       <el-col :xs="24" :sm="12" :md="6">
         <el-card class="feature-card" shadow="hover" @click="goToPage('/inventory')">
           <div class="feature-icon">
-            <el-icon><el-icon-goods /></el-icon>
+            <el-icon><Goods /></el-icon>
           </div>
           <div class="feature-info">
             <h3>库存管理</h3>
@@ -211,7 +211,15 @@ import {
 } from 'echarts/components'
 import { LabelLayout } from 'echarts/features'
 import { CanvasRenderer } from 'echarts/renderers'
-import { ArrowRight } from '@element-plus/icons-vue'
+import { 
+  ArrowRight, 
+  Goods, 
+  DataAnalysis, 
+  Monitor, 
+  Warning, 
+  DocumentCopy, 
+  DataBoard 
+} from '@element-plus/icons-vue'
 
 // 注册必需的组件
 echarts.use([

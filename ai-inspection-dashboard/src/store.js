@@ -166,61 +166,6 @@ export const useChatStore = defineStore('chat', {
   }
 });
 
-// AI模型状态存储
-export const useAIModelStore = defineStore('aiModel', {
-  state: () => ({
-    models: {
-      primary: {
-        id: 'wp-2025060401315D-tfmvg',
-        name: 'DeepSeek R1',
-        active: true,
-        provider: 'deepseek'
-      },
-      backup: {
-        id: 'wp-2025032811450D-fb7p',
-        name: 'DeepSeek V3',
-        active: true,
-        provider: 'deepseek'
-      },
-      volcengine: {
-        id: 'volcengine-deepseek-r1',
-        name: 'DeepSeek R1 (火山引擎)',
-        active: true,
-        provider: 'volcengine',
-        useModelId: 'wp-2025060401315D-tfmvg' // 使用DeepSeek R1模型
-      }
-    },
-    activeModel: 'primary',
-    config: {
-      temperature: 0.7,
-      streaming: true
-    }
-  }),
-  
-  getters: {
-    currentModel: (state) => {
-      return state.models[state.activeModel];
-    }
-  },
-  
-  actions: {
-    setActiveModel(modelType) {
-      if (this.models[modelType] && this.models[modelType].active) {
-        this.activeModel = modelType;
-        return true;
-      }
-      return false;
-    },
-    
-    updateConfig(config) {
-      this.config = {
-        ...this.config,
-        ...config
-      };
-    }
-  }
-});
-
 // IQE主要业务状态存储
 export const useIQEStore = defineStore('iqe', {
   state: () => ({
@@ -339,6 +284,5 @@ export const useIQEStore = defineStore('iqe', {
 export default {
   useContextStore,
   useChatStore,
-  useAIModelStore,
   useIQEStore
 }; 

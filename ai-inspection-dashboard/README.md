@@ -1,146 +1,127 @@
-# IQE智能质检系统
+# IQE动态检验 - 质量智能助手
 
-IQE智能质检系统是一个集成了质量检验、实验室测试和生产线监控的智能助手系统，提供直观的用户界面和强大的API接口供外部系统集成。
+一个集成质量管理、库存管理和实验室监控的综合平台，为制造业质量控制提供智能解决方案。
 
-## 功能特点
+## 项目概述
 
-- **统一助手界面**：集成质量检验、实验室测试和生产线监控三大领域
-- **智能识别**：自动识别用户问题类型，选择合适的助手模式
-- **上下文感知**：保持对话上下文，提供连贯的交互体验
-- **API集成**：提供RESTful API接口，便于外部系统集成
-- **数据可视化**：直观展示质量数据和异常信息
+IQE动态检验平台通过整合质量数据、库存管理和实验室测试结果，提供全面的质量管理和动态检验功能。系统采用现代化的前端框架，以直观的界面展示关键质量指标、预警信息和趋势分析。
+
+### 核心功能
+
+- **仪表盘**: 关键质量指标一目了然，包括合格率、风险评估和质量趋势
+- **库存管理**: 批次状态监控、库存冻结/解冻流程、质量关联
+- **实验室模块**: 测试数据管理、检验结果分析、批次质量评估
+- **知识问答**: 基于规则库的智能问答系统，支持质量相关查询
+- **质量管理**: 质量事件处理、SPC分析、质量改进计划
+
+## 技术架构
+
+- **前端框架**: Vue 3 + Vite + Element Plus
+- **数据可视化**: ECharts
+- **状态管理**: Vue Reactivity API (Composition API)
+- **组件架构**: 松耦合组件设计，基于功能模块划分
+- **服务层**: 模块化服务层设计，适配不同业务领域
 
 ## 项目结构
 
 ```
 ai-inspection-dashboard/
-├── src/                      # 源代码
-│   ├── components/           # Vue组件
-│   │   ├── ai/               # AI助手相关组件
-│   │   │   ├── LabAgent.vue  # 实验室助手组件
-│   │   │   └── UnifiedAssistant.vue # 统一助手组件
-│   │   └── chat/             # 聊天相关组件
-│   ├── services/             # 服务层
-│   │   ├── ai/               # AI服务
-│   │   └── api/              # API服务
-│   │       └── UnifiedAssistantAPI.js # 统一助手API服务
-│   ├── examples/             # 示例代码
-│   │   └── api-client.js     # API客户端示例
-│   └── main.js               # 主入口文件
-├── server.js                 # API服务器（独立运行）
-└── package.json              # 项目配置
+├── public/                     # 静态资源
+├── src/                        # 源代码
+│   ├── assets/                 # 图片、样式等资源
+│   ├── components/             # 组件
+│   │   ├── dashboard/          # 仪表盘组件
+│   │   ├── inventory/          # 库存组件
+│   │   ├── laboratory/         # 实验室组件
+│   │   ├── knowledge/          # 知识库组件
+│   │   └── quality/            # 质量管理组件
+│   ├── pages/                  # 页面
+│   ├── router/                 # 路由配置
+│   ├── services/               # 服务层
+│   │   ├── api/                # API服务
+│   │   ├── DashboardService.js # 仪表盘服务
+│   │   ├── InventoryService.js # 库存服务
+│   │   ├── LaboratoryService.js# 实验室服务
+│   │   ├── NLPService.js       # NLP服务
+│   │   ├── QualityService.js   # 质量服务
+│   │   └── RulesDatabaseService.js # 规则库服务
+│   ├── utils/                  # 工具函数
+│   ├── App.vue                 # 主应用组件
+│   └── main.js                 # 应用入口
+├── package.json                # 包配置
+├── vite.config.js              # Vite配置
+└── README.md                   # 项目文档
 ```
 
-## 快速开始
+## 开发指南
 
-### 前提条件
+### 环境要求
 
-- Node.js 16+
-- npm 或 pnpm
+- Node.js >= 14.0.0
+- npm >= 7.0.0
 
-### 安装依赖
+### 项目设置
 
 ```bash
+# 安装依赖
 npm install
-# 或
-pnpm install
-```
 
-### 启动前端开发服务器
-
-```bash
+# 启动开发服务器
 npm run dev
-# 或
-pnpm dev
+
+# 构建生产版本
+npm run build
 ```
 
-前端应用将在 http://localhost:5173/IQE/ 上运行。
+### 默认地址
 
-### 启动API服务器
+- 开发环境: http://localhost:5173/IQE/
+- 默认路由: `/dashboard`、`/inventory`、`/laboratory`、`/knowledge`、`/quality`
 
-```bash
-npm run api-server
-# 或
-pnpm api-server
-```
+## 模块详情
 
-API服务器将在 http://localhost:3001 上运行，提供以下端点：
+### 库存管理模块
 
-- `POST /api/assistant/query` - 处理查询请求
-- `DELETE /api/assistant/session/:sessionId` - 清除会话上下文
-- `GET /api/assistant/modes` - 获取支持的助手模式
-- `GET /api/assistant/health` - 健康检查
+库存管理模块提供物料批次的全生命周期管理，包括状态控制、质量关联和库存分析：
 
-## API集成指南
+- 批次状态管理 (正常、冻结、预留、过期)
+- 库存冻结/解冻流程
+- 质量指标关联
+- 库存统计分析
 
-### API使用示例
+### 实验室模块
 
-```javascript
-// 设置基础URL
-const API_BASE_URL = 'http://localhost:3001/api/assistant';
+实验室模块管理检验数据，为质量决策提供依据：
 
-// 发送查询
-async function sendQuery() {
-  const response = await fetch(`${API_BASE_URL}/query`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      query: '检查最近的不良记录',
-      mode: 'auto',
-      sessionId: 'test_session_123'
-    })
-  });
-  
-  const result = await response.json();
-  console.log(result);
-}
-```
+- 测试数据记录与管理
+- 检验结果分析
+- 批次质量趋势
+- 测试参数追踪
 
-更多示例请参考 `src/examples/api-client.js`。
+### 知识问答模块
 
-### 查询参数
+知识问答模块基于规则库，提供智能问答功能：
 
-| 参数 | 类型 | 描述 |
-|------|------|------|
-| query | string | 用户查询文本 |
-| mode | string | 助手模式 (auto/quality/lab/production) |
-| sessionId | string | 会话ID，用于保持上下文 |
-| context | object | 附加上下文信息 |
+- 基于规则的问题匹配
+- SQL模板转换
+- 检索结果呈现
+- 规则库管理
 
-### 响应格式
+### 质量管理模块
 
-```json
-{
-  "success": true,
-  "sessionId": "test_session_123",
-  "mode": "lab",
-  "response": {
-    "content": "最近检测出的5条不良记录如下：",
-    "data": {
-      "type": "table",
-      "headers": ["日期", "物料编码", "物料名称", "测试项", "供应商"],
-      "rows": [...]
-    }
-  }
-}
-```
+质量管理模块提供质量控制和持续改进支持：
 
-## 常见问题
+- 质量事件管理
+- 统计过程控制 (SPC)
+- 质量指标分析
+- 改进计划管理
 
-### 如何切换到独立的API服务器模式？
+## 项目状态
 
-1. 关闭前端开发服务器
-2. 运行 `npm run api-server` 启动API服务器
-3. 在你的应用中使用 `http://localhost:3001/api/assistant` 作为API基础URL
+当前开发阶段: **基础功能实现**
 
-### 如何测试API连接？
-
-访问 http://localhost:3001/api/assistant/health 进行健康检查。
-
-## 贡献指南
-
-1. Fork 项目
-2. 创建功能分支 (`git checkout -b feature/amazing-feature`)
-3. 提交更改 (`git commit -m 'Add some amazing feature'`)
-4. 推送到分支 (`git push origin feature/amazing-feature`)
-5. 创建 Pull Request
+优先发展方向:
+- 完善知识问答功能，接入AI能力
+- 增强库存管理的冻结流程和检验联动
+- 接入LIMS系统接口
+- 完善仪表盘动态数据刷新和图表展示

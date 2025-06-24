@@ -8,7 +8,9 @@ import {
   DatasetComponent,
   TransformComponent,
   LegendComponent,
-  ToolboxComponent
+  ToolboxComponent,
+  MarkLineComponent,
+  MarkPointComponent
 } from 'echarts/components'
 import { LabelLayout, UniversalTransition } from 'echarts/features'
 import { CanvasRenderer } from 'echarts/renderers'
@@ -26,6 +28,8 @@ echarts.use([
   TransformComponent,
   LegendComponent,
   ToolboxComponent,
+  MarkLineComponent,
+  MarkPointComponent,
   LabelLayout,
   UniversalTransition,
   CanvasRenderer

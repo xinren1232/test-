@@ -5,7 +5,9 @@
     "dev": "pnpm --filter ai-inspection-dashboard run dev"
   },
   "dependencies": {
+    "danfojs": "^1.2.0",
     "dompurify": "^3.2.6",
-    "marked": "^15.0.12"
+    "marked": "^15.0.12",
+    "xlsx": "^0.18.5"
   }
 }

@@ -1,439 +1,404 @@
 /**
- * 模拟数据源
- * 提供系统所需的各类模拟数据，后期可替换为API调用
+ * 模拟数据
+ * 提供开发和测试环境使用的模拟数据
  */
-import { MaterialModel, InspectionResultModel, LabTestModel, QualityExceptionModel } from './models';
 
-// 物料数据
-export const materials = [
+// 模拟库存数据
+const mockInventoryItems = [
   {
-    ...MaterialModel,
-    code: 'M2023-001',
-    name: '高强度钢材A',
-    type: '原材料',
-    status: '正常',
-    inventory: '2300kg',
-    supplier: '钢铁供应商A',
-    batchCode: 'B20230601',
-    createdAt: '2023-06-01',
-    updatedAt: '2023-10-15'
+    id: 'inv_001',
+    batch_id: 'b001',
+    material_code: 'M001',
+    material_name: '高强度钢板',
+    quantity: 1000,
+    remain_quantity: 850,
+    unit: 'kg',
+    status: 'normal',
+    quality_status: 'approved',
+    inspection_date: '2023-05-15T08:30:00Z',
+    arrival_time: '2023-05-10T14:20:00Z',
+    risk_level: 'low',
+    risk_score: 12,
+    risk_reason: '',
+    shelf_life: '2024-05-10T00:00:00Z',
+    inspector_id: 'user_001',
+    notes: '',
+    created_at: '2023-05-10T14:30:00Z',
+    updated_at: '2023-05-15T08:35:00Z'
   },
   {
-    ...MaterialModel,
-    code: 'M2023-002',
-    name: '铝合金板材B',
-    type: '原材料',
-    status: '正常',
-    inventory: '1200kg',
-    supplier: '金属制品厂B',
-    batchCode: 'B20230705',
-    createdAt: '2023-07-05',
-    updatedAt: '2023-10-10'
+    id: 'inv_002',
+    batch_id: 'b002',
+    material_code: 'M002',
+    material_name: '铝合金板',
+    quantity: 500,
+    remain_quantity: 500,
+    unit: 'kg',
+    status: 'hold',
+    quality_status: 'pending',
+    inspection_date: null,
+    arrival_time: '2023-05-16T09:15:00Z',
+    risk_level: 'medium',
+    risk_score: 45,
+    risk_reason: '供应商近期有质量问题',
+    shelf_life: '2023-11-16T00:00:00Z',
+    inspector_id: null,
+    notes: '等待质检',
+    created_at: '2023-05-16T09:20:00Z',
+    updated_at: '2023-05-16T09:20:00Z'
   },
   {
-    ...MaterialModel,
-    code: 'M2023-003',
-    name: '塑料颗粒C',
-    type: '原材料',
-    status: '缺货',
-    inventory: '850kg',
-    supplier: '化工原料厂C',
-    batchCode: 'B20230810',
-    createdAt: '2023-08-10',
-    updatedAt: '2023-10-12'
-  },
-  {
-    ...MaterialModel,
-    code: 'M2023-004',
-    name: '紧固件D',
-    type: '零件',
-    status: '正常',
-    inventory: '12000个',
-    supplier: '五金制品厂D',
-    batchCode: 'B20230915',
-    createdAt: '2023-09-15',
-    updatedAt: '2023-10-05'
-  },
-  {
-    ...MaterialModel,
-    code: 'M2023-005',
-    name: '电子元件E',
-    type: '零件',
-    status: '待检',
-    inventory: '5600个',
-    supplier: '电子科技公司E',
-    batchCode: 'B20230922',
-    createdAt: '2023-09-22',
-    updatedAt: '2023-10-01'
-  },
-  {
-    ...MaterialModel,
-    code: 'M2023-006',
-    name: '密封圈F',
-    type: '零件',
-    inventory: '8900个',
-    status: '正常',
-    supplier: '橡胶制品厂F',
-    batchCode: 'B20230928',
-    createdAt: '2023-09-28',
-    updatedAt: '2023-10-15'
-  },
-  {
-    ...MaterialModel,
-    code: 'M2023-007',
-    name: '轴承G',
-    type: '组件',
-    status: '正常',
-    inventory: '760个',
-    supplier: '机械零件厂G',
-    batchCode: 'B20231005',
-    createdAt: '2023-10-05',
-    updatedAt: '2023-10-15'
-  },
-  {
-    ...MaterialModel,
-    code: 'M2023-008',
-    name: '电机H',
-    type: '组件',
-    status: '缺货',
-    inventory: '320个',
-    supplier: '电气设备厂H',
-    batchCode: 'B20231010',
-    createdAt: '2023-10-10',
-    updatedAt: '2023-10-15'
-  },
-  {
-    ...MaterialModel,
-    code: 'M2023-009',
-    name: '控制板I',
-    type: '组件',
-    status: '正常',
-    inventory: '450个',
-    supplier: '电路板厂I',
-    batchCode: 'B20231015',
-    createdAt: '2023-10-15',
-    updatedAt: '2023-10-15'
+    id: 'inv_003',
+    batch_id: 'b003',
+    material_code: 'M003',
+    material_name: '橡胶密封圈',
+    quantity: 10000,
+    remain_quantity: 9850,
+    unit: 'pcs',
+    status: 'normal',
+    quality_status: 'approved',
+    inspection_date: '2023-05-14T10:45:00Z',
+    arrival_time: '2023-05-12T16:30:00Z',
+    risk_level: 'low',
+    risk_score: 8,
+    risk_reason: '',
+    shelf_life: '2025-05-12T00:00:00Z',
+    inspector_id: 'user_002',
+    notes: '',
+    created_at: '2023-05-12T16:35:00Z',
+    updated_at: '2023-05-14T10:50:00Z'
   }
 ];
 
-// 质量检验结果数据
-export const inspectionResults = [
+// 模拟物料数据
+const mockMaterials = [
   {
-    ...InspectionResultModel,
-    id: 'IR001',
-    materialCode: 'M2023-001',
-    batchCode: 'B20230601',
-    inspectionType: '来料检验',
-    result: '合格',
-    score: 95,
-    defectRate: 0.5,
-    inspectorId: 'INS001',
-    inspectionTime: '2023-06-02',
-    remarks: '符合标准要求',
-    parameters: [
-      { name: '硬度', value: 780, unit: 'HV', standard: '≥750' },
-      { name: '抗拉强度', value: 1050, unit: 'MPa', standard: '≥1000' },
-      { name: '厚度公差', value: 0.02, unit: 'mm', standard: '±0.05' }
-    ]
+    code: 'M001',
+    name: '高强度钢板',
+    category_id: 'cat_001',
+    category_name: '钢材',
+    specification: 'HRC > 45, 厚度: 2.0mm',
+    unit: 'kg',
+    supplier_id: 'sup_001',
+    supplier_name: '钢铁集团',
+    min_stock: 200,
+    max_stock: 2000,
+    shelf_life: 365,
+    inspection_level: 'normal',
+    status: 'active',
+    created_at: '2023-01-10T08:00:00Z',
+    updated_at: '2023-03-15T14:20:00Z'
   },
   {
-    ...InspectionResultModel,
-    id: 'IR002',
-    materialCode: 'M2023-002',
-    batchCode: 'B20230705',
-    inspectionType: '来料检验',
-    result: '合格',
-    score: 92,
-    defectRate: 0.8,
-    inspectorId: 'INS002',
-    inspectionTime: '2023-07-06',
-    remarks: '部分表面有轻微划痕，不影响使用',
-    parameters: [
-      { name: '硬度', value: 95, unit: 'HB', standard: '90-120' },
-      { name: '平整度', value: 0.15, unit: 'mm', standard: '≤0.2' },
-      { name: '厚度', value: 3.02, unit: 'mm', standard: '3±0.05' }
-    ]
+    code: 'M002',
+    name: '铝合金板',
+    category_id: 'cat_002',
+    category_name: '有色金属',
+    specification: '6061-T6, 厚度: 1.5mm',
+    unit: 'kg',
+    supplier_id: 'sup_002',
+    supplier_name: '铝业有限公司',
+    min_stock: 100,
+    max_stock: 1000,
+    shelf_life: 180,
+    inspection_level: 'strict',
+    status: 'active',
+    created_at: '2023-02-05T09:30:00Z',
+    updated_at: '2023-04-12T11:15:00Z'
   },
   {
-    ...InspectionResultModel,
-    id: 'IR003',
-    materialCode: 'M2023-003',
-    batchCode: 'B20230810',
-    inspectionType: '来料检验',
-    result: '不合格',
-    score: 62,
-    defectRate: 3.5,
-    inspectorId: 'INS001',
-    inspectionTime: '2023-08-11',
-    remarks: '熔点低于标准，有杂质',
-    parameters: [
-      { name: '熔点', value: 175, unit: '°C', standard: '≥185' },
-      { name: '密度', value: 0.92, unit: 'g/cm³', standard: '0.92-0.94' },
-      { name: '杂质含量', value: 2.5, unit: '%', standard: '≤1.0' }
-    ]
-  },
-  {
-    ...InspectionResultModel,
-    id: 'IR004',
-    materialCode: 'M2023-004',
-    batchCode: 'B20230915',
-    inspectionType: '来料检验',
-    result: '合格',
-    score: 98,
-    defectRate: 0.1,
-    inspectorId: 'INS003',
-    inspectionTime: '2023-09-16',
-    remarks: '质量稳定，尺寸精准',
-    parameters: [
-      { name: '硬度', value: 28, unit: 'HRC', standard: '≥25' },
-      { name: '抗剪强度', value: 820, unit: 'MPa', standard: '≥800' },
-      { name: '尺寸公差', value: 0.01, unit: 'mm', standard: '±0.02' }
-    ]
-  },
-  {
-    ...InspectionResultModel,
-    id: 'IR005',
-    materialCode: 'M2023-005',
-    batchCode: 'B20230922',
-    inspectionType: '来料检验',
-    result: '待检',
-    score: 0,
-    defectRate: 0,
-    inspectorId: '',
-    inspectionTime: '',
-    remarks: '等待检验',
-    parameters: []
+    code: 'M003',
+    name: '橡胶密封圈',
+    category_id: 'cat_003',
+    category_name: '橡胶制品',
+    specification: '直径: 25mm, 厚度: 3mm',
+    unit: 'pcs',
+    supplier_id: 'sup_003',
+    supplier_name: '橡塑制品厂',
+    min_stock: 1000,
+    max_stock: 20000,
+    shelf_life: 730,
+    inspection_level: 'normal',
+    status: 'active',
+    created_at: '2023-01-20T10:45:00Z',
+    updated_at: '2023-03-25T16:30:00Z'
   }
 ];
 
-// 实验室测试数据
-export const labTests = [
+// 模拟实验室测试数据
+const mockLabTests = [
   {
-    ...LabTestModel,
-    id: 'LT001',
-    materialCode: 'M2023-001',
-    batchCode: 'B20230601',
-    testType: '物理性能测试',
-    testResult: '合格',
-    status: '已完成',
-    tester: 'LAB001',
-    testTime: '2023-06-03',
-    conclusion: '所有指标符合设计要求',
-    parameters: [
-      { name: '屈服强度', value: 980, unit: 'MPa', standard: '≥950' },
-      { name: '延展性', value: 15, unit: '%', standard: '≥12' },
-      { name: '冲击值', value: 75, unit: 'J', standard: '≥70' }
+    id: 'test_001',
+    test_no: 'LT20230515001',
+    batch_id: 'b001',
+    material_code: 'M001',
+    test_type: '入厂检验',
+    method: '硬度测试',
+    test_item: '硬度',
+    test_procedure: 'TP-HT-001',
+    inspector_id: 'user_001',
+    reviewer_id: 'user_005',
+    equipment_id: 'eq_001',
+    result: 'pass',
+    evaluation_status: 'approved',
+    test_date: '2023-05-15T08:30:00Z',
+    defect_rate: 0,
+    test_source: '常规检验',
+    conclusion: '符合要求',
+    notes: '',
+    created_at: '2023-05-15T08:00:00Z',
+    updated_at: '2023-05-15T09:30:00Z',
+    test_data_items: [
+      {
+        id: 'tdi_001',
+        test_id: 'test_001',
+        parameter: '洛氏硬度',
+        parameter_code: 'HRC',
+        value: '47',
+        unit: 'HRC',
+        lower_limit: '45',
+        upper_limit: '50',
+        status: 'pass',
+        type: 'numeric',
+        standard_id: 'std_001',
+        notes: '',
+        created_at: '2023-05-15T08:15:00Z',
+        updated_at: '2023-05-15T08:15:00Z'
+      }
     ]
   },
   {
-    ...LabTestModel,
-    id: 'LT002',
-    materialCode: 'M2023-002',
-    batchCode: 'B20230705',
-    testType: '物理性能测试',
-    testResult: '合格',
-    status: '已完成',
-    tester: 'LAB002',
-    testTime: '2023-07-08',
-    conclusion: '性能满足要求，表面处理需改进',
-    parameters: [
-      { name: '弹性模量', value: 70.5, unit: 'GPa', standard: '68-72' },
-      { name: '抗拉强度', value: 310, unit: 'MPa', standard: '≥300' },
-      { name: '腐蚀测试', value: '合格', unit: '', standard: '48h无腐蚀' }
-    ]
-  },
-  {
-    ...LabTestModel,
-    id: 'LT003',
-    materialCode: 'M2023-003',
-    batchCode: 'B20230810',
-    testType: '材料成分分析',
-    testResult: '不合格',
-    status: '已完成',
-    tester: 'LAB001',
-    testTime: '2023-08-12',
-    conclusion: '添加剂含量不达标，存在安全隐患',
-    parameters: [
-      { name: '碳酸钙含量', value: 32, unit: '%', standard: '≤25' },
-      { name: '阻燃性', value: '不合格', unit: '', standard: 'UL94-V0' },
-      { name: '挥发性物质', value: 1.2, unit: '%', standard: '≤1.0' }
+    id: 'test_002',
+    test_no: 'LT20230514001',
+    batch_id: 'b003',
+    material_code: 'M003',
+    test_type: '入厂检验',
+    method: '拉伸测试',
+    test_item: '拉伸强度',
+    test_procedure: 'TP-TS-002',
+    inspector_id: 'user_002',
+    reviewer_id: 'user_005',
+    equipment_id: 'eq_002',
+    result: 'pass',
+    evaluation_status: 'approved',
+    test_date: '2023-05-14T10:45:00Z',
+    defect_rate: 0,
+    test_source: '常规检验',
+    conclusion: '符合要求',
+    notes: '',
+    created_at: '2023-05-14T10:00:00Z',
+    updated_at: '2023-05-14T11:30:00Z',
+    test_data_items: [
+      {
+        id: 'tdi_002',
+        test_id: 'test_002',
+        parameter: '拉伸强度',
+        parameter_code: 'TS',
+        value: '15.5',
+        unit: 'MPa',
+        lower_limit: '12',
+        upper_limit: '18',
+        status: 'pass',
+        type: 'numeric',
+        standard_id: 'std_002',
+        notes: '',
+        created_at: '2023-05-14T10:15:00Z',
+        updated_at: '2023-05-14T10:15:00Z'
+      }
     ]
   }
 ];
 
-// 质量异常记录
-export const qualityExceptions = [
+// 模拟质量问题数据
+const mockQualityExceptions = [
   {
-    ...QualityExceptionModel,
-    id: 'QE001',
-    materialCode: 'M2023-003',
-    batchCode: 'B20230810',
-    exceptionType: '材料性能不达标',
-    severity: '严重',
-    location: '原材料库',
-    discoveryTime: '2023-08-11',
-    reporter: 'INS001',
-    status: '处理中',
-    solution: '已通知供应商，等待替换批次',
-    resolveTime: ''
+    id: 'qe_001',
+    issue_id: 'QI20230520001',
+    title: '钢板表面划痕',
+    type: '外观缺陷',
+    status: 'open',
+    source: '入厂检验',
+    risk_level: 'medium',
+    related_batch_id: 'b001',
+    material_code: 'M001',
+    product: '',
+    description: '在高强度钢板表面发现多处划痕，长度约5-10mm',
+    root_cause: '运输过程中保护不当',
+    corrective_actions: '与物流部门沟通，改进运输保护措施',
+    preventive_actions: '修订运输包装规范',
+    responsible_person: '张工',
+    department: '质量部',
+    discovery_date: '2023-05-20T09:30:00Z',
+    due_date: '2023-05-30T00:00:00Z',
+    close_date: null,
+    created_at: '2023-05-20T10:00:00Z',
+    updated_at: '2023-05-20T10:00:00Z'
   },
   {
-    ...QualityExceptionModel,
-    id: 'QE002',
-    materialCode: 'M2023-002',
-    batchCode: 'B20230705',
-    exceptionType: '表面缺陷',
-    severity: '轻微',
-    location: '加工车间',
-    discoveryTime: '2023-07-15',
-    reporter: 'PROD002',
-    status: '已解决',
-    solution: '通过打磨处理解决表面缺陷',
-    resolveTime: '2023-07-16'
+    id: 'qe_002',
+    issue_id: 'QI20230518001',
+    title: '密封圈尺寸偏差',
+    type: '尺寸偏差',
+    status: 'in_progress',
+    source: '生产检验',
+    risk_level: 'high',
+    related_batch_id: 'b003',
+    material_code: 'M003',
+    product: '',
+    description: '橡胶密封圈内径尺寸超出公差范围，实测24.8mm，规格要求25±0.1mm',
+    root_cause: '模具磨损',
+    corrective_actions: '更换模具，重新生产',
+    preventive_actions: '增加模具定期检查频率',
+    responsible_person: '李工',
+    department: '生产部',
+    discovery_date: '2023-05-18T14:20:00Z',
+    due_date: '2023-05-25T00:00:00Z',
+    close_date: null,
+    created_at: '2023-05-18T15:00:00Z',
+    updated_at: '2023-05-19T09:30:00Z'
   },
   {
-    ...QualityExceptionModel,
-    id: 'QE003',
-    materialCode: 'M2023-008',
-    batchCode: 'B20231010',
-    exceptionType: '电气参数异常',
-    severity: '中等',
-    location: '装配线',
-    discoveryTime: '2023-10-12',
-    reporter: 'PROD005',
-    status: '待处理',
-    solution: '',
-    resolveTime: ''
+    id: 'qe_003',
+    issue_id: 'QI20230510001',
+    title: '铝板硬度不足',
+    type: '材料性能',
+    status: 'closed',
+    source: '入厂检验',
+    risk_level: 'medium',
+    related_batch_id: 'b002',
+    material_code: 'M002',
+    product: '',
+    description: '铝合金板硬度测试结果低于规格要求',
+    root_cause: '供应商热处理工艺不当',
+    corrective_actions: '退回不合格批次，要求供应商重新热处理',
+    preventive_actions: '增加供应商过程审核频率',
+    responsible_person: '王工',
+    department: '质量部',
+    discovery_date: '2023-05-10T11:30:00Z',
+    due_date: '2023-05-20T00:00:00Z',
+    close_date: '2023-05-19T16:00:00Z',
+    created_at: '2023-05-10T13:00:00Z',
+    updated_at: '2023-05-19T16:00:00Z'
   }
 ];
 
-// 质量数据统计
-export const qualityStatistics = {
-  daily: {
-    period: '今日',
-    passRate: 96.5,
-    averageScore: 91.2,
-    exceptionCount: 3,
-    materialCoverage: 85.5,
-    trends: [
-      { time: '08:00', passRate: 97.0 },
-      { time: '10:00', passRate: 96.8 },
-      { time: '12:00', passRate: 96.2 },
-      { time: '14:00', passRate: 96.0 },
-      { time: '16:00', passRate: 96.5 },
-      { time: '18:00', passRate: 97.2 }
-    ]
-  },
-  weekly: {
-    period: '本周',
-    passRate: 95.8,
-    averageScore: 90.5,
-    exceptionCount: 12,
-    materialCoverage: 86.2,
-    trends: [
-      { time: '周一', passRate: 96.2 },
-      { time: '周二', passRate: 95.8 },
-      { time: '周三', passRate: 95.5 },
-      { time: '周四', passRate: 96.0 },
-      { time: '周五', passRate: 95.8 }
-    ]
-  },
-  monthly: {
-    period: '本月',
-    passRate: 94.5,
-    averageScore: 89.8,
-    exceptionCount: 42,
-    materialCoverage: 87.6,
-    trends: [
-      { time: '第1周', passRate: 94.0 },
-      { time: '第2周', passRate: 94.3 },
-      { time: '第3周', passRate: 95.1 },
-      { time: '第4周', passRate: 94.6 }
-    ]
+/**
+ * 查询库存项目
+ * @param {Object} params - 查询参数
+ * @returns {Array} - 库存项目列表
+ */
+export function queryInventoryItems(params = {}) {
+  let result = [...mockInventoryItems];
+  
+  // 按批次ID过滤
+  if (params.batch_id) {
+    result = result.filter(item => item.batch_id === params.batch_id);
   }
-};
+  
+  // 按物料代码过滤
+  if (params.material_code) {
+    result = result.filter(item => item.material_code === params.material_code);
+  }
+  
+  // 按状态过滤
+  if (params.status) {
+    result = result.filter(item => item.status === params.status);
+  }
+  
+  return result;
+}
 
-// 数据查询接口封装
+/**
+ * 查询物料
+ * @param {Object} params - 查询参数
+ * @returns {Array} - 物料列表
+ */
 export function queryMaterials(params = {}) {
-  let results = [...materials];
+  let result = [...mockMaterials];
   
-  // 根据参数过滤
-  if (params.code) {
-    results = results.filter(m => m.code.includes(params.code));
+  // 按类别ID过滤
+  if (params.category_id) {
+    result = result.filter(item => item.category_id === params.category_id);
   }
-  if (params.name) {
-    results = results.filter(m => m.name.includes(params.name));
+  
+  // 按供应商ID过滤
+  if (params.supplier_id) {
+    result = result.filter(item => item.supplier_id === params.supplier_id);
   }
-  if (params.type) {
-    results = results.filter(m => m.type === params.type);
-  }
+  
+  // 按状态过滤
   if (params.status) {
-    results = results.filter(m => m.status === params.status);
+    result = result.filter(item => item.status === params.status);
   }
   
-  return results;
+  return result;
 }
 
-export function queryInspectionResults(params = {}) {
-  let results = [...inspectionResults];
-  
-  // 根据参数过滤
-  if (params.materialCode) {
-    results = results.filter(ir => ir.materialCode === params.materialCode);
-  }
-  if (params.batchCode) {
-    results = results.filter(ir => ir.batchCode === params.batchCode);
-  }
-  if (params.result) {
-    results = results.filter(ir => ir.result === params.result);
-  }
-  
-  return results;
-}
-
+/**
+ * 查询实验室测试
+ * @param {Object} params - 查询参数
+ * @returns {Array} - 实验室测试列表
+ */
 export function queryLabTests(params = {}) {
-  let results = [...labTests];
+  let result = [...mockLabTests];
   
-  // 根据参数过滤
-  if (params.materialCode) {
-    results = results.filter(lt => lt.materialCode === params.materialCode);
-  }
-  if (params.batchCode) {
-    results = results.filter(lt => lt.batchCode === params.batchCode);
-  }
-  if (params.testResult) {
-    results = results.filter(lt => lt.testResult === params.testResult);
+  // 按批次ID过滤
+  if (params.batch_id) {
+    result = result.filter(item => item.batch_id === params.batch_id);
   }
   
-  return results;
+  // 按物料代码过滤
+  if (params.material_code) {
+    result = result.filter(item => item.material_code === params.material_code);
+  }
+  
+  // 按测试类型过滤
+  if (params.test_type) {
+    result = result.filter(item => item.test_type === params.test_type);
+  }
+  
+  // 按结果过滤
+  if (params.result) {
+    result = result.filter(item => item.result === params.result);
+  }
+  
+  return result;
 }
 
+/**
+ * 查询质量异常
+ * @param {Object} params - 查询参数
+ * @returns {Array} - 质量异常列表
+ */
 export function queryQualityExceptions(params = {}) {
-  let results = [...qualityExceptions];
+  let result = [...mockQualityExceptions];
   
-  // 根据参数过滤
-  if (params.materialCode) {
-    results = results.filter(qe => qe.materialCode === params.materialCode);
-  }
+  // 按状态过滤
   if (params.status) {
-    results = results.filter(qe => qe.status === params.status);
-  }
-  if (params.severity) {
-    results = results.filter(qe => qe.severity === params.severity);
+    result = result.filter(item => item.status === params.status);
   }
   
-  return results;
+  // 按风险等级过滤
+  if (params.risk_level) {
+    result = result.filter(item => item.risk_level === params.risk_level);
+  }
+  
+  // 按批次ID过滤
+  if (params.related_batch_id) {
+    result = result.filter(item => item.related_batch_id === params.related_batch_id);
+  }
+  
+  // 按物料代码过滤
+  if (params.material_code) {
+    result = result.filter(item => item.material_code === params.material_code);
+  }
+  
+  return result;
 }
 
-// 导出所有数据和查询方法
 export default {
-  materials,
-  inspectionResults,
-  labTests,
-  qualityExceptions,
-  qualityStatistics,
+  queryInventoryItems,
   queryMaterials,
-  queryInspectionResults,
   queryLabTests,
   queryQualityExceptions
 }; 

@@ -6,7 +6,7 @@
         风险评分: <span class="score" :class="riskScoreClass">{{ riskScore }}</span>
       </div>
     </div>
-    <div class="chart-container" ref="chartContainer"></div>
+    <div class="chart-container" ref="chartContainer" :style="{ height: height }"></div>
     <div class="risk-recommendations" v-if="recommendations && recommendations.length">
       <h4>风险缓解建议</h4>
       <div class="recommendations-list">
@@ -30,7 +30,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch, nextTick, computed } from 'vue';
+import { ref, reactive, onMounted, watch, nextTick, computed, onUnmounted } from 'vue';
 import * as echarts from 'echarts/core';
 import { BarChart } from 'echarts/charts';
 import { CanvasRenderer } from 'echarts/renderers';
@@ -100,120 +100,177 @@ const riskScoreClass = computed(() => {
 
 // 初始化图表
 const initChart = () => {
-  if (!chartContainer.value) return;
+  if (!chartContainer.value) {
+    console.warn('Chart container not found');
+    return;
+  }
   
   // 清除现有图表
   if (chart.value) {
     chart.value.dispose();
+    chart.value = null;
   }
-  
-  // 创建新图表实例
-  chart.value = echarts.init(chartContainer.value);
-  
-  // 更新图表
-  updateChart();
+    
+    // 强制设置容器尺寸
+    chartContainer.value.style.width = '100%';
+    chartContainer.value.style.height = props.height;
+    
+    try {
+      // 创建图表实例
+    nextTick(() => {
+      if (!chartContainer.value) return;
+      chart.value = echarts.init(chartContainer.value);
+      
+      // 更新图表数据
+      if (riskFactors.value && riskFactors.value.length > 0) {
+        updateChart();
+      }
+    });
+    } catch (error) {
+      console.error('初始化图表失败:', error);
+    }
 };
 
 // 更新图表数据
 const updateChart = () => {
   if (!chart.value || !riskFactors.value || riskFactors.value.length === 0) return;
   
-  // 准备数据
-  const categories = riskFactors.value.map(item => item.name);
-  const values = riskFactors.value.map(item => item.value);
-  const colors = riskFactors.value.map(item => item.color || '#409EFF');
-  const descriptions = riskFactors.value.map(item => item.description || '');
-  
-  // 设置图表选项
-  const option = {
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: {
-        type: 'shadow'
-      },
-      formatter: function(params) {
-        const index = params[0].dataIndex;
-        return `<div>
-          <strong>${categories[index]}</strong><br/>
-          风险值: ${values[index]}<br/>
-          ${descriptions[index] || ''}
-        </div>`;
-      }
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      top: '8%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'value',
-      name: '风险值',
-      max: 100,
-      axisLabel: {
-        formatter: '{value}'
-      }
-    },
-    yAxis: {
-      type: 'category',
-      data: categories,
-      axisLabel: {
-        formatter: function(value) {
-          // 如果名称太长，则截断并添加省略号
-          if (value.length > 10) {
-            return value.substring(0, 10) + '...';
-          }
-          return value;
-        }
-      }
-    },
-    series: [
-      {
-        name: '风险值',
-        type: 'bar',
-        data: values.map((value, index) => {
-          return {
-            value: value,
-            itemStyle: {
-              color: colors[index]
-            }
-          };
-        }),
-        label: {
-          show: true,
-          position: 'right',
-          formatter: '{c}'
+  try {
+    // 准备数据
+    const categories = riskFactors.value.map(item => item.name || '未命名');
+    const values = riskFactors.value.map(item => item.value || 0);
+    const colors = riskFactors.value.map(item => item.color || '#409EFF');
+    const descriptions = riskFactors.value.map(item => item.description || '');
+    
+    // 设置图表选项
+    const option = {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+          type: 'shadow'
         },
-        barWidth: '60%'
-      }
-    ]
-  };
-  
-  // 应用配置
-  chart.value.setOption(option);
+        formatter: function(params) {
+          if (!params || params.length === 0 || params[0].dataIndex === undefined) return '';
+          
+          const index = params[0].dataIndex;
+          if (index < 0 || index >= categories.length) return '';
+          
+          return `<div>
+            <strong>${categories[index]}</strong><br/>
+            风险值: ${values[index]}<br/>
+            ${descriptions[index] || ''}
+          </div>`;
+        }
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '3%',
+        top: '8%',
+        containLabel: true
+      },
+      xAxis: {
+        type: 'value',
+        name: '风险值',
+        max: 100,
+        axisLabel: {
+          formatter: '{value}'
+        }
+      },
+      yAxis: {
+        type: 'category',
+        data: categories,
+        axisLabel: {
+          formatter: function(value) {
+            // 如果名称太长，则截断并添加省略号
+            if (value && value.length > 10) {
+              return value.substring(0, 10) + '...';
+            }
+            return value || '';
+          }
+        }
+      },
+      series: [
+        {
+          name: '风险值',
+          type: 'bar',
+          data: values.map((value, index) => {
+            return {
+              value: value,
+              itemStyle: {
+                color: colors[index]
+              }
+            };
+          }),
+          label: {
+            show: true,
+            position: 'right',
+            formatter: '{c}'
+          },
+          barWidth: '60%'
+        }
+      ]
+    };
+    
+    // 应用配置
+    chart.value.setOption(option);
+  } catch (error) {
+    console.error('更新图表失败:', error);
+  }
+};
+
+// 安全的resize函数
+const safeResize = () => {
+  if (chart.value) {
+    try {
+      chart.value.resize();
+    } catch (error) {
+      console.error('调整图表大小失败:', error);
+    }
+  }
+};
+
+// 定义resize事件处理函数
+const handleResize = () => {
+  safeResize();
 };
 
 // 监听窗口大小变化
-window.addEventListener('resize', () => {
+onMounted(() => {
+  window.addEventListener('resize', handleResize);
+  
+  // 延迟初始化图表，确保DOM已完全渲染
+  nextTick(() => {
+  setTimeout(() => {
+    initChart();
+  }, 300);
+  });
+});
+
+// 在组件卸载前移除事件监听并销毁图表
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize);
+  
   if (chart.value) {
-    chart.value.resize();
+    try {
+      chart.value.dispose();
+      chart.value = null;
+    } catch (error) {
+      console.error('销毁图表失败:', error);
+    }
   }
 });
 
 // 监听数据变化
 watch(() => props.riskData, () => {
   nextTick(() => {
-    updateChart();
+    if (chart.value) {
+      updateChart();
+    } else {
+      initChart();
+    }
   });
 }, { deep: true });
-
-// 组件挂载后初始化图表
-onMounted(() => {
-  nextTick(() => {
-    initChart();
-  });
-});
 </script>
 
 <style scoped>

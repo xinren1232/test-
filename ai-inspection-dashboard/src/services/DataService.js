@@ -3,8 +3,9 @@
  * 目前使用模拟数据，之后可无缝替换为API调用
  */
 
-import { DataQueryResult } from '../data/models';
+import { DataQueryResult } from '../data/models.js';
 import mockData from '../data/mockData';
+import { ElMessage } from 'element-plus';
 
 class DataService {
   /**

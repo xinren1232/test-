@@ -1,0 +1,895 @@
+openapi: 3.0.0
+info:
+  title: IQE质量检验系统API
+  description: 为IQE质量检验系统提供数据访问和管理的API接口
+  version: 1.0.0
+  contact:
+    name: IQE系统开发团队
+servers:
+  - url: http://localhost:3000/api
+    description: 开发环境服务器
+  - url: https://api.iqe-system.com
+    description: 生产环境服务器
+    
+components:
+  schemas:
+    InventoryItem:
+      type: object
+      required:
+        - batch_no
+        - material_code
+        - material_name
+      properties:
+        id:
+          type: string
+          description: 唯一ID
+        batch_no:
+          type: string
+          description: 批次号
+        material_code:
+          type: string
+          description: 物料编码
+        material_name:
+          type: string
+          description: 物料名称
+        category:
+          type: string
+          description: 物料类别
+        factory:
+          type: string
+          description: 工厂
+        location:
+          type: string
+          description: 库位
+        quantity:
+          type: number
+          format: float
+          description: 数量
+        unit:
+          type: string
+          description: 单位
+        supplier:
+          type: string
+          description: 供应商
+        status:
+          type: string
+          enum: [normal, risk, frozen]
+          description: 状态(正常/风险/冻结)
+        quality:
+          type: string
+          enum: [pass, pending, fail, risk_incoming, risk_lab, risk_production]
+          description: 质量状态
+        inspection_date:
+          type: string
+          format: date-time
+          description: 最近检验时间
+        incoming_date:
+          type: string
+          format: date-time
+          description: 入库时间
+        risk_level:
+          type: string
+          enum: [low, medium, high]
+          description: 风险等级
+        risk_reason:
+          type: string
+          description: 风险原因
+        created_at:
+          type: string
+          format: date-time
+          description: 创建时间
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新时间
+    
+    LaboratoryTest:
+      type: object
+      required:
+        - test_no
+        - batch_id
+        - material_code
+        - test_type
+      properties:
+        id:
+          type: string
+          description: 唯一ID
+        test_no:
+          type: string
+          description: 测试编号
+        batch_id:
+          type: string
+          description: 关联批次号
+        material_code:
+          type: string
+          description: 物料编码
+        test_type:
+          type: string
+          enum: [incoming, process, outgoing, stability]
+          description: 测试类型
+        method:
+          type: string
+          description: 测试方法
+        level:
+          type: string
+          description: 测试级别
+        inspector_id:
+          type: string
+          description: 检验员ID
+        equipment_id:
+          type: string
+          description: 设备ID
+        result:
+          type: string
+          enum: [pass, fail, pending, deviation]
+          description: 结果
+        evaluation_status:
+          type: string
+          enum: [ok, ng, pending, warning, deviation]
+          description: 标准化状态
+        inspection_phase:
+          type: string
+          description: 检验阶段
+        test_date:
+          type: string
+          format: date-time
+          description: 测试日期
+        conclusion:
+          type: string
+          description: 测试结论
+        notes:
+          type: string
+          description: 备注
+        created_at:
+          type: string
+          format: date-time
+          description: 创建时间
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新时间
+          
+    TestDataItem:
+      type: object
+      required:
+        - test_id
+        - parameter
+      properties:
+        id:
+          type: string
+          description: 唯一ID
+        test_id:
+          type: string
+          description: 测试记录ID
+        parameter:
+          type: string
+          description: 参数名称
+        parameter_code:
+          type: string
+          description: 参数代码
+        value:
+          type: string
+          description: 测试值
+        unit:
+          type: string
+          description: 单位
+        lower_limit:
+          type: number
+          format: float
+          description: 下限
+        upper_limit:
+          type: number
+          format: float
+          description: 上限
+        status:
+          type: string
+          enum: [ok, ng, warning]
+          description: 状态
+        type:
+          type: string
+          description: 参数类型
+        notes:
+          type: string
+          description: 备注
+        created_at:
+          type: string
+          format: date-time
+          description: 创建时间
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新时间
+          
+    QualityEvent:
+      type: object
+      required:
+        - title
+        - type
+      properties:
+        id:
+          type: string
+          description: 唯一ID
+        title:
+          type: string
+          description: 事件标题
+        type:
+          type: string
+          enum: [nonconformity, deviation, complaint, observation]
+          description: 事件类型
+        status:
+          type: string
+          enum: [open, in_progress, pending, closed]
+          description: 状态
+        source:
+          type: string
+          description: 事件来源
+        risk_level:
+          type: string
+          enum: [low, medium, high]
+          description: 风险等级
+        standard_risk_level:
+          type: string
+          description: 标准化风险等级
+        exception_type:
+          type: string
+          description: 异常类型
+        related_batch_id:
+          type: string
+          description: 关联批次ID
+        material_code:
+          type: string
+          description: 物料编码
+        product:
+          type: string
+          description: 相关产品
+        description:
+          type: string
+          description: 描述
+        root_cause:
+          type: string
+          description: 根本原因
+        corrective_actions:
+          type: string
+          description: 纠正措施
+        preventive_actions:
+          type: string
+          description: 预防措施
+        responsible_person:
+          type: string
+          description: 责任人
+        department:
+          type: string
+          description: 责任部门
+        discovery_date:
+          type: string
+          format: date-time
+          description: 发现日期
+        due_date:
+          type: string
+          format: date-time
+          description: 截止日期
+        close_date:
+          type: string
+          format: date-time
+          description: 关闭日期
+        data_type:
+          type: string
+          default: quality
+          description: 数据类型
+        created_at:
+          type: string
+          format: date-time
+          description: 创建时间
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新时间
+  
+  responses:
+    Error:
+      description: 错误响应
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                description: 错误消息
+              status:
+                type: integer
+                description: HTTP状态码
+              timestamp:
+                type: string
+                format: date-time
+                description: 时间戳
+                
+paths:
+  /inventory:
+    get:
+      summary: 获取库存物料列表
+      description: 根据查询条件获取库存物料数据
+      parameters:
+        - name: batch_no
+          in: query
+          schema:
+            type: string
+          description: 按批次号筛选
+        - name: material_code
+          in: query
+          schema:
+            type: string
+          description: 按物料编码筛选
+        - name: supplier
+          in: query
+          schema:
+            type: string
+          description: 按供应商筛选
+        - name: status
+          in: query
+          schema:
+            type: string
+          description: 按状态筛选
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+          description: 返回记录数量限制
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: 分页偏移量
+      responses:
+        '200':
+          description: 成功获取物料列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InventoryItem'
+        '400':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+    post:
+      summary: 创建库存物料
+      description: 添加新的库存物料记录
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryItem'
+      responses:
+        '201':
+          description: 成功创建物料
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem'
+        '400':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+          
+  /inventory/{id}:
+    get:
+      summary: 获取特定库存物料
+      description: 根据ID获取库存物料详情
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 物料ID
+      responses:
+        '200':
+          description: 成功获取物料详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem'
+        '404':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+    put:
+      summary: 更新库存物料
+      description: 更新特定库存物料信息
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 物料ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryItem'
+      responses:
+        '200':
+          description: 成功更新物料
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+    delete:
+      summary: 删除库存物料
+      description: 删除特定库存物料记录
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 物料ID
+      responses:
+        '204':
+          description: 成功删除物料
+        '404':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+          
+  /inventory/{id}/status:
+    put:
+      summary: 更新库存物料状态
+      description: 更新特定库存物料的状态（冻结/解冻等）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 物料ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [normal, risk, frozen]
+                  description: 新状态
+                risk_reason:
+                  type: string
+                  description: 风险原因
+      responses:
+        '200':
+          description: 成功更新物料状态
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+          
+  /laboratory-tests:
+    get:
+      summary: 获取测试记录列表
+      description: 根据查询条件获取实验室测试记录
+      parameters:
+        - name: test_no
+          in: query
+          schema:
+            type: string
+          description: 按测试编号筛选
+        - name: batch_id
+          in: query
+          schema:
+            type: string
+          description: 按批次号筛选
+        - name: material_code
+          in: query
+          schema:
+            type: string
+          description: 按物料编码筛选
+        - name: result
+          in: query
+          schema:
+            type: string
+          description: 按测试结果筛选
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+          description: 返回记录数量限制
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: 分页偏移量
+      responses:
+        '200':
+          description: 成功获取测试记录
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LaboratoryTest'
+        '400':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+    post:
+      summary: 创建测试记录
+      description: 添加新的实验室测试记录
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LaboratoryTest'
+      responses:
+        '201':
+          description: 成功创建测试记录
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryTest'
+        '400':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+          
+  /laboratory-tests/{id}:
+    get:
+      summary: 获取特定测试记录
+      description: 根据ID获取测试记录详情
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 测试记录ID
+      responses:
+        '200':
+          description: 成功获取测试记录详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryTest'
+        '404':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+    put:
+      summary: 更新测试记录
+      description: 更新特定测试记录信息
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 测试记录ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LaboratoryTest'
+      responses:
+        '200':
+          description: 成功更新测试记录
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryTest'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+    delete:
+      summary: 删除测试记录
+      description: 删除特定测试记录
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 测试记录ID
+      responses:
+        '204':
+          description: 成功删除测试记录
+        '404':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+          
+  /test-data-items:
+    get:
+      summary: 获取测试数据项列表
+      description: 获取测试参数数据
+      parameters:
+        - name: test_id
+          in: query
+          schema:
+            type: string
+          description: 按测试ID筛选
+        - name: parameter
+          in: query
+          schema:
+            type: string
+          description: 按参数名称筛选
+        - name: status
+          in: query
+          schema:
+            type: string
+          description: 按状态筛选
+      responses:
+        '200':
+          description: 成功获取测试数据项
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TestDataItem'
+        '400':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+    post:
+      summary: 创建测试数据项
+      description: 添加新的测试参数数据
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestDataItem'
+      responses:
+        '201':
+          description: 成功创建测试数据项
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestDataItem'
+        '400':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+          
+  /test-data-items/{id}:
+    get:
+      summary: 获取特定测试数据项
+      description: 根据ID获取测试参数详情
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 测试数据项ID
+      responses:
+        '200':
+          description: 成功获取测试数据项详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestDataItem'
+        '404':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+    put:
+      summary: 更新测试数据项
+      description: 更新特定测试参数数据
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 测试数据项ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestDataItem'
+      responses:
+        '200':
+          description: 成功更新测试数据项
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestDataItem'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+    delete:
+      summary: 删除测试数据项
+      description: 删除特定测试参数数据
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 测试数据项ID
+      responses:
+        '204':
+          description: 成功删除测试数据项
+        '404':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+          
+  /quality-events:
+    get:
+      summary: 获取质量事件列表
+      description: 根据查询条件获取质量事件数据
+      parameters:
+        - name: title
+          in: query
+          schema:
+            type: string
+          description: 按标题筛选
+        - name: type
+          in: query
+          schema:
+            type: string
+          description: 按类型筛选
+        - name: status
+          in: query
+          schema:
+            type: string
+          description: 按状态筛选
+        - name: risk_level
+          in: query
+          schema:
+            type: string
+          description: 按风险等级筛选
+        - name: material_code
+          in: query
+          schema:
+            type: string
+          description: 按物料编码筛选
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+          description: 返回记录数量限制
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: 分页偏移量
+      responses:
+        '200':
+          description: 成功获取质量事件列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/QualityEvent'
+        '400':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+    post:
+      summary: 创建质量事件
+      description: 添加新的质量事件记录
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QualityEvent'
+      responses:
+        '201':
+          description: 成功创建质量事件
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityEvent'
+        '400':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+          
+  /quality-events/{id}:
+    get:
+      summary: 获取特定质量事件
+      description: 根据ID获取质量事件详情
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 质量事件ID
+      responses:
+        '200':
+          description: 成功获取质量事件详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityEvent'
+        '404':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+    put:
+      summary: 更新质量事件
+      description: 更新特定质量事件信息
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 质量事件ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QualityEvent'
+      responses:
+        '200':
+          description: 成功更新质量事件
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityEvent'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+    delete:
+      summary: 删除质量事件
+      description: 删除特定质量事件记录
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 质量事件ID
+      responses:
+        '204':
+          description: 成功删除质量事件
+        '404':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error' 

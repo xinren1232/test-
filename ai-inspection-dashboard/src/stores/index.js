@@ -8,31 +8,6 @@ import samplesData from '../data/samplesData.js'
 // 创建 Pinia 实例
 export const pinia = createPinia()
 
-// AI模型存储
-export const useAIModelStore = defineStore('aiModel', () => {
-  const activeModel = ref(null)
-  const availableModels = ref([])
-  const loading = ref(false)
-  
-  // 设置活跃模型
-  function setActiveModel(model) {
-    activeModel.value = model
-  }
-  
-  // 设置可用模型列表
-  function setAvailableModels(models) {
-    availableModels.value = models
-  }
-  
-  return {
-    activeModel,
-    availableModels,
-    loading,
-    setActiveModel,
-    setAvailableModels
-  }
-})
-
 // Chat消息存储
 export const useChatStore = defineStore('chat', () => {
   const messages = ref([])
@@ -203,6 +178,39 @@ export const useIQEStore = defineStore('iqe', () => {
     });
   }
 
+  // 更新库存数据
+  function updateInventoryData(data) {
+    if (Array.isArray(data)) {
+      // 替换整个数据集
+      materials.value = data;
+    } else {
+      console.warn('无效的库存数据格式，应为数组');
+    }
+    return true;
+  }
+
+  // 更新实验室测试数据
+  function updateLabTestData(data) {
+    if (Array.isArray(data)) {
+      // 替换整个数据集
+      labTestData.value = data;
+    } else {
+      console.warn('无效的实验室测试数据格式，应为数组');
+    }
+    return true;
+  }
+
+  // 更新质量问题数据
+  function updateQualityIssueData(data) {
+    if (Array.isArray(data)) {
+      // 更新质量相关数据
+      inspectionResults.value = data;
+    } else {
+      console.warn('无效的质量问题数据格式，应为数组');
+    }
+    return true;
+  }
+
   // 刷新数据 (模拟后端API调用)
   async function refreshData() {
     // 这里可以添加实际的API调用逻辑
@@ -239,14 +247,16 @@ export const useIQEStore = defineStore('iqe', () => {
     getInspectionResult,
     filterLabTests,
     refreshData,
-    getStatCardsData
+    getStatCardsData,
+    updateInventoryData,
+    updateLabTestData,
+    updateQualityIssueData
   }
 })
 
 // 导出所有store作为对象
 const stores = {
   useIQEStore,
-  useAIModelStore,
   useChatStore,
   useContextStore,
   pinia
