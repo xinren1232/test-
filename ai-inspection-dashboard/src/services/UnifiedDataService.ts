@@ -1,4 +1,5 @@
 import { InventoryItem } from '../types/models';
+import { DataGenerator } from './DataGenerator';
 
 const STORAGE_KEY = 'iqe_inventory'; // The single source of truth
 
@@ -34,7 +35,30 @@ class UnifiedDataService {
     return allData.filter(item => !!item.onlineDate);
   }
 
-  public async updateItem(itemToUpdate: InventoryItem): Promise<InventoryItem[]> {
+  public async getLabData(): Promise<InventoryItem[]> {
+    const allData = await this.loadAndStandardizeData();
+    // Lab data is defined as items that have been tested.
+    return allData.filter(item => item.testStatus !== 'Untested');
+  }
+
+  public async generateAndSaveData(options: { count: number; clearExisting: boolean }): Promise<void> {
+    const newItems = DataGenerator.generateInventoryData({ count: options.count });
+    
+    if (options.clearExisting) {
+      this.saveData(newItems);
+      return;
+    }
+    
+    const existingItems = await this.loadAndStandardizeData();
+    const combinedItems = [...existingItems, ...newItems];
+    this.saveData(combinedItems);
+  }
+
+  public async clearAllData(): Promise<void> {
+    this.saveData([]);
+  }
+
+  public async updateItem(itemToUpdate: InventoryItem): Promise<void> {
     // Invalidate cache before update, forcing a re-read from storage
     this.clearCache();
     const items = await this.loadAndStandardizeData();
@@ -48,7 +72,6 @@ class UnifiedDataService {
     }
     
     this.saveData(items);
-    return items;
   }
 
   private saveData(data: InventoryItem[]): void {

@@ -4,8 +4,15 @@
  */
 import { ref, computed, type Ref } from 'vue';
 import type { InventoryItem, Status } from '../types/models';
+import UnifiedDataService from '../services/UnifiedDataService';
 
-export function useInventoryAnalysis(inventoryData: Ref<InventoryItem[]>) {
+export function useInventoryAnalysis() {
+  const inventoryData = ref<InventoryItem[]>([]);
+
+  const refreshData = async () => {
+    inventoryData.value = await UnifiedDataService.getInventoryData();
+  };
+
   // --- 基础统计 ---
   const normalItemsCount = computed(() => 
     inventoryData.value.filter(item => item.status === 'normal').length
@@ -23,9 +30,10 @@ export function useInventoryAnalysis(inventoryData: Ref<InventoryItem[]>) {
   const mainStorageArea = computed(() => {
     if (inventoryData.value.length === 0) return 'N/A';
     const warehouseCounts = inventoryData.value
-      .filter(item => item.status === 'normal' && item.warehouse)
       .reduce((acc, item) => {
-        acc[item.warehouse] = (acc[item.warehouse] || 0) + 1;
+        if (item.status === 'normal' && item.warehouse) {
+          acc[item.warehouse] = (acc[item.warehouse] || 0) + 1;
+        }
         return acc;
       }, {} as Record<string, number>);
     
@@ -35,9 +43,10 @@ export function useInventoryAnalysis(inventoryData: Ref<InventoryItem[]>) {
   const frozenItemsWarehouse = computed(() => {
      if (frozenItemsCount.value === 0) return 'N/A';
     const warehouseCounts = inventoryData.value
-      .filter(item => item.status === 'frozen' && item.warehouse)
       .reduce((acc, item) => {
-        acc[item.warehouse] = (acc[item.warehouse] || 0) + 1;
+        if (item.status === 'frozen' && item.warehouse) {
+          acc[item.warehouse] = (acc[item.warehouse] || 0) + 1;
+        }
         return acc;
       }, {} as Record<string, number>);
       
@@ -313,32 +322,126 @@ export function useInventoryAnalysis(inventoryData: Ref<InventoryItem[]>) {
     };
   });
 
+  // =================================================================
+  // === NEW: Analysis for BatchManagement                          ====
+  // =================================================================
+
+  const batchAnalysis = computed(() => {
+    const batches = inventoryData.value.reduce((acc, item) => {
+      const batchNum = item.batchNumber;
+      if (!acc[batchNum]) {
+        acc[batchNum] = {
+          batchNumber: batchNum,
+          items: [],
+          supplier: item.supplier,
+          materialCode: item.materialCode,
+          materialName: item.materialName,
+          receiveDate: item.receiveDate,
+        };
+      }
+      acc[batchNum].items.push(item);
+      return acc;
+    }, {} as Record<string, any>);
+
+    return Object.values(batches).map((batch: any) => {
+      const totalQuantity = batch.items.reduce((sum, item) => sum + item.quantity, 0);
+      const hasFailures = batch.items.some(item => item.inspectionStatus === 'failed' || item.testStatus === 'Fail');
+      const hasRisks = batch.items.some(item => item.status === 'risk');
+      const allUsed = batch.items.every(item => item.status === 'used'); // Assuming a 'used' status exists
+
+      let overallStatus = 'passed';
+      if (allUsed) overallStatus = 'used';
+      if (hasRisks) overallStatus = 'risk';
+      if (hasFailures) overallStatus = 'failed';
+      
+      return {
+        batchNumber: batch.batchNumber,
+        supplier: batch.supplier,
+        materialCode: batch.materialCode,
+        materialName: batch.materialName,
+        itemCount: batch.items.length,
+        totalQuantity,
+        receiveDate: batch.receiveDate,
+        overallStatus,
+        items: batch.items, // Keep original items for detailed view
+      };
+    });
+  });
+
+  // --- Main Statistics Object ---
+  const inventoryStats = computed(() => {
+    const totalCount = inventoryData.value.length;
+    if (totalCount === 0) {
+      return {
+        totalCount: 0,
+        testedCount: 0,
+        onlineCount: 0,
+        batchCount: 0,
+        failedInspectionCount: 0,
+        failedTestCount: 0,
+        overallDefectRate: 0,
+        highRiskBatchCount: 0,
+      };
+    }
+
+    const testedCount = inventoryData.value.filter(i => i.testStatus !== 'Untested').length;
+    const onlineCount = inventoryData.value.filter(i => i.onlineDate).length;
+    const batchCount = new Set(inventoryData.value.map(i => i.batchNumber)).size;
+    
+    const failedInspectionCount = inventoryData.value.filter(i => i.inspectionStatus === 'failed').length;
+    const failedTestCount = inventoryData.value.filter(i => i.testStatus === 'Fail').length;
+    const totalDefects = failedInspectionCount + failedTestCount;
+    const overallDefectRate = totalCount > 0 ? totalDefects / totalCount : 0;
+
+    // High risk is a batch with any failure
+    const batches = inventoryData.value.reduce((acc, item) => {
+      const batchNum = item.batchNumber;
+      if (!acc[batchNum]) {
+        acc[batchNum] = { hasFailure: false };
+      }
+      if (item.inspectionStatus === 'failed' || item.testStatus === 'Fail') {
+        acc[batchNum].hasFailure = true;
+      }
+      return acc;
+    }, {} as Record<string, { hasFailure: boolean }>);
+
+    const highRiskBatchCount = Object.values(batches).filter(b => b.hasFailure).length;
+
+    return {
+      totalCount,
+      testedCount,
+      onlineCount,
+      batchCount,
+      failedInspectionCount,
+      failedTestCount,
+      overallDefectRate,
+      highRiskBatchCount,
+    };
+  });
+
   return {
-    // 基础统计
+    inventoryData, // Expose the raw data for tables/lists
+    refreshData,   // Expose the refresh function
+    inventoryStats, // Expose the main stats object
+
+    // Keep all other detailed computed properties for specific views
     normalItemsCount,
     riskItemsCount,
     frozenItemsCount,
-    // 仪表盘
     mainStorageArea,
     frozenItemsWarehouse,
     topRiskSupplier,
     riskLevel,
     riskLevelDescription,
-    // 供应商分析
     topRiskSuppliers,
     topQualitySuppliers,
-    // 风险列表
     riskOnlyMaterials,
     frozenOnlyMaterials,
-    // 图表数据
     freezeReasonChartData,
-
-    // New exports for OnlineView
     supplierPerformance,
     supplierChartData,
     onlineInsights,
-
-    // New exports for LabView
     labAnalysis,
+    batchAnalysis,
   };
 } 
