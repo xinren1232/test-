@@ -3,7 +3,7 @@
  * 用于生成模拟数据和业务场景时保持一致性
  */
 
-export const materialSupplierMapping = {
+const materialSupplierMapping = {
   // 1️⃣ 结构件-量产管理组
   "structural-mass": {
     category: "结构件-量产管理组",

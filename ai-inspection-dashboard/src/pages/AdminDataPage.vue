@@ -42,18 +42,18 @@
           <div class="card-content">
             <div class="stat-item">
               <span class="stat-label">库存总数:</span>
-              <span class="stat-value">{{ inventoryStats.totalCount }}</span>
+              <span class="stat-value">{{ dataSummary.materialsCount }}</span>
             </div>
             <div class="stat-item">
               <span class="stat-label">测试记录:</span>
-              <span class="stat-value">{{ inventoryStats.testedCount }}</span>
+              <span class="stat-value">{{ dataSummary.testsCount }}</span>
             </div>
             <div class="stat-item">
               <span class="stat-label">上线记录:</span>
-              <span class="stat-value">{{ inventoryStats.onlineCount }}</span>
+              <span class="stat-value">{{ dataSummary.onlineCount }}</span>
             </div>
             <div class="stat-date">
-              <el-tag size="small" type="info">最后更新: {{ inventoryStats.lastUpdated }}</el-tag>
+              <el-tag size="small" type="info">最后更新: {{ dataSummary.lastUpdated }}</el-tag>
             </div>
           </div>
         </el-card>
@@ -69,16 +69,48 @@
           </template>
           <div class="card-content">
             <el-progress 
-              :percentage="(1 - inventoryStats.overallDefectRate) * 100" 
-              :status="getStatusType((1 - inventoryStats.overallDefectRate) * 100)"
+              :percentage="dataSummary.dataIntegrityPercent" 
+              :status="getStatusType(dataSummary.dataIntegrityPercent)"
               :stroke-width="18"
+              :format="format"
+              class="data-integrity-progress"
             >
               <template #default="{ percentage }">
-                <span class="progress-label">数据健康度: {{ percentage ? percentage.toFixed(1) : '0.0' }}%</span>
+                <span class="progress-label">数据完整性: {{ percentage.toFixed(1) }}%</span>
               </template>
             </el-progress>
-          </div>
-        </el-card>
+
+            <el-row :gutter="10" class="integrity-details">
+              <el-col :span="8">
+                <div class="integrity-item">
+                  <div class="item-title">库存数据</div>
+                  <el-progress 
+                    :percentage="dataSummary.inventoryIntegrity" 
+                    :status="getStatusType(dataSummary.inventoryIntegrity)" 
+                  />
+                </div>
+              </el-col>
+              <el-col :span="8">
+                <div class="integrity-item">
+                  <div class="item-title">测试数据</div>
+                  <el-progress 
+                    :percentage="dataSummary.testIntegrity" 
+                    :status="getStatusType(dataSummary.testIntegrity)" 
+                  />
+                </div>
+              </el-col>
+              <el-col :span="8">
+                <div class="integrity-item">
+                  <div class="item-title">上线数据</div>
+                  <el-progress 
+                    :percentage="dataSummary.onlineIntegrity" 
+                    :status="getStatusType(dataSummary.onlineIntegrity)" 
+                  />
+              </div>
+              </el-col>
+            </el-row>
+              </div>
+            </el-card>
       </el-col>
       
       <el-col :xs="24" :sm="24" :md="8">
@@ -124,22 +156,74 @@
           <el-card shadow="hover" class="insight-card">
             <template #header>
               <div class="insight-header">
-                <h3>问题供应商分析</h3>
-                <el-tooltip content="测试失败次数 > 0 的供应商" placement="top">
-                  <el-icon><WarningFilled /></el-icon>
+                <h3>TOP5不良物料</h3>
+                <el-tooltip content="不良率最高的五种物料" placement="top">
+                  <el-icon><Warning /></el-icon>
                 </el-tooltip>
               </div>
             </template>
             <div class="insight-content">
-              <el-table :data="labAnalysis.defectBySupplier.slice(0, 5)" style="width: 100%" size="small">
-                <el-table-column prop="name" label="供应商" min-width="120" />
-                <el-table-column prop="value" label="失败次数" width="90" />
+              <el-table :data="topDefectMaterials" style="width: 100%" size="small">
+                <el-table-column prop="materialName" label="物料名称" min-width="120" />
+                <el-table-column prop="defectRate" label="不良率" width="90">
+                  <template #default="scope">
+                    <el-tag :type="getDefectRateTagType(scope.row.defectRate)">
+                      {{ formatDefectRate(scope.row.defectRate) }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="defectCount" label="不良数" width="70" />
               </el-table>
+              
+              <div class="insight-summary" v-if="topDefectMaterials.length > 0">
+                <el-alert
+                  :title="`${topDefectMaterials.length > 0 ? topDefectMaterials[0].materialName : '-'} 是当前不良率最高的物料`"
+                  type="warning"
+                  :closable="false"
+                  show-icon
+                />
+              </div>
             </div>
           </el-card>
         </el-col>
         
         <!-- 问题供应商卡片 -->
+        <el-col :xs="24" :sm="12" :md="8">
+          <el-card shadow="hover" class="insight-card">
+            <template #header>
+              <div class="insight-header">
+                <h3>问题供应商分析</h3>
+                <el-tooltip content="不良率超过5%的供应商" placement="top">
+                  <el-icon><WarningFilled /></el-icon>
+                </el-tooltip>
+              </div>
+            </template>
+            <div class="insight-content">
+              <el-table :data="topDefectSuppliers" style="width: 100%" size="small">
+                <el-table-column prop="supplierName" label="供应商" min-width="120" />
+                <el-table-column prop="defectRate" label="不良率" width="90">
+                  <template #default="scope">
+                    <el-tag :type="getDefectRateTagType(scope.row.defectRate)">
+                      {{ formatDefectRate(scope.row.defectRate) }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="materialCount" label="物料种类" width="90" />
+              </el-table>
+              
+              <div class="insight-summary">
+                <el-progress 
+                  :percentage="highRiskSupplierPercentage" 
+                  :stroke-width="10"
+                  :format="percent => `${highRiskSupplierCount}家供应商不良超标`"
+                  :status="highRiskSupplierCount > 0 ? 'exception' : 'success'"
+                />
+              </div>
+            </div>
+          </el-card>
+        </el-col>
+        
+        <!-- 不良类型统计卡片 -->
         <el-col :xs="24" :sm="12" :md="8">
           <el-card shadow="hover" class="insight-card">
             <template #header>
@@ -151,33 +235,24 @@
               </div>
             </template>
             <div class="insight-content">
-              <el-table :data="labAnalysis.defectByDescription.slice(0, 5)" style="width: 100%" size="small">
-                <el-table-column prop="name" label="不良描述" min-width="120" />
-                <el-table-column prop="value" label="次数" width="70" />
-              </el-table>
-            </div>
-          </el-card>
-        </el-col>
-        
-        <!-- 不良类型统计卡片 -->
-        <el-col :xs="24" :sm="12" :md="8">
-          <el-card shadow="hover" class="insight-card">
-            <template #header>
-              <div class="insight-header">
-                <h3>高风险批次</h3>
-                <el-tooltip content="包含任何检验或测试失败项的批次总数" placement="top">
-                  <el-icon><WarningFilled /></el-icon>
-                </el-tooltip>
+              <div class="defect-types-chart" style="height: 180px;">
+                <div v-if="defectTypesLoading" class="chart-loading">
+                  <el-skeleton :rows="5" animated />
+                </div>
+                <div v-else-if="defectTypesData.length === 0" class="no-data">
+                  <el-empty description="暂无不良类型数据" />
+                </div>
+                <div v-else ref="defectTypesChartRef" style="width: 100%; height: 100%;"></div>
               </div>
-            </template>
-            <div class="insight-content" style="text-align: center; padding-top: 20px;">
-              <el-statistic :value="inventoryStats.highRiskBatchCount">
-                <template #title>
-                  <div style="display: inline-flex; align-items: center">
-                    高风险批次总数
-                  </div>
-                </template>
-              </el-statistic>
+              
+              <div class="insight-summary">
+                <el-alert
+                  :title="`超标问题批次:${highRiskBatchCount}个，需要立即处理`"
+                  type="error"
+                  :closable="false"
+                  show-icon
+                />
+              </div>
             </div>
           </el-card>
         </el-col>
@@ -274,7 +349,7 @@
       title="数据生成工具"
       width="70%"
     >
-      <data-generation-panel @generation-complete="refreshData" />
+      <data-generation-panel @generation-complete="handleGenerationComplete" />
     </el-dialog>
 
     <!-- 数据导入对话框 -->
@@ -478,7 +553,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, reactive, onMounted, computed, nextTick } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { 
@@ -503,7 +578,6 @@ import {
 } from 'echarts/components';
 import { BarChart } from 'echarts/charts';
 import { CanvasRenderer } from 'echarts/renderers';
-import { useInventoryAnalysis } from '../composables/useInventoryAnalysis';
 
 // 注册必须的组件
 echarts.use([
@@ -515,24 +589,1023 @@ echarts.use([
   CanvasRenderer
 ]);
 
-const { inventoryStats, labAnalysis, refreshData } = useInventoryAnalysis();
+// 数据生成对话框
+const dataGenerationVisible = ref(false);
 
-const generateDialogVisible = ref(false);
-
-onMounted(() => {
-  refreshData();
+// 数据生成配置对话框
+const generateDataDialogVisible = ref(false);
+const generateDataForm = reactive({
+  baselineCount: 5,
+  projectsPerBaseline: 4,
+  inventoryCount: 50,
+  labTestCount: 80,
+  onlineCount: 60
 });
 
-const getStatusType = (percentage: number) => {
-  if (percentage < 60) return 'exception';
-  if (percentage < 90) return 'warning';
-  return 'success';
+// 数据导入对话框
+const dataImportVisible = ref(false);
+const importForm = reactive({
+  dataType: 'inventory',
+  file: null
+});
+
+// 数据生成对话框相关
+const generationDialogVisible = ref(false);
+const generationProgress = ref(0);
+const generationMessage = ref('');
+const generationInProgress = ref(false);
+
+// 数据验证器
+const { validateAllData } = useDataValidator();
+
+// 数据备份
+const { backupSystemData, restoreSystemData } = useDataBackup();
+
+// 数据概览
+const dataSummary = reactive({
+  materialsCount: 0,
+  testsCount: 0,
+  onlineCount: 0,
+  lastUpdated: '未获取',
+  dataIntegrityPercent: 0,
+  inventoryIntegrity: 0,
+  testIntegrity: 0,
+  onlineIntegrity: 0,
+  baselineIntegrity: 0
+});
+
+// 最近活动
+const recentActivities = ref([
+  {
+    content: '生成了300条库存物料数据',
+    timestamp: '2023-05-15 09:30:22',
+    action: 'generate',
+    type: 'primary',
+    important: false
+  },
+  {
+    content: '执行了数据一致性校验，修复了15个问题',
+    timestamp: '2023-05-14 15:45:10',
+    action: 'validate',
+    type: 'success',
+    important: true
+  },
+  {
+    content: '更新了数据需求定义，修改了批次号格式要求',
+    timestamp: '2023-05-13 11:20:35',
+    action: 'update',
+    type: 'warning',
+    important: false
+  },
+  {
+    content: '备份了系统数据',
+    timestamp: '2023-05-12 17:05:42',
+    action: 'backup',
+    type: 'info',
+    important: false
+  }
+]);
+
+// 计算是否有数据
+const hasData = computed(() => {
+  return dataSummary.materialsCount > 0 || dataSummary.testsCount > 0 || dataSummary.onlineCount > 0;
+});
+
+// 添加快速生成数据相关的变量
+const quickGenOptions = ref({
+  inventory: 50,
+  lab: 30,
+  factory: 20
+});
+
+// 数据清理相关
+const cleanupDialogVisible = ref(false);
+const cleanupOptions = reactive({
+  keepCount: 100
+});
+const storageUsage = ref(null);
+
+// 新增：数据质量分析卡片
+const topDefectMaterials = ref([]);
+const topDefectSuppliers = ref([]);
+const highRiskSupplierPercentage = ref(0);
+const highRiskSupplierCount = ref(0);
+const highRiskBatchCount = ref(0);
+const defectTypesLoading = ref(true);
+const defectTypesData = ref([]);
+const defectTypesChartRef = ref(null);
+const defectTypesChart = ref(null);
+
+// 在组件挂载时加载数据
+onMounted(() => {
+  loadDataSummary();
+  
+  // 获取存储使用情况
+  getStorageUsage();
+  
+  // 监听存储变化
+  window.addEventListener('storage', () => {
+    loadDataSummary();
+    getStorageUsage();
+  });
+});
+
+// 加载数据概览
+function loadDataSummary() {
+  try {
+    // 使用统一数据服务获取数据
+    const inventoryData = unifiedDataService.getInventoryData();
+    const labData = unifiedDataService.getLabData();
+    const onlineData = unifiedDataService.getFactoryData();
+    
+    // 更新数据概览
+    dataSummary.materialsCount = inventoryData.length;
+    dataSummary.testsCount = labData.length;
+    dataSummary.onlineCount = onlineData.length;
+    dataSummary.lastUpdated = new Date().toLocaleString();
+    
+    // 计算数据完整性分数
+    calculateDataIntegrity(inventoryData, labData, onlineData);
+    
+    // 计算TOP5不良物料
+    topDefectMaterials.value = calculateTopDefectMaterials(inventoryData, labData, onlineData);
+    
+    // 计算问题供应商
+    topDefectSuppliers.value = calculateTopDefectSuppliers(inventoryData, labData, onlineData);
+    
+    // 计算高风险供应商
+    highRiskSupplierPercentage.value = calculateHighRiskSupplierPercentage(inventoryData, labData, onlineData);
+    highRiskSupplierCount.value = calculateHighRiskSupplierCount(inventoryData, labData, onlineData);
+    
+    // 计算不良类型统计
+    calculateDefectTypesData(inventoryData, labData, onlineData);
+  } catch (error) {
+    console.error('加载数据概览失败:', error);
+    ElMessage.error('加载数据概览失败');
+  }
+}
+
+// 计算数据完整性分数
+function calculateDataIntegrity(inventoryData, labData, onlineData) {
+  // 简单实现，实际应基于规则进行计算
+  const inventoryScore = calculateModuleIntegrity(inventoryData, ['material_id', 'material_name', 'material_type', 'material_spec', 'batch_no', 'supplier']);
+  const labScore = calculateModuleIntegrity(labData, ['test_id', 'material_id', 'batch_no', 'test_result', 'project_name']);
+  const onlineScore = calculateModuleIntegrity(onlineData, ['online_id', 'material_id', 'batch_no', 'production_line', 'project_name']);
+  
+  dataSummary.inventoryIntegrity = inventoryScore;
+  dataSummary.testIntegrity = labScore;
+  dataSummary.onlineIntegrity = onlineScore;
+  
+  // 综合分数，加权平均
+  dataSummary.dataIntegrityPercent = (
+    inventoryScore * 0.4 + 
+    labScore * 0.3 + 
+    onlineScore * 0.3
+  );
+}
+
+// 计算单个模块的数据完整性分数
+function calculateModuleIntegrity(data, requiredFields) {
+  if (!data.length) return 100; // 没有数据视为完整
+  
+  let totalFields = data.length * requiredFields.length;
+  let validFields = 0;
+  
+  // 统计必填字段的有效值数量
+  for (const item of data) {
+    for (const field of requiredFields) {
+      if (item[field] !== undefined && item[field] !== null && item[field] !== '') {
+        validFields++;
+      }
+    }
+  }
+  
+  return totalFields > 0 ? (validFields / totalFields) * 100 : 100;
+}
+
+// 获取进度条状态类型
+function getStatusType(percentage) {
+  if (percentage >= 90) return 'success';
+  if (percentage >= 70) return 'warning';
+  return 'exception';
+}
+
+// 格式化进度条显示
+function format(percentage) {
+  return percentage === 100 ? '完整' : `${percentage.toFixed(1)}%`;
+}
+
+// 获取活动图标
+function getActivityIcon(action) {
+  switch (action) {
+    case 'generate': return Plus;
+    case 'validate': return Check;
+    case 'update': return Setting;
+    case 'backup': return Download;
+    default: return Document;
+  }
+}
+
+// 打开数据生成工具
+function openDataGeneration() {
+  // 使用新的数据生成对话框
+  generateDataDialogVisible.value = true;
+}
+
+// 显示数据生成对话框
+function showGenerateDataDialog() {
+  generateDataDialogVisible.value = true;
+}
+
+// 生成测试数据
+function generateTestData() {
+  try {
+    // 使用SystemDataUpdater替代TestDataGenerator生成数据
+    const result = systemDataUpdater.initializeSystemData({
+      inventoryCount: generateDataForm.inventoryCount,
+      labTestCount: generateDataForm.labTestCount,
+      factoryCount: generateDataForm.onlineCount,
+      clearExisting: true
+    });
+    
+    // 关闭对话框
+    generateDataDialogVisible.value = false;
+    
+    // 显示结果提示
+    ElMessage.success(`成功生成测试数据集`);
+    
+    // 添加操作记录
+    addActivityRecord(`生成了完整测试数据集`, 'generate');
+    
+    // 刷新数据概览
+    loadDataSummary();
+  } catch (error) {
+    console.error('生成测试数据失败:', error);
+    ElMessage.error('生成测试数据失败');
+  }
+}
+
+// 处理数据生成完成事件
+function handleGenerationComplete(result) {
+  // 关闭对话框
+  dataGenerationVisible.value = false;
+  
+  // 显示结果提示
+  ElMessage.success(`成功生成 ${result.count} 条${result.type}数据`);
+  
+  // 添加操作记录
+  addActivityRecord(`生成了${result.count}条${result.typeName}数据`, 'generate');
+  
+  // 刷新数据概览
+  loadDataSummary();
+}
+
+// 打开数据导入对话框
+function openDataImport() {
+  dataImportVisible.value = true;
+}
+
+// 处理文件选择
+function handleFileChange(file) {
+  importForm.file = file;
+}
+
+// 导入数据
+function importData() {
+  if (!importForm.file) {
+    ElMessage.warning('请选择要导入的文件');
+    return;
+  }
+  
+  // 读取文件内容
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      // 解析文件内容
+      const data = importForm.file.raw.name.endsWith('.json')
+        ? JSON.parse(e.target.result)
+        : parseCSV(e.target.result);
+      
+      let success = false;
+      
+      // 使用UnifiedDataService存储数据，而不是直接操作localStorage
+      if (importForm.dataType === 'inventory' || importForm.dataType === 'all') {
+        const inventoryData = data.inventory || data;
+        success = unifiedDataService.saveInventoryData(inventoryData, true);
+      }
+      
+      if (importForm.dataType === 'lab' || importForm.dataType === 'all') {
+        const labData = data.lab || data;
+        success = unifiedDataService.saveLabData(labData, true);
+      }
+      
+      if (importForm.dataType === 'online' || importForm.dataType === 'all') {
+        const onlineData = data.online || data;
+        success = unifiedDataService.saveFactoryData(onlineData, true);
+      }
+      
+      // 关闭对话框
+      dataImportVisible.value = false;
+      
+      if (success) {
+      // 显示结果提示
+      ElMessage.success('数据导入成功');
+      
+      // 添加操作记录
+      addActivityRecord(`导入了${importForm.dataType === 'all' ? '完整' : importForm.dataType}数据文件`, 'import');
+      
+      // 刷新数据概览
+      loadDataSummary();
+      } else {
+        ElMessage.error('导入数据失败，请检查数据格式');
+      }
+    } catch (error) {
+      console.error('导入数据失败:', error);
+      ElMessage.error('导入数据失败，请检查文件格式');
+    }
+  };
+  
+  reader.readAsText(importForm.file.raw);
+}
+
+// CSV解析(简单实现)
+function parseCSV(text) {
+  // 实际应用中应使用更完善的CSV解析库
+  const lines = text.split('\n');
+  const headers = lines[0].split(',');
+  const results = [];
+  
+  for (let i = 1; i < lines.length; i++) {
+    const data = lines[i].split(',');
+    if (data.length === headers.length) {
+      const item = {};
+      for (let j = 0; j < headers.length; j++) {
+        item[headers[j]] = data[j];
+      }
+      results.push(item);
+    }
+  }
+  
+  return results;
+}
+
+// 备份数据
+function backupData() {
+  try {
+    // 使用统一数据服务获取所有数据
+    const allData = {
+      baseline: JSON.parse(localStorage.getItem('baseline_data') || '[]'), // 基线数据暂时仍从localStorage获取
+      inventory: unifiedDataService.getInventoryData(),
+      lab: unifiedDataService.getLabData(),
+      online: unifiedDataService.getFactoryData()
+    };
+    
+    // 使用备份服务
+    const backupResult = backupSystemData(allData);
+    
+    if (backupResult.success) {
+      // 添加操作记录
+      addActivityRecord('备份了系统数据', 'backup');
+      
+      ElMessage.success('数据备份成功');
+    } else {
+      ElMessage.error(`备份失败: ${backupResult.error}`);
+    }
+    
+  } catch (error) {
+    console.error('备份数据失败:', error);
+    ElMessage.error('备份数据失败');
+  }
+}
+
+// 确认清空数据
+function confirmClearData() {
+  ElMessageBox.confirm(
+    '确定要清空所有测试数据吗？此操作不可撤销。',
+    '警告',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  )
+  .then(() => {
+    clearData();
+  })
+  .catch(() => {
+    // 用户取消操作，不做处理
+  });
+}
+
+// 清空数据
+function clearData() {
+  try {
+    // 使用UnifiedDataService清空所有数据
+    const success = unifiedDataService.clearAllData();
+    
+    if (success) {
+      // 刷新数据概览
+      loadDataSummary();
+      
+      // 添加操作记录
+      addActivityRecord('清空了所有测试数据', 'delete', 'danger', true);
+      
+      ElMessage.success('数据已清空');
+    } else {
+      throw new Error('清空数据失败');
+    }
+  } catch (error) {
+    console.error('清空数据失败:', error);
+    ElMessage.error('清空数据失败');
+  }
+}
+
+// 添加操作记录
+function addActivityRecord(content, action, type = 'primary', important = false) {
+  recentActivities.value.unshift({
+    content,
+    timestamp: new Date().toLocaleString(),
+    action,
+    type,
+    important
+  });
+  
+  // 限制记录数量
+  if (recentActivities.value.length > 10) {
+    recentActivities.value = recentActivities.value.slice(0, 10);
+  }
+}
+
+// 快速生成库存数据
+async function generateInventoryData() {
+  try {
+    ElMessage.info(`正在生成${quickGenOptions.value.inventory}条库存数据...`);
+    
+    const result = await systemDataUpdater.generateInventoryData(
+      quickGenOptions.value.inventory,
+      false // 不清空现有数据
+    );
+    
+    if (result && result.success) {
+      ElMessage.success(`成功生成${result.count}条库存数据`);
+      // 添加操作记录
+      addActivityRecord(`生成了${result.count}条库存数据`, 'generate');
+      updateDataSummary();
+    } else {
+      ElMessage.error(`库存数据生成失败: ${result && result.message ? result.message : '未知错误'}`);
+    }
+  } catch (error) {
+    console.error('生成库存数据时出错:', error);
+    ElMessage.error(`生成库存数据时出错: ${error.message}`);
+  }
+}
+
+// 快速生成测试数据
+async function generateLabData() {
+  try {
+    const count = parseInt(quickGenOptions.value.lab);
+    if (isNaN(count) || count <= 0) {
+      ElMessage.warning('请输入有效的数据生成数量');
+      return;
+    }
+    
+    ElMessage.info(`正在生成${count}条测试数据...`);
+    
+    const result = await systemDataUpdater.generateLabData(
+      count,
+      false // 不清空现有数据
+    );
+    
+    if (result && result.success) {
+      ElMessage.success(`成功生成${result.count}条测试数据`);
+      // 添加操作记录
+      addActivityRecord(`生成了${result.count}条测试数据`, 'generate');
+      
+      // 添加调试日志
+      console.log('测试数据生成成功:', result);
+      console.log('测试数据可以在LabView页面查看');
+      
+      // 更新数据概览
+      updateDataSummary();
+      
+      // 提示用户刷新测试页面
+      ElMessage({
+        message: '请刷新测试页面查看新生成的数据',
+        type: 'info',
+        duration: 5000
+      });
+    } else {
+      ElMessage.error(`测试数据生成失败: ${result && result.message ? result.message : '未知错误'}`);
+    }
+  } catch (error) {
+    console.error('生成测试数据时出错:', error);
+    ElMessage.error(`生成测试数据时出错: ${error.message}`);
+  }
+}
+
+// 快速生成工厂数据
+async function generateFactoryData() {
+  try {
+    const count = parseInt(quickGenOptions.value.factory);
+    if (isNaN(count) || count <= 0) {
+      ElMessage.warning('请输入有效的数据生成数量');
+      return;
+    }
+    
+    ElMessage.info(`正在生成${count}条工厂数据...`);
+    
+    const result = await systemDataUpdater.generateFactoryData(
+      count,
+      false // 不清空现有数据
+    );
+    
+    if (result && result.success) {
+      ElMessage.success(`成功生成${result.count}条工厂数据`);
+      // 添加操作记录
+      addActivityRecord(`生成了${result.count}条工厂数据`, 'generate');
+      updateDataSummary();
+    } else {
+      ElMessage.error(`工厂数据生成失败: ${result && result.message ? result.message : '未知错误'}`);
+    }
+  } catch (error) {
+    console.error('生成工厂数据时出错:', error);
+    ElMessage.error(`生成工厂数据时出错: ${error.message}`);
+  }
+}
+
+// 更新数据概览
+function updateDataSummary() {
+  loadDataSummary();
+}
+
+// 完成数据生成
+const completeGeneration = () => {
+  generationDialogVisible.value = false;
+  generationProgress.value = 0;
+  generationMessage.value = '';
 };
 
-// Placeholder functions for actions that are not implemented in this refactoring
-const openDataImport = () => ElMessage.info('导入功能待实现');
-const backupData = () => ElMessage.info('备份功能待实现');
+// 格式化不良率显示
+function formatDefectRate(rate) {
+  if (rate === undefined || rate === null) return '0.0%';
+  if (typeof rate === 'string' && rate.includes('%')) return rate;
+  return `${Number(rate).toFixed(1)}%`;
+}
 
+// 获取不良率对应的标签类型
+function getDefectRateTagType(rate) {
+  const defectRate = typeof rate === 'string' ? parseFloat(rate) : rate;
+  if (defectRate >= 5) return 'danger';
+  if (defectRate >= 2) return 'warning';
+  return 'success';
+}
+
+// 获取存储使用情况
+function getStorageUsage() {
+  storageUsage.value = unifiedDataService.getStorageUsage();
+}
+
+// 确认清理数据
+function confirmCleanupData() {
+  ElMessageBox.confirm(
+    `确定要清理旧数据吗？将只保留每种数据最新的${cleanupOptions.keepCount}条记录，其余数据将被删除。`,
+    '确认清理',
+    {
+      confirmButtonText: '确认',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(() => {
+    cleanupData();
+  }).catch(() => {
+    // 用户取消操作
+  });
+}
+
+// 执行数据清理
+async function cleanupData() {
+  try {
+    const result = unifiedDataService.cleanupOldData(cleanupOptions.keepCount);
+    
+    if (result) {
+      ElMessage.success('数据清理成功');
+      // 添加操作记录
+      addActivityRecord(`清理了旧数据，保留每种数据最新的${cleanupOptions.keepCount}条`, 'cleanup');
+      // 更新数据概览
+      updateDataSummary();
+      // 更新存储使用情况
+      getStorageUsage();
+    } else {
+      ElMessage.error('数据清理失败');
+    }
+    
+    cleanupDialogVisible.value = false;
+  } catch (error) {
+    console.error('数据清理出错:', error);
+    ElMessage.error(`数据清理出错: ${error.message}`);
+  }
+}
+
+// 计算TOP5不良物料
+function calculateTopDefectMaterials(inventoryData, labData, onlineData) {
+  try {
+    // 合并实验室测试和上线数据中的不良情况
+    const materialDefects = new Map();
+    
+    // 处理实验室测试数据
+    labData.forEach(item => {
+      const materialName = item.materialName || item.material_name;
+      if (!materialName) return;
+      
+      // 检查是否为不良品
+      const isDefect = item.result === '不合格' || item.status === '不合格';
+      
+      if (!materialDefects.has(materialName)) {
+        materialDefects.set(materialName, {
+          materialName: materialName,
+          totalCount: 0,
+          defectCount: 0,
+          defectRate: 0
+        });
+      }
+      
+      const data = materialDefects.get(materialName);
+      data.totalCount++;
+      if (isDefect) data.defectCount++;
+    });
+    
+    // 处理上线数据
+    onlineData.forEach(item => {
+      const materialName = item.materialName || item.material_name;
+      if (!materialName) return;
+      
+      if (!materialDefects.has(materialName)) {
+        materialDefects.set(materialName, {
+          materialName: materialName,
+          totalCount: 0,
+          defectCount: 0,
+          defectRate: 0
+        });
+      }
+      
+      const data = materialDefects.get(materialName);
+      data.totalCount++;
+      
+      // 检查是否有不良描述或不良现象
+      if (item.defectDescription || (item.defectType && item.defectType !== '无') || item.hasDefect === true) {
+        data.defectCount++;
+      }
+    });
+    
+    // 计算不良率并转换为数组
+    const result = Array.from(materialDefects.values()).map(item => {
+      item.defectRate = item.totalCount > 0 ? (item.defectCount / item.totalCount) * 100 : 0;
+      return item;
+    });
+    
+    // 按不良率排序并取TOP5
+    return result
+      .filter(item => item.totalCount >= 5)  // 至少有5个样本
+      .sort((a, b) => b.defectRate - a.defectRate)
+      .slice(0, 5);
+  } catch (error) {
+    console.error('计算TOP5不良物料失败:', error);
+    return [];
+  }
+}
+
+// 计算问题供应商
+function calculateTopDefectSuppliers(inventoryData, labData, onlineData) {
+  try {
+    // 创建供应商-物料映射
+    const supplierMaterialMap = new Map();
+    
+    // 从库存数据获取供应商-物料映射关系
+    inventoryData.forEach(item => {
+      const supplier = item.supplier;
+      const material = item.materialName || item.material_name;
+      
+      if (!supplier || !material) return;
+      
+      if (!supplierMaterialMap.has(supplier)) {
+        supplierMaterialMap.set(supplier, new Set());
+      }
+      
+      supplierMaterialMap.get(supplier).add(material);
+    });
+    
+    // 合并测试和上线数据中的不良情况
+    const supplierDefects = new Map();
+    
+    // 处理测试数据
+    labData.forEach(item => {
+      const supplier = item.supplier;
+      if (!supplier) return;
+      
+      const isDefect = item.result === '不合格' || item.status === '不合格';
+      
+      if (!supplierDefects.has(supplier)) {
+        supplierDefects.set(supplier, {
+          supplierName: supplier,
+          totalCount: 0,
+          defectCount: 0,
+          defectRate: 0,
+          materialCount: supplierMaterialMap.has(supplier) ? supplierMaterialMap.get(supplier).size : 0
+        });
+      }
+      
+      const data = supplierDefects.get(supplier);
+      data.totalCount++;
+      if (isDefect) data.defectCount++;
+    });
+    
+    // 处理上线数据
+    onlineData.forEach(item => {
+      const supplier = item.supplier;
+      if (!supplier) return;
+      
+      if (!supplierDefects.has(supplier)) {
+        supplierDefects.set(supplier, {
+          supplierName: supplier,
+          totalCount: 0,
+          defectCount: 0,
+          defectRate: 0,
+          materialCount: supplierMaterialMap.has(supplier) ? supplierMaterialMap.get(supplier).size : 0
+        });
+      }
+      
+      const data = supplierDefects.get(supplier);
+      data.totalCount++;
+      
+      // 检查是否有不良描述或不良现象
+      if (item.defectDescription || (item.defectType && item.defectType !== '无') || item.hasDefect === true) {
+        data.defectCount++;
+      }
+    });
+    
+    // 计算不良率并转换为数组
+    const result = Array.from(supplierDefects.values()).map(item => {
+      item.defectRate = item.totalCount > 0 ? (item.defectCount / item.totalCount) * 100 : 0;
+      return item;
+    });
+    
+    // 按不良率排序并取TOP5
+    return result
+      .filter(item => item.totalCount >= 3)  // 至少有3个样本
+      .sort((a, b) => b.defectRate - a.defectRate)
+      .slice(0, 5);
+  } catch (error) {
+    console.error('计算问题供应商失败:', error);
+    return [];
+  }
+}
+
+// 计算高风险供应商比例
+function calculateHighRiskSupplierPercentage(inventoryData, labData, onlineData) {
+  try {
+    // 获取所有供应商
+    const allSuppliers = new Set();
+    const highRiskSuppliers = new Set();
+    
+    // 合并数据获取供应商不良率
+    const supplierDefects = calculateTopDefectSuppliers(inventoryData, labData, onlineData);
+    
+    supplierDefects.forEach(item => {
+      allSuppliers.add(item.supplierName);
+      // 不良率超过5%视为高风险
+      if (item.defectRate > 5) {
+        highRiskSuppliers.add(item.supplierName);
+      }
+    });
+    
+    // 如果没有供应商数据，返回0
+    if (allSuppliers.size === 0) return 0;
+    
+    // 计算高风险供应商占比
+    return (highRiskSuppliers.size / allSuppliers.size) * 100;
+  } catch (error) {
+    console.error('计算高风险供应商比例失败:', error);
+    return 0;
+  }
+}
+
+// 计算高风险供应商数量
+function calculateHighRiskSupplierCount(inventoryData, labData, onlineData) {
+  try {
+    // 获取所有高风险供应商
+    const highRiskSuppliers = new Set();
+    
+    // 合并数据获取供应商不良率
+    const supplierDefects = calculateTopDefectSuppliers(inventoryData, labData, onlineData);
+    
+    supplierDefects.forEach(item => {
+      // 不良率超过5%视为高风险
+      if (item.defectRate > 5) {
+        highRiskSuppliers.add(item.supplierName);
+      }
+    });
+    
+    return highRiskSuppliers.size;
+  } catch (error) {
+    console.error('计算高风险供应商数量失败:', error);
+    return 0;
+  }
+}
+
+// 计算不良类型统计
+function calculateDefectTypesData(inventoryData, labData, onlineData) {
+  try {
+    defectTypesLoading.value = true;
+    // 统计不良类型频率
+    const defectTypesMap = new Map();
+    
+    // 从测试数据和上线数据中收集不良类型
+    const collectDefectTypes = (data) => {
+      data.forEach(item => {
+        // 提取不良类型
+        let defectType = item.defectType || item.defect_type;
+        
+        // 如果没有明确的不良类型，尝试从描述中提取
+        if (!defectType && item.defectDescription) {
+          // 简单的分词提取关键词作为不良类型
+          const keywords = ['划伤', '破裂', '变形', '污渍', '漏光', '断裂', '异常', '偏色', '鼓包', '漏液'];
+          for (const keyword of keywords) {
+            if (item.defectDescription.includes(keyword)) {
+              defectType = keyword;
+              break;
+            }
+          }
+        }
+        
+        // 如果还是没有不良类型，但标记为不合格，归类为"其他"
+        if ((!defectType || defectType === '无') && 
+            (item.result === '不合格' || item.status === '不合格' || item.hasDefect === true)) {
+          defectType = '其他';
+        }
+        
+        // 统计不良类型
+        if (defectType && defectType !== '无') {
+          const count = defectTypesMap.get(defectType) || 0;
+          defectTypesMap.set(defectType, count + 1);
+        }
+      });
+    };
+    
+    collectDefectTypes(labData);
+    collectDefectTypes(onlineData);
+    
+    // 转换为图表数据格式
+    const result = Array.from(defectTypesMap.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8); // 取前8种不良类型
+    
+    defectTypesData.value = result;
+    defectTypesLoading.value = false;
+    
+    // 计算超标批次数量
+    calculateHighRiskBatches(labData, onlineData);
+    
+    // 初始化图表
+    nextTick(() => {
+      if (defectTypesChart.value && defectTypesData.value.length > 0) {
+        initDefectTypesChart();
+      }
+    });
+    
+  } catch (error) {
+    console.error('计算不良类型统计失败:', error);
+    defectTypesLoading.value = false;
+    defectTypesData.value = [];
+  }
+}
+
+// 计算超标批次数量
+function calculateHighRiskBatches(labData, onlineData) {
+  try {
+    // 批次不良率映射
+    const batchDefectMap = new Map();
+    
+    // 统计每个批次的测试总数和不良数
+    const processBatchData = (data) => {
+      data.forEach(item => {
+        const batchNo = item.batchNo || item.batch_no;
+        if (!batchNo) return;
+        
+        if (!batchDefectMap.has(batchNo)) {
+          batchDefectMap.set(batchNo, { total: 0, defect: 0 });
+        }
+        
+        const batchData = batchDefectMap.get(batchNo);
+        batchData.total++;
+        
+        // 检查是否不良
+        if (item.result === '不合格' || item.status === '不合格' || 
+            item.defectDescription || 
+            (item.defectType && item.defectType !== '无') || 
+            item.hasDefect === true) {
+          batchData.defect++;
+        }
+      });
+    };
+    
+    processBatchData(labData);
+    processBatchData(onlineData);
+    
+    // 计算超标批次数量（不良率超过5%且至少有5个样本）
+    let highRiskCount = 0;
+    batchDefectMap.forEach((data, batchNo) => {
+      if (data.total >= 5 && (data.defect / data.total) > 0.05) {
+        highRiskCount++;
+      }
+    });
+    
+    highRiskBatchCount.value = highRiskCount;
+  } catch (error) {
+    console.error('计算超标批次数量失败:', error);
+    highRiskBatchCount.value = 0;
+  }
+}
+
+// 初始化不良类型图表
+function initDefectTypesChart() {
+  // 确保已加载echarts
+  if (!echarts) {
+    console.error('未加载echarts库');
+    return;
+  }
+
+  // 确保DOM元素存在
+  if (!defectTypesChartRef.value) {
+    console.error('找不到图表DOM元素');
+    return;
+  }
+
+  // 初始化图表
+  const chart = echarts.init(defectTypesChartRef.value);
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow'
+      }
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '8%',
+      top: '8%',
+      containLabel: true
+    },
+    xAxis: [
+      {
+        type: 'category',
+        data: defectTypesData.value.map(item => item.name),
+        axisTick: {
+          alignWithLabel: true
+        },
+        axisLabel: {
+          interval: 0,
+          rotate: 30
+        }
+      }
+    ],
+    yAxis: [
+      {
+        type: 'value',
+        name: '次数'
+      }
+    ],
+    series: [
+      {
+        name: '出现次数',
+        type: 'bar',
+        barWidth: '60%',
+        data: defectTypesData.value.map(item => ({
+          value: item.value,
+          itemStyle: {
+            color: item.value > 10 ? '#F56C6C' : (item.value > 5 ? '#E6A23C' : '#67C23A')
+          }
+        })),
+        label: {
+          show: true,
+          position: 'top'
+        }
+      }
+    ]
+  };
+  
+  // 设置图表选项
+  chart.setOption(option);
+  
+  // 保存图表实例
+  defectTypesChart.value = chart;
+  
+  // 监听窗口大小变化
+  window.addEventListener('resize', () => {
+    chart.resize();
+  });
+}
 </script>
 
 <style scoped>
