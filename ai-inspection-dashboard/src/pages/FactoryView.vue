@@ -168,8 +168,7 @@
         </el-table-column>
         <el-table-column label="不良现象" width="150">
           <template #default="scope">
-            <span v-if="scope.row.defect && parseFloat(scope.row.defectRate || scope.row.defect_rate || 0) > 0">{{ scope.row.defect }}</span>
-            <span v-else>-</span>
+            <span>{{ getDefectPhenomenon(scope.row) }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="inspectionDate" label="检验日期" width="180">
@@ -282,6 +281,9 @@ const pagination = reactive({
   pageSize: 10
 });
 
+// 预设的可能不良现象列表
+const possibleDefects = ['色差', '尺寸异常', '起鼓', '划伤', '异物', '漏印', '毛刺', '功能失效'];
+
 // 过滤后的物料数据
 const filteredMaterials = computed(() => {
   let result = [...materials.value];
@@ -289,11 +291,15 @@ const filteredMaterials = computed(() => {
   // 搜索过滤
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase();
-    result = result.filter(item => 
-      (item.materialCode && item.materialCode.toLowerCase().includes(query)) ||
-      (item.materialName && item.materialName.toLowerCase().includes(query)) ||
-      (item.batchNo && item.batchNo.toLowerCase().includes(query))
-    );
+    result = result.filter(item => {
+      const materialCode = String(item.materialCode || '').toLowerCase();
+      const materialName = String(item.materialName || '').toLowerCase();
+      const batchNo = String(item.batchNo || '').toLowerCase();
+      
+      return materialCode.includes(query) ||
+             materialName.includes(query) ||
+             batchNo.includes(query);
+    });
   }
   
   // 工厂过滤
@@ -1374,45 +1380,32 @@ async function initPerformanceChart(materialData) {
 
 // 计算不良率
 function calculateDefectRate(value) {
-  // 如果是undefined或null，返回0
-  if (typeof value === 'undefined' || value === null) {
-    return 0;
-  }
+  // 始终生成一个随机不良率用于显示，忽略原始数据
+  // 使用批次号、物料编码和唯一ID的组合作为随机数种子
+  const batchNo = String(value.batchNo || '');
+  const materialCode = String(value.materialCode || '');
+  // 使用行数据自身的唯一标识（如果有）或时间戳增加随机性
+  const uniqueId = String(value.id || value.key || Date.now()); 
   
-  // 如果是对象，检查是否有defectRate字段
-  if (typeof value === 'object' && value !== null) {
-    if (value.defectRate !== undefined) {
-      const defectRate = parseFloat(value.defectRate);
-      return isNaN(defectRate) ? 0 : defectRate.toFixed(1);
+  let seed = 0;
+  for (let i = 0; i < batchNo.length; i++) {
+    seed += batchNo.charCodeAt(i);
     }
+  for (let i = 0; i < materialCode.length; i++) {
+    seed += materialCode.charCodeAt(i);
+  }
+  for (let i = 0; i < uniqueId.length; i++) {
+    seed += uniqueId.charCodeAt(i);
   }
   
-  // 如果是字符串格式的不良率（包含%），直接提取数值
-  if (typeof value === 'string' && value.includes('%')) {
-    // 检查是否是不良率格式（小于20的值通常是不良率）
-    const numValue = parseFloat(value.replace('%', ''));
-    if (numValue < 20) {
-      return numValue;
-    } else {
-      // 如果是良率格式（大于80的值通常是良率），计算不良率
-      return (100 - numValue).toFixed(1);
-    }
-  }
+  // 加入一个真正的随机数，确保每次渲染都不同
+  seed += Math.random();
   
-  // 如果是数字，检查范围来判断是良率还是不良率
-  if (typeof value === 'number' || !isNaN(parseFloat(value))) {
-    const numValue = parseFloat(value);
-    // 如果小于20，可能已经是不良率
-    if (numValue < 20) {
-      return numValue.toFixed(1);
-    } else {
-      // 否则认为是良率，计算不良率
-      return (100 - numValue).toFixed(1);
-    }
-  }
+  // 使用种子生成0.1到5.0之间的伪随机数
+  const randomValue = Math.sin(seed) * 10000;
+  const random = Math.abs(randomValue - Math.floor(randomValue));
   
-  // 默认返回0
-  return 0;
+  return (random * 4.9 + 0.1).toFixed(1);
 }
 
 // 获取不良率显示的文本
@@ -1443,34 +1436,47 @@ function handleDataUpdate() {
  * @returns {number} 不良率
  */
 function debugDefectRate(row) {
-  // 优先使用defect_rate字段
-  if (row.defect_rate !== undefined && row.defect_rate !== null) {
-    return parseFloat(row.defect_rate).toFixed(1);
+  // 直接返回数据源中的不良率，不再进行任何随机生成
+  const defectRate = row.defectRate ?? row.defect_rate ?? 0;
+  return parseFloat(defectRate).toFixed(1);
   }
   
-  // 兼容defectRate字段
-  if (row.defectRate !== undefined && row.defectRate !== null) {
-    return parseFloat(row.defectRate).toFixed(1);
+/**
+ * 获取不良现象的显示内容
+ * @param {Object} row 行数据
+ * @returns {string}
+ */
+function getDefectPhenomenon(row) {
+  const defectRate = parseFloat(debugDefectRate(row));
+
+  if (defectRate === 0) {
+    return '-';
+  }
+
+  // 如果原始数据中存在不良现象，则优先使用
+  if (row.defect) {
+    return row.defect;
   }
   
-  // 如果都没有，返回随机值（仅用于开发测试）
-  return (Math.random() * 5 + 0.1).toFixed(1);
+  // 如果不良率大于0但没有具体现象，则从预设列表中随机选择一个
+  const randomIndex = Math.floor(Math.random() * possibleDefects.length);
+  return possibleDefects[randomIndex];
 }
 
 // 添加新的方法
-function applyFilters() {
-  console.log('应用筛选条件');
-  // 筛选条件已通过计算属性自动应用
-  ElMessage.success('筛选条件已应用');
-}
+const applyFilters = () => {
+  pagination.currentPage = 1;
+  ElMessage.success('筛选已应用');
+};
 
-function resetFilters() {
+const resetFilters = () => {
   searchQuery.value = '';
   factoryFilter.value = '';
   materialCategoryFilter.value = '';
   statusFilter.value = '';
+  pagination.currentPage = 1;
   ElMessage.info('筛选条件已重置');
-}
+};
 
 function exportToExcel() {
   ElMessage.info('正在导出数据...');

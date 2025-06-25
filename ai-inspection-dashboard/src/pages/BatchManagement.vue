@@ -11,10 +11,7 @@
           <el-icon><Refresh /></el-icon>
           刷新数据
             </el-button>
-        <el-button type="success" @click="showAddBatchDialog">
-          <el-icon><Plus /></el-icon>
-          新增批次
-            </el-button>
+        
           </div>
         </div>
       
@@ -106,9 +103,16 @@
           {{ formatDate(scope.row.created_date) }}
           </template>
         </el-table-column>
-      <el-table-column label="不良率" width="100" sortable>
+      <el-table-column prop="line_exceptions" label="产线异常" sortable width="120">
           <template #default="scope">
-          <span :class="getDefectRateTextClass(scope.row.defect_rate)">{{ (scope.row.defect_rate * 100).toFixed(2) }}%</span>
+          <el-tag v-if="scope.row.line_exceptions > 0" type="danger">{{ scope.row.line_exceptions }}</el-tag>
+          <span v-else>0</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="test_exceptions" label="测试异常" sortable width="120">
+        <template #default="scope">
+          <el-tag v-if="scope.row.test_exceptions > 0" type="warning">{{ scope.row.test_exceptions }}</el-tag>
+          <span v-else>0</span>
         </template>
       </el-table-column>
       <el-table-column label="批次状态" width="120">
@@ -118,21 +122,19 @@
             </el-tag>
           </template>
         </el-table-column>
-      <el-table-column label="风险评级" width="100">
-          <template #default="scope">
-          <el-tag :type="getRiskTagType(scope.row.risk_level)" effect="dark" size="small">
-              {{ getRiskLevelText(scope.row.risk_level) }}
-            </el-tag>
-          </template>
-        </el-table-column>
       <el-table-column label="操作" width="220" fixed="right">
           <template #default="scope">
             <div class="table-actions">
             <el-button type="primary" link size="small" @click="viewBatchDetail(scope.row)">
                 详情
               </el-button>
-            <el-button type="warning" link size="small" @click="editBatch(scope.row)">
-                编辑
+            <el-button 
+              type="warning" 
+              link 
+              size="small" 
+              @click="showRiskAnalysis(scope.row)"
+            >
+              风险分析
               </el-button>
             <el-button type="info" link size="small" @click="showTraceability(scope.row)">
                 追溯
@@ -158,58 +160,6 @@
           @current-change="handleCurrentChange"
         />
       </div>
-    
-    <!-- 批次创建对话框 -->
-    <el-dialog
-      v-model="dialogVisible"
-      title="添加新批次"
-      width="50%"
-    >
-      <el-form ref="batchForm" :model="batchForm" :rules="rules" label-width="120px">
-        <el-form-item label="物料编码" prop="material_code">
-          <el-input v-model="batchForm.material_code" />
-        </el-form-item>
-        <el-form-item label="物料名称" prop="material_name">
-          <el-input v-model="batchForm.material_name" />
-        </el-form-item>
-        <el-form-item label="供应商" prop="supplier_id">
-          <el-select v-model="batchForm.supplier_id" placeholder="选择供应商">
-            <el-option 
-              v-for="supplier in suppliers" 
-              :key="supplier.id" 
-              :label="supplier.name" 
-              :value="supplier.id" 
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="数量" prop="quantity">
-          <el-input-number v-model="batchForm.quantity" :min="1" :max="10000" />
-        </el-form-item>
-        <el-form-item label="生产日期" prop="production_date">
-          <el-date-picker
-            v-model="batchForm.production_date"
-            type="date"
-            placeholder="选择生产日期"
-            format="YYYY-MM-DD"
-            value-format="YYYY-MM-DD"
-          />
-        </el-form-item>
-        <el-form-item label="批次备注" prop="notes">
-          <el-input 
-            type="textarea" 
-            v-model="batchForm.notes"
-            rows="3"
-            placeholder="请输入批次的其他信息"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="submitBatchForm">确认</el-button>
-        </span>
-      </template>
-    </el-dialog>
     
     <!-- 批次详情对话框 -->
     <el-dialog
@@ -815,7 +765,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, inject, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, watch, inject } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 // 导入测试数据和物料批次数据
@@ -824,6 +774,8 @@ import axios from 'axios'
 import * as echarts from 'echarts'
 import { Plus, Refresh, Download, Search, Edit, Delete, View, Warning, Check, Close } from '@element-plus/icons-vue'
 import { materialCategories } from '../data/material_categories.js'
+import BatchService from '../services/BatchService'
+// import unifiedDataService from '../services/UnifiedDataService'
 
 const router = useRouter()
 
@@ -831,13 +783,7 @@ const router = useRouter()
 const unifiedDataService = inject('unifiedDataService')
 
 // 供应商列表
-const suppliers = [
-  { id: 1, name: '富士康科技集团' },
-  { id: 2, name: '欧菲光科技集团' },
-  { id: 3, name: '蓝思科技股份' },
-  { id: 4, name: '立讯精密工业' },
-  { id: 5, name: '富宇科技股份' }
-]
+const suppliers = ref([])
 
 // 物料-供应商匹配关系
 const materialSupplierMap = {
@@ -870,7 +816,7 @@ function getSupplierIdByMaterialCode(materialCode) {
 
 // 根据供应商ID获取供应商名称
 function getSupplierNameById(supplierId) {
-  const supplier = suppliers.find(s => s.id === supplierId);
+  const supplier = suppliers.value.find(s => s.id === supplierId);
   return supplier ? supplier.name : '未知供应商';
 }
 
@@ -906,36 +852,6 @@ const filters = ref({
   keyword: '',
   sortBy: 'createdDesc'
 })
-
-// 新批次表单
-const batchForm = ref({
-  material_code: '',
-  material_name: '',
-  supplier_id: '',
-  quantity: 100,
-  production_date: '',
-  notes: ''
-})
-
-// 表单验证规则
-const rules = {
-  material_code: [
-    { required: true, message: '请输入物料编码', trigger: 'blur' },
-    { min: 3, max: 20, message: '长度在 3 到 20 个字符', trigger: 'blur' }
-  ],
-  material_name: [
-    { required: true, message: '请输入物料名称', trigger: 'blur' }
-  ],
-  supplier_id: [
-    { required: true, message: '请选择供应商', trigger: 'change' }
-  ],
-  quantity: [
-    { required: true, message: '请输入数量', trigger: 'blur' }
-  ],
-  production_date: [
-    { required: true, message: '请选择生产日期', trigger: 'change' }
-  ]
-}
 
 // 批次追溯活动记录
 const batchActivities = ref([
@@ -991,185 +907,6 @@ const relatedProducts = ref([
     status: 'in_progress'
   }
 ])
-
-// 生成模拟批次数据
-function generateBatchData() {
-  const result = [];
-  
-  // 模拟与截图中相同的数据格式
-  const sampleData = [
-    {
-      id: 1,
-      batch_id: 'B2023002',
-      material_code: 'M1004002',
-      material_name: '连接器元件',
-      category_id: 4,
-      category_name: '连接器',
-      supplier_id: 1,
-      supplier_name: '富宇科技股份',
-      quantity: 552,
-      created_date: '2025-06-22',
-      production_date: '2025-06-15',
-      defect_rate: 0.0065,
-      status: 'passed',
-      risk_level: 'low',
-      notes: '正常批次'
-    },
-    {
-      id: 2,
-      batch_id: 'B2023062',
-      material_code: 'M1001062',
-      material_name: '结构件元件',
-      category_id: 2,
-      category_name: '结构件',
-      supplier_id: 2,
-      supplier_name: '欧菲光科技集团',
-      quantity: 550,
-      created_date: '2025-06-21',
-      production_date: '2025-06-14',
-      defect_rate: 0.0107,
-      status: 'passed',
-      risk_level: 'medium',
-      notes: '有条件接收批次'
-    },
-    {
-      id: 3,
-      batch_id: 'B2023090',
-      material_code: 'M1004090',
-      material_name: '连接器组件',
-      category_id: 4,
-      category_name: '连接器',
-      supplier_id: 2,
-      supplier_name: '欧菲光科技集团',
-      quantity: 657,
-      created_date: '2025-06-21',
-      production_date: '2025-06-14',
-      defect_rate: 0.0249,
-      status: 'rejected',
-      risk_level: 'high',
-      notes: '不良率超标'
-    },
-    {
-      id: 4,
-      batch_id: 'B2023063',
-      material_code: 'M1001063',
-      material_name: '结构件组件',
-      category_id: 2,
-      category_name: '结构件',
-      supplier_id: 2,
-      supplier_name: '欧菲光科技集团',
-      quantity: 244,
-      created_date: '2025-06-20',
-      production_date: '2025-06-13',
-      defect_rate: 0.0066,
-      status: 'passed',
-      risk_level: 'low',
-      notes: '正常批次'
-    },
-    {
-      id: 5,
-      batch_id: 'B2023038',
-      material_code: 'M1007038',
-      material_name: '其他元件',
-      category_id: 7,
-      category_name: '其他',
-      supplier_id: 3,
-      supplier_name: '富士康科技集团',
-      quantity: 497,
-      created_date: '2025-06-18',
-      production_date: '2025-06-10',
-      defect_rate: 0.0056,
-      status: 'rejected',
-      risk_level: 'high',
-      notes: '表面缺陷'
-    },
-    {
-      id: 6,
-      batch_id: 'B2023088',
-      material_code: 'M1000088',
-      material_name: '电子元件组件',
-      category_id: 1,
-      category_name: '电子元件',
-      supplier_id: 1,
-      supplier_name: '富宇科技股份',
-      quantity: 868,
-      created_date: '2025-06-17',
-      production_date: '2025-06-09',
-      defect_rate: 0.002,
-      status: 'passed',
-      risk_level: 'low',
-      notes: '正常批次'
-    },
-    {
-      id: 7,
-      batch_id: 'B2023030',
-      material_code: 'M1007030',
-      material_name: '其他元件',
-      category_id: 7,
-      category_name: '其他',
-      supplier_id: 2,
-      supplier_name: '欧菲光科技集团',
-      quantity: 807,
-      created_date: '2025-06-15',
-      production_date: '2025-06-07',
-      defect_rate: 0.0228,
-      status: 'passed',
-      risk_level: 'medium',
-      notes: '接近临界值'
-    }
-  ];
-  
-  // 添加示例数据
-  result.push(...sampleData);
-  
-  // 继续生成更多随机数据
-  for (let i = 8; i <= 100; i++) {
-    const categoryIndex = Math.floor(Math.random() * materialCategories.length);
-    const supplierIndex = Math.floor(Math.random() * suppliers.length);
-    const category = materialCategories[categoryIndex];
-    const supplier = suppliers[supplierIndex];
-    
-    // 生成随机日期（过去90天内）
-    const date = new Date();
-    date.setDate(date.getDate() - Math.floor(Math.random() * 90));
-    const dateStr = date.toISOString().split('T')[0];
-    
-    // 生成随机缺陷率 (0-3%)
-    const defectRate = Math.random() * 0.03;
-    
-    // 生成随机状态
-    const statusOptions = ['pending', 'processing', 'passed', 'rejected', 'used'];
-    const status = statusOptions[Math.floor(Math.random() * statusOptions.length)];
-    
-    // 基于缺陷率确定风险等级
-    let riskLevel = 'low';
-    if (defectRate > 0.02) {
-      riskLevel = 'high';
-    } else if (defectRate > 0.01) {
-      riskLevel = 'medium';
-    }
-    
-    result.push({
-      id: i,
-      batch_id: `B${String(2023000 + i).padStart(7, '0')}`,
-      material_code: `M${String(1000 + categoryIndex).padStart(4, '0')}${String(i).padStart(3, '0')}`,
-      material_name: `${category.name}${i % 3 === 0 ? '组件' : (i % 3 === 1 ? '配件' : '元件')}`,
-      category_id: category.id,
-      category_name: category.name,
-      supplier_id: supplier.id,
-      supplier_name: supplier.name,
-      quantity: Math.floor(Math.random() * 1000) + 100,
-      created_date: dateStr,
-      production_date: dateStr,
-      defect_rate: defectRate,
-      status: status,
-      risk_level: riskLevel,
-      notes: `批次${i}测试数据`
-    });
-  }
-  
-  return result;
-}
 
 // 应用过滤和排序后的批次列表
 const filteredBatchList = computed(() => {
@@ -1393,527 +1130,6 @@ function viewBatchDetail(row) {
       console.error('初始化图表失败:', error);
     }
   });
-}
-
-// 编辑批次
-function editBatch(batch) {
-  // 复制批次数据到表单
-  batchForm.value = {
-    material_code: batch.material_code,
-    material_name: batch.material_name,
-    category_id: batch.category_id,
-    supplier_id: batch.supplier_id,
-    quantity: batch.quantity,
-    production_date: batch.production_date,
-    notes: batch.notes
-  }
-  
-  dialogVisible.value = true
-}
-
-// 显示批次追溯
-function showTraceability(batch) {
-  selectedBatch.value = batch
-  traceabilityVisible.value = true
-  
-  // 查询物料在不同模块的数据
-  findMaterialInventoryData(batch.material_code)
-  findMaterialProductionData(batch.material_code)
-  findMaterialTestData(batch.material_code)
-  
-  // 默认显示活动记录选项卡
-  activeTab.value = 'activities'
-  
-  // 初始化质量统计图表
-  nextTick(() => {
-    initQualityChart()
-  })
-}
-
-// 查询物料库存数据
-function findMaterialInventoryData(materialCode) {
-  try {
-    // 从统一数据服务中获取库存数据
-    const inventoryData = unifiedDataService && unifiedDataService.getInventoryData ? unifiedDataService.getInventoryData() : [];
-    const inventoryItem = inventoryData.find(item => item.materialCode === materialCode || item.material_code === materialCode);
-    
-    materialInventoryData.value = inventoryItem || null;
-  } catch (error) {
-    console.error('查询物料库存数据失败:', error);
-    materialInventoryData.value = null;
-  }
-}
-
-// 查询物料产线使用数据
-function findMaterialProductionData(materialCode) {
-  try {
-    // 从统一数据服务中获取工厂上线数据
-    const factoryData = unifiedDataService && unifiedDataService.getFactoryData ? unifiedDataService.getFactoryData() : [];
-    const productionItem = factoryData.find(item => item.materialCode === materialCode || item.material_code === materialCode);
-    
-    materialProductionData.value = productionItem || null;
-  } catch (error) {
-    console.error('查询物料产线使用数据失败:', error);
-    materialProductionData.value = null;
-  }
-}
-
-// 查询物料测试数据
-function findMaterialTestData(materialCode) {
-  try {
-    // 优先从实验室数据中查找
-    const labData = unifiedDataService && unifiedDataService.getLabData ? unifiedDataService.getLabData() : [];
-    let testData = labData.find(item => item.materialCode === materialCode || item.material_code === materialCode);
-    
-    // 如果找不到，再从测试数据中查找
-    if (!testData) {
-      testData = labTestData.find(item => item.materialCode === materialCode);
-    }
-  
-  if (testData) {
-      materialTestData.value = testData;
-    
-    // 转换测试参数为表格数据
-    if (testData.testParameters) {
-      materialTestParameters.value = Object.entries(testData.testParameters).map(([key, value]) => ({
-        key,
-        value
-        }));
-    } else {
-        materialTestParameters.value = [];
-    }
-  } else {
-      materialTestData.value = null;
-      materialTestParameters.value = [];
-    }
-  } catch (error) {
-    console.error('查询物料测试数据失败:', error);
-    materialTestData.value = null;
-    materialTestParameters.value = [];
-  }
-}
-
-// 获取测试结果标签类型
-function getTestResultType(result) {
-  switch(result) {
-    case '合格': return 'success'
-    case 'NG': return 'danger'
-    case '有条件接收': return 'warning'
-    default: return 'info'
-  }
-}
-
-// 获取风险分数对应的标签类型
-function getRiskTagByScore(score) {
-  if (score >= 70) return 'danger'
-  if (score >= 40) return 'warning'
-  return 'success'
-}
-
-// 查看产品详情
-function viewProductDetail(product) {
-  ElMessage({
-    message: `查看产品: ${product.product_name}`,
-    type: 'info'
-  })
-}
-
-// 提交批次表单
-function submitBatchForm() {
-  ElMessage({
-    message: '新批次添加成功',
-    type: 'success'
-  })
-  dialogVisible.value = false
-  // 重置表单
-  batchForm.value = {
-    material_code: '',
-    material_name: '',
-    category_id: '',
-    supplier_id: '',
-    quantity: 100,
-    production_date: '',
-    notes: ''
-  }
-}
-
-// 导出数据
-function exportData() {
-  ElMessage({
-    message: '数据导出功能开发中',
-    type: 'info'
-  })
-}
-
-// 返回上一页
-function goBack() {
-  router.go(-1)
-}
-
-// 删除批次
-function deleteBatch(batch) {
-  ElMessageBox.confirm(
-    `确定要删除批次 ${batch.batch_id} 吗？此操作不可恢复。`,
-    '警告',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  ).then(() => {
-    // 从批次列表中移除
-    const index = batchList.value.findIndex(item => item.id === batch.id);
-    if (index !== -1) {
-      batchList.value.splice(index, 1);
-    }
-    
-    ElMessage({
-      type: 'success',
-      message: `批次 ${batch.batch_id} 已删除`
-    });
-  }).catch(() => {
-    // 取消操作
-  });
-}
-
-// 格式化日期
-function formatDate(dateString) {
-  if (!dateString) return '-';
-  const date = new Date(dateString);
-  return date.toISOString().split('T')[0];
-}
-
-// 添加新批次
-function addNewBatch() {
-  dialogVisible.value = true;
-}
-
-// 刷新批次数据
-function refreshBatchData() {
-  loading.value = true;
-  
-  try {
-    // 检查统一数据服务是否可用
-    if (unifiedDataService) {
-      console.log('刷新数据：统一数据服务可用，尝试加载真实数据');
-      
-      // 获取库存数据
-      const inventoryData = unifiedDataService.getInventoryData ? unifiedDataService.getInventoryData() : [];
-      console.log(`获取到${inventoryData.length}条库存数据`);
-      
-      // 获取实验室数据
-      const labData = unifiedDataService.getLabData ? unifiedDataService.getLabData() : [];
-      console.log(`获取到${labData.length}条实验室测试数据`);
-      
-      // 获取工厂上线数据
-      const factoryData = unifiedDataService.getFactoryData ? unifiedDataService.getFactoryData() : [];
-      console.log(`获取到${factoryData.length}条工厂上线数据`);
-      
-      // 从真实数据生成批次列表
-      const generatedBatches = generateBatchesFromRealData(inventoryData, labData, factoryData);
-      
-      if (generatedBatches && generatedBatches.length > 0) {
-        batchList.value = generatedBatches;
-        totalItems.value = generatedBatches.length;
-        console.log(`成功从真实数据生成${generatedBatches.length}条批次记录`);
-        ElMessage.success(`成功加载${generatedBatches.length}条批次数据`);
-      } else {
-        // 如果没有真实数据，使用模拟数据
-        console.log('未找到真实数据，使用模拟数据');
-        batchList.value = generateBatchData();
-        totalItems.value = batchList.value.length;
-        ElMessage.info('未找到真实数据，已加载模拟数据');
-      }
-    } else {
-      // 如果统一数据服务不可用，使用模拟数据
-      console.log('统一数据服务不可用，使用模拟数据');
-      batchList.value = generateBatchData();
-      totalItems.value = batchList.value.length;
-      ElMessage.warning('数据服务不可用，已加载模拟数据');
-    }
-    
-    loading.value = false;
-  } catch (error) {
-    console.error('刷新批次数据出错:', error);
-    // 出错时使用模拟数据
-    batchList.value = generateBatchData();
-    totalItems.value = batchList.value.length;
-    loading.value = false;
-    
-    // 显示错误信息
-    ElMessage.error('加载数据时发生错误: ' + error.message);
-  }
-}
-
-// 初始化
-onMounted(() => {
-  // 加载批次数据
-  refreshBatchData();
-})
-
-// 从真实数据整合批次信息
-function generateBatchesFromRealData(inventoryData, labData, factoryData) {
-  console.log('开始整合批次信息');
-  console.log('库存数据:', inventoryData);
-  console.log('实验室数据:', labData);
-  console.log('工厂数据:', factoryData);
-  
-  // 如果没有数据，返回空数组
-  if (!inventoryData || !inventoryData.length) {
-    console.warn('没有库存数据，无法整合批次信息');
-    return [];
-  }
-  
-  // 批次映射 - 用于按批次号和物料编码组织数据
-  const batchMap = new Map();
-  
-  // 处理库存数据 - 作为基础数据
-  inventoryData.forEach((item, index) => {
-    // 获取物料编码和批次号
-    const materialCode = item.materialCode || item.material_code || '';
-    const batchNo = item.batchNo || item.batch_id || '';
-    
-    if (!materialCode) {
-      console.warn('跳过无物料编码的库存项', item);
-      return;
-    }
-    
-    // 生成批次键 - 批次号+物料编码，确保唯一性
-    const batchKey = batchNo ? `${batchNo}-${materialCode}` : `AUTO-${materialCode}-${index}`;
-    
-    // 获取供应商信息
-    const supplierId = getSupplierIdByMaterialCode(materialCode);
-    const supplierName = item.supplier || getSupplierNameById(supplierId);
-    
-    // 创建批次对象
-    batchMap.set(batchKey, {
-      id: index + 1,
-      batch_id: batchNo || `B${materialCode.substring(1)}`,
-      material_code: materialCode,
-      material_name: item.materialName || item.material_name || `物料${materialCode}`,
-      supplier_id: supplierId,
-      supplier_name: supplierName,
-      quantity: item.quantity || item.remainQuantity || 0,
-      created_date: item.inboundTime || item.created_date || new Date().toISOString().split('T')[0],
-      production_date: item.productionDate || item.production_date || new Date().toISOString().split('T')[0],
-      defect_rate: parseDefectRate(item.defectRate || 0),
-      status: 'pending',
-      risk_level: 'low',
-      notes: item.remarks || '',
-      
-      // 添加库存记录
-      inventory: {
-        materialCode: materialCode,
-        materialName: item.materialName || item.material_name || `物料${materialCode}`,
-        batchNo: batchNo,
-        supplier: supplierName,
-        remainQuantity: item.remainQuantity || item.quantity || 0,
-        useQuantity: item.useQuantity || 0,
-        inboundTime: item.inboundTime || item.created_date || new Date().toISOString().split('T')[0],
-        warehouseLocation: item.warehouseLocation || item.location || '',
-        inspector: item.inspector || ''
-      },
-      
-      // 初始化上线记录数组
-      onlineRecords: []
-    });
-  });
-  
-  // 处理实验室测试数据
-  if (labData && labData.length > 0) {
-    labData.forEach(item => {
-      // 获取物料编码和批次号
-      const materialCode = item.materialCode || item.material_code || '';
-      const batchNo = item.batchNo || item.batch_id || '';
-      
-      if (!materialCode) {
-        console.warn('跳过无物料编码的测试项', item);
-        return;
-      }
-      
-      // 生成批次键
-      const batchKey = batchNo ? `${batchNo}-${materialCode}` : `AUTO-${materialCode}`;
-      
-      if (batchMap.has(batchKey)) {
-        // 更新现有批次的测试信息
-        const batch = batchMap.get(batchKey);
-        
-        // 更新不良率
-        if (item.defectRate !== undefined) {
-          batch.defect_rate = parseDefectRate(item.defectRate);
-        }
-        
-        // 更新状态
-        batch.status = mapTestResultToStatus(item.result);
-        
-        // 更新风险等级
-        batch.risk_level = getRiskLevelFromDefectRate(batch.defect_rate);
-        
-        // 添加测试记录
-        batch.test = {
-          testId: item.id || item.testId || '',
-          testDate: item.testDate || batch.created_date,
-          testItem: item.testItem || '常规检测',
-          result: item.result || '',
-          defectRate: batch.defect_rate,
-          defectDesc: item.defectDesc || '',
-          testSource: item.testSource || '常规检测',
-          tester: item.tester || '',
-          reviewer: item.reviewer || ''
-        };
-      } else {
-        // 如果批次不存在于库存中，但存在于测试数据中，创建新批次
-        console.log('发现仅存在于测试数据中的批次:', batchKey);
-        
-        // 获取供应商信息
-        const supplierId = getSupplierIdByMaterialCode(materialCode);
-        const supplierName = item.supplier || getSupplierNameById(supplierId);
-        
-        // 创建批次对象
-        batchMap.set(batchKey, {
-          id: batchMap.size + 1,
-          batch_id: batchNo || `B${materialCode.substring(1)}`,
-          material_code: materialCode,
-          material_name: item.materialName || item.material_name || `物料${materialCode}`,
-          supplier_id: supplierId,
-          supplier_name: supplierName,
-          quantity: item.quantity || 0,
-          created_date: item.testDate || new Date().toISOString().split('T')[0],
-          production_date: item.productionDate || item.production_date || new Date().toISOString().split('T')[0],
-          defect_rate: parseDefectRate(item.defectRate || 0),
-          status: mapTestResultToStatus(item.result),
-          risk_level: getRiskLevelFromDefectRate(parseDefectRate(item.defectRate || 0)),
-          notes: item.remarks || item.defectDesc || '',
-          
-          // 添加测试记录
-          test: {
-            testId: item.id || item.testId || '',
-            testDate: item.testDate || new Date().toISOString().split('T')[0],
-            testItem: item.testItem || '常规检测',
-            result: item.result || '',
-            defectRate: parseDefectRate(item.defectRate || 0),
-            defectDesc: item.defectDesc || '',
-            testSource: item.testSource || '常规检测',
-            tester: item.tester || '',
-            reviewer: item.reviewer || ''
-          },
-          
-          // 初始化上线记录数组
-          onlineRecords: []
-        });
-      }
-    });
-  }
-  
-  // 处理工厂上线数据
-  if (factoryData && factoryData.length > 0) {
-    factoryData.forEach(item => {
-      // 获取物料编码和批次号
-      const materialCode = item.materialCode || item.material_code || '';
-      const batchNo = item.batchNo || item.batch_id || '';
-      
-      if (!materialCode) {
-        console.warn('跳过无物料编码的工厂项', item);
-        return;
-      }
-      
-      // 生成批次键
-      const batchKey = batchNo ? `${batchNo}-${materialCode}` : `AUTO-${materialCode}`;
-      
-      if (batchMap.has(batchKey)) {
-        // 更新现有批次的生产信息
-        const batch = batchMap.get(batchKey);
-        
-        // 更新状态为"已使用"
-        batch.status = 'used';
-        
-        // 添加生产记录
-        batch.production = {
-          factory: item.factory || item.factoryName || '',
-          line: item.line || item.lineName || '',
-          useTime: item.useTime || item.date || new Date().toISOString().split('T')[0],
-          project: item.project || item.project_display || '',
-          baseline: item.baseline || item.baseline_display || '',
-          quantity: item.quantity || 0
-        };
-        
-        // 添加上线记录到数组
-        batch.onlineRecords.push({
-          factory: item.factory || item.factoryName || '',
-          line: item.line || item.lineName || '',
-          project: item.project || item.project_display || '',
-          onlineDate: item.useTime || item.onlineDate || item.date || new Date().toISOString().split('T')[0],
-          quantity: item.quantity || 0,
-          defectRate: parseFloat((item.defectRate || item.defect_rate || '0').toString().replace('%', '')) || 0,
-          defect: item.defect || ''
-        });
-        
-        // 更新批次的不良率为上线记录的平均不良率
-        if (batch.onlineRecords.length > 0) {
-          const totalDefectRate = batch.onlineRecords.reduce((sum, record) => sum + record.defectRate, 0);
-          const avgDefectRate = totalDefectRate / batch.onlineRecords.length;
-          batch.defect_rate = avgDefectRate / 100; // 转换为小数形式存储
-          batch.risk_level = getRiskLevelFromDefectRate(batch.defect_rate);
-        }
-      } else {
-        // 如果批次不存在于库存中，但存在于工厂数据中，创建新批次
-        console.log('发现仅存在于工厂数据中的批次:', batchKey);
-        
-        // 获取供应商信息
-        const supplierId = getSupplierIdByMaterialCode(materialCode);
-        const supplierName = item.supplier || item.supplierName || getSupplierNameById(supplierId);
-        
-        // 解析不良率
-        const defectRate = parseFloat((item.defectRate || item.defect_rate || '0').toString().replace('%', '')) || 0;
-        
-        // 创建批次对象
-        const newBatch = {
-          id: batchMap.size + 1,
-          batch_id: batchNo || `B${materialCode.substring(1)}`,
-          material_code: materialCode,
-          material_name: item.materialName || item.material_name || `物料${materialCode}`,
-          supplier_id: supplierId,
-          supplier_name: supplierName,
-          quantity: item.quantity || 0,
-          created_date: item.date || item.useTime || new Date().toISOString().split('T')[0],
-          production_date: item.productionDate || item.production_date || new Date().toISOString().split('T')[0],
-          defect_rate: defectRate / 100, // 转换为小数形式存储
-          status: 'used',
-          risk_level: getRiskLevelFromDefectRate(defectRate / 100),
-          notes: item.remarks || '',
-          
-          // 添加生产记录
-          production: {
-            factory: item.factory || item.factoryName || '',
-            line: item.line || item.lineName || '',
-            useTime: item.useTime || item.date || new Date().toISOString().split('T')[0],
-            project: item.project || item.project_display || '',
-            baseline: item.baseline || item.baseline_display || '',
-            quantity: item.quantity || 0
-          },
-          
-          // 初始化上线记录数组
-          onlineRecords: [{
-            factory: item.factory || item.factoryName || '',
-            line: item.line || item.lineName || '',
-            project: item.project || item.project_display || '',
-            onlineDate: item.useTime || item.onlineDate || item.date || new Date().toISOString().split('T')[0],
-            quantity: item.quantity || 0,
-            defectRate: defectRate,
-            defect: item.defect || ''
-          }]
-        };
-        
-        batchMap.set(batchKey, newBatch);
-      }
-    });
-  }
-  
-  // 将Map转换为数组
-  const batches = Array.from(batchMap.values());
-  
-  console.log(`成功整合${batches.length}条批次数据`);
-  return batches;
 }
 
 // 获取批次状态对应的测试状态
@@ -2497,6 +1713,100 @@ function generateRelatedProducts(batch) {
     batch.relatedProducts = products;
   }
 }
+
+// 获取批次数据
+const fetchBatchData = async () => {
+  loading.value = true;
+  try {
+    let inventoryData = unifiedDataService.getInventoryData();
+    
+    // 如果没有数据，则生成并保存模拟数据
+    if (!inventoryData || inventoryData.length === 0) {
+      console.warn("库存数据为空，将自动生成模拟数据。");
+      
+      // 直接调用服务来生成和保存数据
+      const mockInventory = unifiedDataService.generateAndSaveInventoryData(50);
+      const mockLab = unifiedDataService.generateAndSaveLabData(100, mockInventory);
+      const mockFactory = unifiedDataService.generateAndSaveFactoryData(80, mockInventory);
+      
+      // 重新获取数据
+      inventoryData = mockInventory;
+    }
+
+    const factoryData = unifiedDataService.getFactoryData();
+    const labData = unifiedDataService.getLabData();
+
+    // 在这里整合数据
+    const aggregatedData = aggregateBatchData(inventoryData, factoryData, labData);
+    batchList.value = aggregatedData;
+
+  } catch (error) {
+    ElMessage.error('获取批次数据失败');
+    console.error(error);
+  } finally {
+    loading.value = false;
+  }
+};
+
+// 整合批次数据
+const aggregateBatchData = (inventory, factory, lab) => {
+  const batchMap = new Map();
+
+  // 1. 从库存数据初始化
+  inventory.forEach(item => {
+    // 统一使用 batchId
+    const batchId = item.batchId || item.batchNo;
+    if (!batchId) return;
+
+    if (!batchMap.has(batchId)) {
+      batchMap.set(batchId, {
+        batch_id: batchId,
+        material_code: item.materialCode,
+        material_name: item.materialName,
+        supplier_name: item.supplier,
+        quantity: item.quantity,
+        created_date: item.storageDate || item.inboundTime,
+        status: item.status,
+        risk_level: item.riskLevel,
+        line_exceptions: 0,
+        test_exceptions: 0,
+      });
+    }
+  });
+
+  // 2. 统计产线异常
+  factory.forEach(item => {
+    const batchId = item.batchId || item.batchNo;
+    if (batchMap.has(batchId) && item.exceptionCount > 0) {
+      const batch = batchMap.get(batchId);
+      batch.line_exceptions += item.exceptionCount;
+    }
+  });
+
+  // 3. 统计测试异常
+  lab.forEach(item => {
+    const batchId = item.batchId || item.batchNo;
+    if (batchMap.has(batchId) && (item.result === 'NG' || item.result === '不合格')) {
+      const batch = batchMap.get(batchId);
+      batch.test_exceptions += 1;
+    }
+  });
+
+  return Array.from(batchMap.values());
+};
+
+
+// 刷新数据
+const refreshBatchData = () => {
+  fetchBatchData();
+  ElMessage.success('批次数据已刷新');
+};
+
+// ... existing code ...
+onMounted(() => {
+  fetchBatchData();
+  suppliers.value = BatchService.getSuppliers();
+})
 </script>
 
 <style scoped>

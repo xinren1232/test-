@@ -6,7 +6,7 @@
 // ===== 基础通用类型 =====
 
 export type RiskLevel = 'low' | 'medium' | 'high';
-export type Status = 'normal' | 'frozen' | 'inspection';
+export type Status = 'normal' | 'frozen' | 'inspection' | 'risk';
 export type Severity = 'low' | 'medium' | 'high' | 'critical';
 export type TestResult = 'pass' | 'fail' | 'warning';
 export type Importance = 'critical' | 'major' | 'minor';
@@ -15,22 +15,46 @@ export type AnomalyStatus = 'open' | 'investigating' | 'resolved' | 'closed';
 // ===== 库存管理模型 =====
 
 export interface InventoryItem {
-  id: string;                 // 唯一标识符
-  materialCode: string;       // 物料编码
-  materialName: string;       // 物料名称
-  batchNumber: string;        // 批次号
-  quantity: number;           // 库存数量
-  status: Status;             // 状态：正常/冻结/检验中
-  location: string;           // 仓库位置
-  supplier: string;           // 供应商
-  receiveDate: Date;          // 入库日期
-  expiryDate?: Date;          // 过期日期
-  qualityScore: number;       // 质量评分(0-100)
-  riskLevel: RiskLevel;       // 风险等级
-  lastInspectionDate?: Date;  // 最后检验日期
-  tags: string[];             // 标签(可用于分类)
-  metadata: Record<string, any>; // 扩展属性
+  id: string;
+  materialCode: string;
+  materialName: string;
+  quantity: number;
+  unit: string;
+  storageLocation: string;
+  supplier: string;
+  batchNumber: string;
+  receiveDate: string; // ISO 8601 YYYY-MM-DD
+  expirationDate: string; // ISO 8601 YYYY-MM-DD
+  status: 'normal' | 'risk' | 'frozen';
+  inspectionStatus: 'pending' | 'passed' | 'failed';
+  lastInspectionDate?: string;
+  freezeReason?: string;
+  notes?: string;
+  qualityScore?: number;
+  riskLevel?: 'Low' | 'Medium' | 'High';
+  materialCategory?: string;
+  assignedTo?: string;
+
+  // --- Lab Inspection Fields ---
+  testStatus?: 'Untested' | 'Pass' | 'Fail' | 'Conditional Pass';
+  testDate?: string;
+  testResults?: Record<string, any>;
+  testOperator?: string;
+  testDefectDescription?: string;
+
+  // --- Online Tracking Fields ---
+  onlineDate?: string;
+  factory?: string;
+  warehouse?: string;
+  qualityStatus?: '合格' | '不合格' | '风险' | '待定';
+  defectType?: string;
+  onlineOperator?: string;
+  
+  // For any other legacy fields
+  [key: string]: any;
 }
+
+export type MaterialStatus = '合格' | '不合格' | '待定' | '冻结';
 
 // ===== 产线异常模型 =====
 

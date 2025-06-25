@@ -557,11 +557,11 @@ class SystemDataUpdater {
     if (rand < 0.3) {
       defectRate = 0;
     } 
-    // 50%的物料不良率在0.1%-5%之间（轻微不良）
-    else if (rand < 0.8) {
+    // 60%的物料不良率在0.1%-5%之间（轻微不良）
+    else if (rand < 0.9) { // 0.3 + 0.6 = 0.9
       defectRate = Math.random() * 4.9 + 0.1; // 0.1% - 5%
     } 
-    // 20%的物料不良率≥5%（严重不良）
+    // 10%的物料不良率≥5%（严重不良）
     else {
       defectRate = Math.random() * 10 + 5; // 5% - 15%
     }
@@ -777,7 +777,7 @@ class SystemDataUpdater {
       }
       
       // 生成数据
-      const onlineData = [...existingData];
+      const factoryData = [...existingData];
       
       // 检查是否为最小模式
       const minimalMode = options.minimalMode || false;
@@ -857,80 +857,47 @@ class SystemDataUpdater {
         // 获取不良率 - 确保同一批次的不良率一致
         const defectRate = this.getDefectRateForMaterial(materialName, batchNo);
         
-        // 为每个批次生成recordsPerBatch条记录
-        for (let i = 0; i < recordsPerBatch; i++) {
-          // 根据不良率决定状态和不良现象
-          let finalStatus = '良好';
-          let defect = '';
-          
-          // 只有当不良率大于0时，才可能生成不良记录
-          if (defectRate > 0) {
-            // 增加不良概率，确保更多记录显示为不良
-            const defectProbability = Math.max(0.5, defectRate / 100);
-            const isDefective = Math.random() < defectProbability;
-            
-            if (isDefective) {
-              finalStatus = '不良';
-            }
-            
-            // 只要有不良率，就生成不良现象
-            const defectTypes = this.getDefectsByMaterial(materialName);
-            if (defectTypes.length > 0) {
-              // 随机选择1-2个不良现象
-              const defectCount = Math.floor(Math.random() * 2) + 1;
-              const selectedDefects = [];
-              
-              for (let j = 0; j < defectCount; j++) {
-                const randomDefect = defectTypes[Math.floor(Math.random() * defectTypes.length)];
-                if (!selectedDefects.includes(randomDefect)) {
-                  selectedDefects.push(randomDefect);
-                }
-              }
-              
-              defect = selectedDefects.join('，');
-            } else {
-              defect = '未知不良';
-            }
-          }
-          
-          // 随机选择工厂，但确保与库存批次的工厂一致
-          const factory = batch.factory || this.getRandomFactory();
-          
-          // 生成上线记录
+        // 为每个批次生成8条上线记录
+        for (let i = 0; i < 8; i++) {
+          // 在循环内部为每一条记录独立生成不良率和不良现象
+          const recordDefectRate = this.getDefectRateForMaterial(materialName);
+          const defects = recordDefectRate > 0 ? this.getDefectsByMaterial(materialName) : [];
+
+          const onlineTime = this.generateRandomDate(30); // 为每条记录生成独立的上线时间
+
           const onlineRecord = {
-            id: this.generateId(),
+            id: this.generateId('ONLINE'),
             materialName,
-            materialCode,
+            materialCode: this.generateMaterialCode(materialName, supplier),
             batchNo,
             supplier,
-            projectName: `${projectId}项目`,
-            projectId: projectId,
-            baselineId: baselineId,
-            baselineName: baselineName,
-            onlineTime: this.generateRandomTime(),
-            onlineStatus: finalStatus,
-            defectRate: defectRate.toFixed(1),
-            defect: defect,
-            inspectionDate: this.generateRandomTime(30),
-            factory: factory,
-            inspector: `检验员${Math.floor(Math.random() * 10) + 1}`,
-            status: finalStatus
+            factory: this.getRandomFactory(),
+            line: `产线0${(i % 4) + 1}`,
+            useTime: onlineTime, // 兼容旧字段
+            onlineTime: onlineTime, // 确保新字段存在
+            defectRate: recordDefectRate,
+            defect_rate: recordDefectRate, // 兼容旧字段
+            defect: defects.join(', '),
+            project_id: projectId,
+            projectId: projectId, // 兼容旧字段
+            project_name: `${projectId}项目`,
+            baseline_id: baselineId,
+            baseline_name: baselineName,
+            timestamp: new Date().toISOString()
           };
-          
-          onlineData.push(onlineRecord);
-          totalRecords++;
+          factoryData.push(onlineRecord);
         }
       }
       
-      console.log(`总共生成了${totalRecords}条上线记录，涉及${batchCount}个批次`);
+      console.log(`新生成了 ${factoryData.length - existingData.length} 条工厂上线数据。`);
       
       // 保存数据
-      unifiedDataService.saveOnlineData(onlineData);
+      unifiedDataService.saveOnlineData(factoryData);
       
       return {
         success: true,
-        message: `成功生成 ${onlineData.length - existingData.length} 条工厂上线数据`,
-        data: onlineData
+        message: `成功生成 ${factoryData.length - existingData.length} 条工厂上线数据`,
+        data: factoryData
       };
     } catch (error) {
       console.error('生成工厂上线数据失败:', error);
