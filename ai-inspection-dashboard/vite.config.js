@@ -36,11 +36,10 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/deepseek-api/, '')
       },
-      // 本地API代理配置
+      // 本地API代理配置 - 修复端口为3001
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:3001',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
       },
       // 百度搜索API代理配置
       '/api/baidu': {

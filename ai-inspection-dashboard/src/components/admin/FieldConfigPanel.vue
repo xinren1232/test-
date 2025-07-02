@@ -63,7 +63,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits } from 'vue';
+import { ref, watch } from 'vue';
 import { Plus, Delete } from '@element-plus/icons-vue';
 
 const props = defineProps({

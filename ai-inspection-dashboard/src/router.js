@@ -160,6 +160,22 @@ const router = createRouter({
       }
     },
     {
+      path: '/assistant-ai',
+      name: 'assistant-ai',
+      component: () => import('./pages/AssistantPageAIThreeColumn.vue'),
+      meta: {
+        title: 'AI智能助手'
+      }
+    },
+    {
+      path: '/test-ai-services',
+      name: 'test-ai-services',
+      component: () => import('./pages/TestAIServices.vue'),
+      meta: {
+        title: 'AI服务测试'
+      }
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'notFound',
       component: () => import('./pages/NotFoundPage.vue'),

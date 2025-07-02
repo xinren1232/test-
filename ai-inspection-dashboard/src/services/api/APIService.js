@@ -6,7 +6,7 @@
 import axios from 'axios';
 
 // 配置
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 let MOCK_MODE = true; // 默认启用模拟模式
 
 // 创建axios实例

@@ -26,6 +26,7 @@ import {
   isCodeMapInitialized
 } from '../data/MaterialCodeMap.js';
 import batchManager from './BatchManager.js';
+import ApiClient from '../api/ApiClient.js';
 
 // 项目-基线映射关系（遵循规则文档中的要求）
 // 兼容性保留，实际使用时应通过ProjectBaselineService获取
@@ -161,6 +162,111 @@ class SystemDataUpdater {
     this.ensureCodeMapInitialized();
   }
   
+  /**
+   * 新增：推送数据到AI助手后端 - 支持大规模数据
+   */
+  async pushDataToAssistant() {
+    console.log('Pushing latest data to the assistant service...');
+    try {
+      const dataToPush = {
+        inventory: unifiedDataService.getInventoryData(),
+        inspection: unifiedDataService.getLabData(),
+        production: unifiedDataService.getOnlineData()
+      };
+
+      // 添加详细日志
+      console.log(`准备推送数据到助手服务: 库存 ${dataToPush.inventory.length} 条, 检验 ${dataToPush.inspection.length} 条, 生产 ${dataToPush.production.length} 条`);
+
+      // 计算数据大小
+      const dataSize = JSON.stringify(dataToPush).length;
+      console.log(`数据大小: ${(dataSize / 1024 / 1024).toFixed(2)} MB`);
+
+      // 如果数据过大，使用分批推送或直接后端API
+      if (dataSize > 10 * 1024 * 1024) { // 超过10MB
+        console.log('数据过大，尝试直接连接后端API...');
+        return await this.pushDataDirectly(dataToPush);
+      }
+
+      // 过滤掉不必要的大字段或循环引用
+      const sanitizedData = JSON.parse(JSON.stringify(dataToPush));
+
+      console.log('正在调用 /api/assistant/update-data 接口...');
+
+      // 直接使用fetch绕过可能的API拦截器
+      const response = await fetch('/api/assistant/update-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(sanitizedData)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      console.log('接口返回结果:', result);
+
+      if (result.success) {
+        console.log('Successfully pushed data to assistant service.');
+        ElMessage.success('问答助手数据已同步！');
+      } else {
+        throw new Error(result.error || 'Unknown error from assistant API');
+      }
+    } catch (error) {
+      console.error('Failed to push data to assistant service:', error);
+
+      // 如果是413错误（请求体过大），尝试直接推送
+      if (error.response && error.response.status === 413) {
+        console.log('检测到413错误，尝试直接后端推送...');
+        try {
+          const dataToPush = {
+            inventory: unifiedDataService.getInventoryData(),
+            inspection: unifiedDataService.getLabData(),
+            production: unifiedDataService.getOnlineData()
+          };
+          await this.pushDataDirectly(dataToPush);
+          return;
+        } catch (directError) {
+          console.error('直接推送也失败:', directError);
+        }
+      }
+
+      ElMessage.error('问答助手数据同步失败，请检查后端服务。');
+    }
+  }
+
+  /**
+   * 直接推送到后端API（绕过前端代理）
+   */
+  async pushDataDirectly(dataToPush) {
+    try {
+      console.log('使用直接后端API推送数据...');
+
+      const response = await fetch('http://localhost:3001/api/assistant/update-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dataToPush)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('直接推送成功:', result);
+      ElMessage.success('问答助手数据已同步！（直接连接）');
+
+    } catch (error) {
+      console.error('直接推送失败:', error);
+      throw error;
+    }
+  }
+
   /**
    * 确保物料编码映射已初始化
    */
@@ -1277,9 +1383,15 @@ class SystemDataUpdater {
       // 更新最后更新时间
       this.lastUpdateTime.value = new Date().toLocaleString();
       
-        return { 
+      // 触发数据更新事件
+      this.isUpdating.value = false;
+      
+      // 3. 在数据生成成功后，调用推送函数
+      await this.pushDataToAssistant();
+
+      return { 
         success: true,
-        message: '所有系统数据更新成功',
+        message: '所有系统数据已成功更新',
         data: {
           inventory: inventoryResult.data || [],
           lab: labResult.data || [],

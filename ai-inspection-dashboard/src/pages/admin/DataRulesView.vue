@@ -23,18 +23,6 @@
       
       <div class="card-content">
         <el-tabs type="border-card">
-          <el-tab-pane label="物料-不良-供应商匹配规则">
-            <MaterialSupplierDefectRules />
-          </el-tab-pane>
-          <el-tab-pane label="物料-项目-不良匹配规则">
-            <MaterialProjectDefectRules />
-          </el-tab-pane>
-          <el-tab-pane label="项目-基线绑定规则">
-            <ProjectBaselineRules />
-          </el-tab-pane>
-          <el-tab-pane label="项目-基线-不良匹配规则">
-            <ProjectBaselineDefectRules />
-          </el-tab-pane>
           <el-tab-pane label="其他数据规则">
             <DataRulesDisplay />
           </el-tab-pane>
@@ -47,10 +35,6 @@
 <script setup>
 import { useRouter } from 'vue-router';
 import DataRulesDisplay from '../../components/admin/DataRulesDisplay.vue';
-import MaterialSupplierDefectRules from '../../components/admin/MaterialSupplierDefectRules.vue';
-import ProjectBaselineRules from '../../components/admin/ProjectBaselineRules.vue';
-import MaterialProjectDefectRules from '../../components/admin/MaterialProjectDefectRules.vue';
-import ProjectBaselineDefectRules from '../../components/admin/ProjectBaselineDefectRules.vue';
 
 const router = useRouter();
 

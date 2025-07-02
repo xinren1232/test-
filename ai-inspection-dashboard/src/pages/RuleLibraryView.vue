@@ -155,89 +155,56 @@
         <!-- NLP意图规则 -->
         <el-tab-pane label="NLP意图规则" name="nlp">
           <div class="tab-content">
-            <div class="table-actions">
-              <div class="left-actions">
-                <el-button type="primary" @click="showAddRuleDialog('nlp')">
-                  <el-icon><Plus /></el-icon>添加NLP意图规则
-                </el-button>
-                <el-button @click="exportRules('nlp')">
-                  <el-icon><Download /></el-icon>导出规则
-                </el-button>
-                <el-button @click="showImportDialog('nlp')">
-                  <el-icon><Upload /></el-icon>导入规则
-                </el-button>
-              </div>
-              <div class="right-actions">
+            <div class="toolbar">
                 <el-input
-                  v-model="searchText.nlp"
-                  placeholder="搜索意图名称或触发模式"
-                  style="width: 300px;"
+                v-model="nlpSearchQuery"
+                placeholder="搜索意图规则..."
+                :prefix-icon="Search"
                   clearable
-                >
-                  <template #prefix><el-icon><Search /></el-icon></template>
-                </el-input>
+                @clear="filteredNlpRules"
+                @input="filteredNlpRules"
+              />
+              <el-button type="primary" :icon="Plus" @click="openAddRuleDialog('nlp')">
+                添加意图规则
+              </el-button>
               </div>
-            </div>
-            
-            <el-table
-              :data="filteredNlpRules"
-              style="width: 100%"
-              v-loading="loading.nlp"
-              border
-              stripe
-              highlight-current-row
-              @row-click="(row) => viewRuleDetails(row, 'nlp')"
-            >
-              <el-table-column prop="intent_name" label="意图名称" width="180"></el-table-column>
-              <el-table-column prop="trigger_pattern" label="触发模式" width="200"></el-table-column>
-              <el-table-column prop="description" label="描述" show-overflow-tooltip></el-table-column>
-              <el-table-column prop="category" label="分类" width="100">
+            <el-table :data="paginatedNlpRules" v-loading="loading.nlp" class="rules-table">
+              <el-table-column prop="intent_name" label="意图名称" />
+              <el-table-column prop="description" label="描述" />
+              <el-table-column prop="action_type" label="动作类型">
                 <template #default="scope">
-                  <el-tag :type="getNlpCategoryTagType(scope.row.category)">
-                    {{ getNlpCategoryName(scope.row.category) }}
+                  <el-tag :type="scope.row.action_type === 'API_CALL' ? 'success' : 'primary'">
+                    {{ scope.row.action_type === 'API_CALL' ? 'API调用' : 'SQL查询' }}
                   </el-tag>
                 </template>
               </el-table-column>
-              <el-table-column prop="intent_type" label="类型" width="100">
+              <el-table-column prop="example_query" label="示例问题" />
+              <el-table-column prop="status" label="状态">
                 <template #default="scope">
-                  <el-tag :type="scope.row.intent_type === 'query' ? 'success' : 'warning'">
-                    {{ scope.row.intent_type === 'query' ? '查询' : '动作' }}
-                  </el-tag>
+                  <el-switch
+                    v-model="scope.row.status"
+                    active-value="active"
+                    inactive-value="inactive"
+                    @change="updateNlpRuleStatus(scope.row)"
+                  />
                 </template>
               </el-table-column>
-              <el-table-column prop="status" label="状态" width="100">
+              <el-table-column label="操作" width="150">
                 <template #default="scope">
-                  <el-tag :type="getRuleStatusType(scope.row.status)">
-                    {{ getRuleStatusName(scope.row.status) }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column label="操作" width="220" fixed="right">
-                <template #default="scope">
-                  <el-button size="small" @click.stop="viewRuleDetails(scope.row, 'nlp')">查看</el-button>
-                  <el-button type="primary" size="small" @click.stop="editRule(scope.row, 'nlp')">编辑</el-button>
-                  <el-button 
-                    :type="scope.row.status === 'active' ? 'warning' : 'success'" 
-                    size="small"
-                    @click.stop="toggleRuleStatus(scope.row.id, 'nlp')"
-                  >
-                    {{ scope.row.status === 'active' ? '禁用' : '启用' }}
-                  </el-button>
-                  <el-button type="danger" size="small" @click.stop="confirmDeleteRule(scope.row.id, 'nlp')">删除</el-button>
+                  <el-button link type="primary" @click="openEditRuleDialog('nlp', scope.row)">编辑</el-button>
+                  <el-button link type="danger" @click="deleteNlpRule(scope.row)">删除</el-button>
                 </template>
               </el-table-column>
             </el-table>
-            
-            <div class="pagination-container">
               <el-pagination
                 background
-                layout="total, sizes, prev, pager, next, jumper"
-                :total="filteredNlpRules.length"
-                :page-sizes="[10, 20, 50, 100]"
-                v-model:page-size="pageSizes.nlp"
-                v-model:current-page="currentPages.nlp"
+              layout="prev, pager, next, jumper, ->, total"
+              :total="totalNlpRules"
+              :page-size="pageSize"
+              :current-page="currentPageNlp"
+              @current-change="handleNlpPageChange"
+              class="pagination"
               />
-            </div>
           </div>
         </el-tab-pane>
         
@@ -408,6 +375,14 @@
         </el-tab-pane>
       </el-tabs>
     </el-card>
+
+    <add-qa-rule
+      :visible="addRuleDialogVisible"
+      :title="dialogTitle"
+      :data="currentRule"
+      @update:visible="addRuleDialogVisible = false"
+      @submit="handleRuleSubmit"
+    />
   </div>
 </template>
 
@@ -420,6 +395,7 @@ import {
   Delete, View, Check, Close, InfoFilled
 } from '@element-plus/icons-vue';
 import { RULE_TYPES, RULE_TYPE_UI, RULE_STATUS, RULE_STATUS_UI } from '../config/rule_types';
+import AddQaRule from '../components/admin/AddQaRule.vue';
     
     // 标签页状态
     const activeTab = ref('process');
@@ -457,7 +433,7 @@ import { RULE_TYPES, RULE_TYPE_UI, RULE_STATUS, RULE_STATUS_UI } from '../config
     
     // 规则数据
 const processRules = computed(() => []);
-const nlpRules = computed(() => []);
+const nlpRules = ref([]);
 const knowledgeRules = computed(() => []);
 const ruleExecutionHistory = computed(() => []);
     
@@ -473,16 +449,74 @@ const ruleExecutionHistory = computed(() => []);
       );
     });
     
-    const filteredNlpRules = computed(() => {
-      if (!searchText.nlp) return nlpRules.value;
+    const nlpSearchQuery = ref('');
+    const currentPageNlp = ref(1);
       
-      const searchLower = searchText.nlp.toLowerCase();
+    const filteredNlpRules = computed(() => {
+      if (!nlpSearchQuery.value) {
+        return nlpRules.value;
+      }
       return nlpRules.value.filter(rule => 
-        rule.intent_name.toLowerCase().includes(searchLower) || 
-        rule.description.toLowerCase().includes(searchLower) ||
-        rule.trigger_pattern.toLowerCase().includes(searchLower)
+        rule.intent_name.toLowerCase().includes(nlpSearchQuery.value.toLowerCase()) ||
+        rule.description.toLowerCase().includes(nlpSearchQuery.value.toLowerCase())
       );
     });
+
+    const totalNlpRules = computed(() => filteredNlpRules.value.length);
+    const pageSize = ref(10);
+
+    const paginatedNlpRules = computed(() => {
+      const start = (currentPageNlp.value - 1) * pageSize.value;
+      const end = start + pageSize.value;
+      return filteredNlpRules.value.slice(start, end);
+    });
+
+    const handleNlpPageChange = (page) => {
+      currentPageNlp.value = page;
+    };
+
+    const fetchNlpRules = () => {
+      loading.nlp = true;
+      setTimeout(() => {
+        nlpRules.value = [
+          { id: 1, intent_name: '查询物料库存', description: '根据物料编码查询库存数量与状态', action_type: 'SQL_QUERY', action_target: 'SELECT material_code, material_name, quantity, status FROM inventory WHERE material_code = ?', parameters: JSON.stringify([{"name": "material_code", "type": "string"}]), example_query: '这批M12345的库存状态是什么？', status: 'active' },
+          
+          { id: 2, intent_name: '查询批次测试结果', description: '根据批次号查询实验室测试记录', action_type: 'SQL_QUERY', action_target: 'SELECT test_id, result, defect_desc FROM lab_tests WHERE batch_no = ?', parameters: JSON.stringify([{"name": "batch_no", "type": "string"}]), example_query: '批次789101有没有测试不合格的?', status: 'active' },
+          
+          { id: 3, intent_name: '查询物料上线不良率', description: '查询物料上线的平均不良率与异常数量', action_type: 'SQL_QUERY', action_target: 'SELECT AVG(defect_rate) as avg_defect_rate, SUM(exception_count) as exception_count FROM online_tracking WHERE material_code = ?', parameters: JSON.stringify([{"name": "material_code", "type": "string"}]), example_query: '物料M5678901上线不良率怎么样？', status: 'active' },
+          
+          { id: 4, intent_name: '获取高风险库存列表', description: '查询风险等级为high的库存记录', action_type: 'SQL_QUERY', action_target: 'SELECT material_code, material_name, supplier_name, quantity FROM inventory WHERE risk_level = "high"', parameters: JSON.stringify([]), example_query: '有哪些物料当前是高风险？', status: 'active' },
+          
+          { id: 5, intent_name: '按供应商查询不良记录', description: '根据供应商名查询有不良记录的测试', action_type: 'SQL_QUERY', action_target: 'SELECT test_id, material_code, defect_desc FROM lab_tests WHERE supplier_name = ? AND result = "NG"', parameters: JSON.stringify([{"name": "supplier_name", "type": "string"}]), example_query: '欣旺达这批料有没有测试不合格的记录？', status: 'active' },
+          
+          { id: 6, intent_name: '物料近期使用项目统计', description: '统计物料近近30天内在哪些项目上线使用', action_type: 'SQL_QUERY', action_target: 'SELECT DISTINCT project FROM online_tracking WHERE material_code = ? AND online_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)', parameters: JSON.stringify([{"name": "material_code", "type": "string"}]), example_query: 'M12345最近在哪些项目上线过?', status: 'active' },
+          
+          { id: 7, intent_name: '获取物料对应的测试合格率', description: '根据物料编码统计测试合格率', action_type: 'SQL_QUERY', action_target: 'SELECT COUNT(*) as total_tests, SUM(CASE WHEN result = "OK" THEN 1 ELSE 0 END) as pass_count', parameters: JSON.stringify([{"name": "material_code", "type": "string"}]), example_query: '这批M12345的合格率是多少?', status: 'active' },
+          
+          { id: 8, intent_name: '查询批次的综合风险', description: '从批次汇总表查中获取批次的风险等级', action_type: 'SQL_QUERY', action_target: 'SELECT risk_level FROM batches_summary WHERE batch_no = ?', parameters: JSON.stringify([{"name": "batch_no", "type": "string"}]), example_query: '批次12345的综合风险等级是多少?', status: 'active' }
+        ];
+        loading.nlp = false;
+      }, 500);
+    };
+
+    const updateNlpRuleStatus = (rule) => {
+      console.log(`Rule ${rule.id} status changed to ${rule.status}`);
+      // Add API call to update status
+      ElMessage.success('状态更新成功');
+    };
+
+    const deleteNlpRule = (rule) => {
+       ElMessageBox.confirm(`确定要删除意图规则 "${rule.intent_name}" 吗?`, '警告', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }).then(() => {
+        nlpRules.value = nlpRules.value.filter(r => r.id !== rule.id);
+        ElMessage.success('规则删除成功');
+      }).catch(() => {
+        // cancelled
+      });
+    };
     
     const filteredKnowledgeRules = computed(() => {
       if (!searchText.knowledge) return knowledgeRules.value;
@@ -944,6 +978,51 @@ const ruleEngine = {
 // 创建一个本地 generateId 函数
 const generateId = () => {
   return 'id-' + Math.random().toString(36).substr(2, 9);
+};
+
+onMounted(() => {
+  // ... existing code ...
+  fetchNlpRules();
+});
+
+const addRuleDialogVisible = ref(false);
+const dialogTitle = ref('');
+const currentRule = ref(null);
+
+const openAddRuleDialog = (ruleType) => {
+  dialogTitle.value = '添加NLP意图规则';
+  currentRule.value = null;
+  addRuleDialogVisible.value = true;
+};
+
+const openEditRuleDialog = (ruleType, rule) => {
+  dialogTitle.value = '编辑NLP意图规则';
+  currentRule.value = { ...rule };
+  addRuleDialogVisible.value = true;
+};
+
+const handleRuleSubmit = (ruleData) => {
+  if (ruleData.id) {
+    // 编辑现有规则
+    const index = nlpRules.value.findIndex(r => r.id === ruleData.id);
+    if (index !== -1) {
+      nlpRules.value[index] = { ...ruleData };
+      ElMessage.success('规则更新成功');
+    }
+  } else {
+    // 添加新规则
+    const newId = nlpRules.value.length > 0 
+      ? Math.max(...nlpRules.value.map(r => r.id)) + 1 
+      : 1;
+    
+    nlpRules.value.push({
+      ...ruleData,
+      id: newId,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
+    ElMessage.success('规则添加成功');
+  }
 };
 </script>
 

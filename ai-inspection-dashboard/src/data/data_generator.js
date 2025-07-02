@@ -47,14 +47,14 @@ const usedBatchNumbers = new Set();
  * 生成批次号 - 更新为符合数据规则要求的6位数字格式
  * @returns {string} 批次号 (100000-999999范围内的6位数字)
  */
-function generateBatchNumber() {
-  let batchNo;
+function generateBatchCode() {
+  let batchCode;
   do {
-    batchNo = (Math.floor(Math.random() * 900000) + 100000).toString();
-  } while (usedBatchNumbers.has(batchNo));
+    batchCode = (Math.floor(Math.random() * 900000) + 100000).toString();
+  } while (usedBatchNumbers.has(batchCode));
   
-  usedBatchNumbers.add(batchNo);
-  return batchNo;
+  usedBatchNumbers.add(batchCode);
+  return batchCode;
 }
 
 /**
@@ -176,12 +176,12 @@ function generateQualityStatus(materialStatus) {
 /**
  * 生成检验记录
  * @param {Object} material - 物料信息
- * @param {string} batchNo - 批次号
+ * @param {string} batchCode - 批次号
  * @param {string} qualityStatus - 质量状态
  * @param {Date} inspectionDate - 检验日期
  * @returns {Object} 检验记录
  */
-function generateInspectionRecord(material, batchNo, qualityStatus, inspectionDate) {
+function generateInspectionRecord(material, batchCode, qualityStatus, inspectionDate) {
   const isPassed = qualityStatus === '合格';
   const isRisk = qualityStatus.includes('风险物料');
   const isWaiting = qualityStatus === '待检';
@@ -233,22 +233,25 @@ function generateInspectionRecord(material, batchNo, qualityStatus, inspectionDa
   // 生成问题描述和处理建议
   let issue = null;
   let suggestion = null;
+  let conclusion = '测试通过';
   
   if (!isPassed) {
     const issueCategory = randomChoice(Object.keys(FREEZE_REASONS));
     const issueDetail = randomChoice(FREEZE_REASONS[issueCategory]);
     issue = `${issueCategory}-${issueDetail}`;
     suggestion = randomChoice(SOLUTIONS);
+    conclusion = `不合格: ${issue}`;
   } else if (isRisk) {
     const issueCategory = randomChoice(Object.keys(FREEZE_REASONS));
     const issueDetail = randomChoice(FREEZE_REASONS[issueCategory]);
     issue = `轻微${issueCategory}-${issueDetail}`;
     suggestion = randomChoice(SOLUTIONS);
+    conclusion = `存在风险: ${issue}`;
   }
   
   return {
     id: `INS${Math.floor(Math.random() * 1000000)}`,
-    batch_no: batchNo,
+    batch_code: batchCode,
     material_code: material.code_prefix + Math.floor(Math.random() * 10000).toString().padStart(6, '0'),
     material_name: material.name,
     inspection_type: inspectionType,
@@ -256,8 +259,9 @@ function generateInspectionRecord(material, batchNo, qualityStatus, inspectionDa
     inspector: randomChoice(['张工', '李工', '王工', '赵工', '刘工']),
     status: isWaiting ? '待检' : isPassed && !isRisk ? '合格' : isRisk ? '风险' : '不合格',
     items: itemResults,
-    issue: issue,
+    issue_description: issue,
     suggestion: suggestion,
+    conclusion: conclusion,
     department: randomChoice(['IQC', 'IPQC', 'QA', 'FQC']),
     location: randomChoice(['实验室', '生产线', '入库检验区', '现场']),
   };
@@ -287,7 +291,7 @@ export function generateInventoryData(count = 100) {
     
     // 生成批次号
     const materialPrefix = material.name.substring(0, 2);
-    const batchNo = generateBatchNumber();
+    const batchCode = generateBatchCode();
     
     // 生成物料状态和质量状态
     const status = generateMaterialStatus();
@@ -328,16 +332,16 @@ export function generateInventoryData(count = 100) {
     // 生成库存记录
     const inventoryItem = {
       id: i + 1,
-      batchNo,
-      materialCode: material.code_prefix + Math.floor(Math.random() * 10000).toString().padStart(6, '0'),
-      materialName: material.name,
+      batch_code: batchCode,
+      material_code: material.code_prefix + Math.floor(Math.random() * 10000).toString().padStart(6, '0'),
+      material_name: material.name,
       category: material.category,
       factory,
       warehouse,
       location,
       quantity,
       unit: material.unit,
-      supplier,
+      supplier: supplier,
       status,
       quality,
       inspectionDate: formatDate(inspectionDate),
@@ -370,12 +374,12 @@ export function generateInspectionData(inventoryData, extraCount = 50) {
   const batchRecordCount = {}; // 记录每个批次的测试记录数量
   
   inventoryData.forEach(item => {
-    const material = getMaterialInfo(item.materialName);
+    const material = getMaterialInfo(item.material_name);
     if (!material) return;
     
     // 确保每个批次有3-5条测试记录
     const recordCount = Math.floor(Math.random() * 3) + 3; // 3-5条记录
-    batchRecordCount[item.batchNo] = recordCount;
+    batchRecordCount[item.batch_code] = recordCount;
     
     // 获取入库日期，确保测试日期晚于入库日期
     const receiveDate = new Date(item.inspectionDate.split(' ')[0]);
@@ -404,7 +408,7 @@ export function generateInspectionData(inventoryData, extraCount = 50) {
       
       // 测试结果 (合格90%, 不合格10%)
       const isPass = Math.random() < 0.9;
-      const result = isPass ? "合格" : "不合格";
+      const testOutcome = isPass ? "合格" : "不合格";
       
       // 不合格时必须包含1-2个缺陷类型，合格时禁止出现缺陷描述
       let defect = "";
@@ -428,7 +432,7 @@ export function generateInspectionData(inventoryData, extraCount = 50) {
           "包装盒": ["破损", "logo错误", "错印", "尺寸异常"]
         };
         
-        const availableDefects = materialDefects[item.materialName] || ["缺陷1", "缺陷2", "缺陷3", "缺陷4"];
+        const availableDefects = materialDefects[item.material_name] || ["缺陷1", "缺陷2", "缺陷3", "缺陷4"];
         const defectCount = Math.random() < 0.5 ? 1 : 2; // 1-2个缺陷
         
         if (defectCount === 1) {
@@ -446,9 +450,9 @@ export function generateInspectionData(inventoryData, extraCount = 50) {
       }
       
       // 生成测试记录ID
-      const batchPrefix = item.batchNo.substring(0, 4);
+      const batchPrefix = item.batch_code.substring(0, 4);
       const randomSuffix = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
-      const testId = `TEST-${item.materialCode}-${batchPrefix}-${randomSuffix}`;
+      const testId = `TEST-${item.material_code}-${batchPrefix}-${randomSuffix}`;
       
       // 创建测试记录
       const testRecord = {
@@ -456,12 +460,12 @@ export function generateInspectionData(inventoryData, extraCount = 50) {
         testDate: formatDateYMD(testDate),
         projectId,
         baselineId,
-        materialCode: item.materialCode,
-        materialName: item.materialName,
-        batchNo: item.batchNo,
+        material_code: item.material_code,
+        material_name: item.material_name,
+        batch_code: item.batch_code,
         supplier: item.supplier,
         testItem,
-        result,
+        result: testOutcome,
         defect
       };
       
@@ -491,12 +495,12 @@ export function generateProductionData(inventoryData, testData) {
   inventoryData.forEach(item => {
     // 确保每个批次有5-8条上线记录
     const recordCount = Math.floor(Math.random() * 4) + 5; // 5-8条记录
-    batchRecordCount[item.batchNo] = recordCount;
+    batchRecordCount[item.batch_code] = recordCount;
     
     // 找出该批次的最新测试记录，确保上线检验日期晚于测试日期
     let latestTestDate = null;
     testData.forEach(test => {
-      if (test.batchNo === item.batchNo) {
+      if (test.batch_code === item.batch_code) {
         const testDate = new Date(test.testDate);
         if (!latestTestDate || testDate > latestTestDate) {
           latestTestDate = testDate;
@@ -565,7 +569,7 @@ export function generateProductionData(inventoryData, testData) {
           "包装盒": ["破损", "logo错误", "错印", "尺寸异常"]
         };
         
-        const availableDefects = materialDefects[item.materialName] || ["缺陷1", "缺陷2", "缺陷3", "缺陷4"];
+        const availableDefects = materialDefects[item.material_name] || ["缺陷1", "缺陷2", "缺陷3", "缺陷4"];
         const defectCount = Math.random() < 0.5 ? 1 : 2; // 1-2个缺陷
         
         if (defectCount === 1) {
@@ -589,10 +593,10 @@ export function generateProductionData(inventoryData, testData) {
         productionLine,
         baselineId,
         projectId,
-        materialCode: item.materialCode,
-        materialName: item.materialName,
+        material_code: item.material_code,
+        material_name: item.material_name,
         supplier: item.supplier,
-        batchNo: item.batchNo,
+        batch_code: item.batch_code,
         defectRate,
         defect,
         inspectionDate: formatDateYMD(inspectionDate)

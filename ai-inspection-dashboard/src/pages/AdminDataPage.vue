@@ -1051,6 +1051,14 @@ async function generateInventoryData() {
       // 添加操作记录
       addActivityRecord(`生成了${result.count}条库存数据`, 'generate');
       updateDataSummary();
+
+      // 推送数据到问答助手
+      try {
+        await systemDataUpdater.pushDataToAssistant();
+        console.log('✅ 库存数据已推送到问答助手');
+      } catch (pushError) {
+        console.warn('⚠️ 推送数据到问答助手失败:', pushError);
+      }
     } else {
       ElMessage.error(`库存数据生成失败: ${result && result.message ? result.message : '未知错误'}`);
     }
@@ -1080,14 +1088,22 @@ async function generateLabData() {
       ElMessage.success(`成功生成${result.count}条测试数据`);
       // 添加操作记录
       addActivityRecord(`生成了${result.count}条测试数据`, 'generate');
-      
+
       // 添加调试日志
       console.log('测试数据生成成功:', result);
       console.log('测试数据可以在LabView页面查看');
-      
+
       // 更新数据概览
       updateDataSummary();
-      
+
+      // 推送数据到问答助手
+      try {
+        await systemDataUpdater.pushDataToAssistant();
+        console.log('✅ 测试数据已推送到问答助手');
+      } catch (pushError) {
+        console.warn('⚠️ 推送数据到问答助手失败:', pushError);
+      }
+
       // 提示用户刷新测试页面
       ElMessage({
         message: '请刷新测试页面查看新生成的数据',
@@ -1124,6 +1140,14 @@ async function generateFactoryData() {
       // 添加操作记录
       addActivityRecord(`生成了${result.count}条工厂数据`, 'generate');
       updateDataSummary();
+
+      // 推送数据到问答助手
+      try {
+        await systemDataUpdater.pushDataToAssistant();
+        console.log('✅ 工厂数据已推送到问答助手');
+      } catch (pushError) {
+        console.warn('⚠️ 推送数据到问答助手失败:', pushError);
+      }
     } else {
       ElMessage.error(`工厂数据生成失败: ${result && result.message ? result.message : '未知错误'}`);
     }

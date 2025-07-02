@@ -16,8 +16,20 @@ const apiClient = axios.create({
   }
 });
 
-// 应用模拟API中间件
-setupMockInterceptor(apiClient);
+// 应用模拟API中间件（仅在非真实API模式下）
+const useRealAPI = import.meta.env.VITE_USE_REAL_API === 'true';
+console.log('🔍 API客户端配置:', {
+  'VITE_USE_REAL_API': import.meta.env.VITE_USE_REAL_API,
+  'useRealAPI': useRealAPI,
+  'baseURL': apiClient.defaults.baseURL
+});
+
+if (!useRealAPI) {
+  setupMockInterceptor(apiClient);
+  console.log('📝 已启用模拟API中间件');
+} else {
+  console.log('🔗 使用真实API，跳过模拟API中间件');
+}
 
 // 请求拦截器
 apiClient.interceptors.request.use(

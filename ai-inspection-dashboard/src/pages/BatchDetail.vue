@@ -31,7 +31,7 @@
               <el-descriptions-item label="供应商">{{ batchData.supplier_name }}</el-descriptions-item>
               <el-descriptions-item label="数量">{{ batchData.quantity }}</el-descriptions-item>
               <el-descriptions-item label="缺陷率">{{ (batchData.defect_rate * 100).toFixed(2) }}%</el-descriptions-item>
-              <el-descriptions-item label="创建日期">{{ batchData.created_date }}</el-descriptions-item>
+              <el-descriptions-item label="入库日期">{{ batchData.created_date }}</el-descriptions-item>
               <el-descriptions-item label="生产日期">{{ batchData.production_date || '-' }}</el-descriptions-item>
               <el-descriptions-item label="状态">
                 <el-tag :type="getStatusTagType(batchData.status)">

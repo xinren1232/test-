@@ -1,8 +1,11 @@
 <template>
   <div class="app-container">
     <el-config-provider :locale="zhCn">
+      <!-- AI助手独立布局 -->
+      <router-view v-if="isAIAssistantRoute" />
+
       <!-- 主布局 -->
-      <div class="main-layout">
+      <div v-else class="main-layout">
         <!-- 侧边栏 -->
         <div class="sidebar" :class="{ 'collapsed': isCollapsed }">
           <!-- 系统LOGO -->
@@ -80,7 +83,23 @@
             
             <el-menu-item index="/admin">
               <el-icon><Setting /></el-icon>
-              <span>系统管理</span>
+              <template #title>系统管理</template>
+            </el-menu-item>
+            
+            <el-sub-menu index="/ai-assistant-menu">
+              <template #title>
+                <el-icon><MagicStick /></el-icon>
+                <span>智能工具</span>
+              </template>
+              <el-menu-item index="/assistant">智能问答</el-menu-item>
+              <el-menu-item index="/assistant-ai-three-column">IQE AI 智能助手</el-menu-item>
+              <el-menu-item index="/three-column-test">三栏布局测试</el-menu-item>
+              <el-menu-item index="/ai-scenario-management">AI场景管理</el-menu-item>
+            </el-sub-menu>
+
+            <el-menu-item index="/rules-inspection">
+              <el-icon><Document /></el-icon>
+              <template #title>规则检查</template>
             </el-menu-item>
           </el-menu>
           
@@ -139,27 +158,45 @@ import { ElConfigProvider, ElMessage } from 'element-plus';
 import zhCn from 'element-plus/es/locale/lang/zh-cn';
 import unifiedDataService from './services/UnifiedDataService';
 import systemDataUpdater from './services/SystemDataUpdater';
-import { 
-  HomeFilled, DataBoard, Goods, OfficeBuilding, 
+import {
+  HomeFilled, DataBoard, Goods, OfficeBuilding,
   Document, Operation, Stopwatch, Fold, Expand,
-  DataAnalysis, ChatLineRound, CaretBottom, User, Setting
+  DataAnalysis, ChatLineRound, ChatDotRound, CaretBottom, User, Setting, Tools, MagicStick, Connection
 } from '@element-plus/icons-vue';
 
 export default {
   name: 'App',
   components: {
     ElConfigProvider,
-    HomeFilled, DataBoard, Goods, OfficeBuilding, 
+    HomeFilled, DataBoard, Goods, OfficeBuilding,
     Document, Operation, Stopwatch, Fold, Expand,
-    DataAnalysis, ChatLineRound, CaretBottom, User, Setting
+    DataAnalysis, ChatLineRound, ChatDotRound, CaretBottom, User, Setting, Tools, MagicStick, Connection
   },
   setup() {
     const route = useRoute();
     const isCollapsed = ref(false);
-    
+
     // 当前页面名称
     const currentPageName = computed(() => route.name || '');
-    
+
+    // 检测是否为AI助手路由
+    const isAIAssistantRoute = computed(() => {
+      const aiRoutes = [
+        '/ai-assistant-final',
+        '/ai-assistant-three-column',
+        '/ai-assistant-standalone',
+        '/ai-assistant-fullscreen',
+        '/ai-assistant-simple',
+        '/ai-assistant-main',
+        '/ai-assistant-redesigned',
+        '/assistant-ai-new',
+        '/assistant-ai-three-column'
+      ];
+      const isAI = aiRoutes.includes(route.path);
+      console.log('当前路由:', route.path, '是否为AI路由:', isAI);
+      return isAI;
+    });
+
     // 获取当前活跃的菜单项
     const activeMenu = computed(() => {
       return route.path;
@@ -288,7 +325,8 @@ export default {
       currentPageName,
       isCollapsed,
       activeMenu,
-      toggleCollapse
+      toggleCollapse,
+      isAIAssistantRoute
     };
   }
 };
@@ -473,6 +511,3 @@ html, body {
   }
 }
 </style> 
- 
- 
- 

@@ -31,11 +31,27 @@ function initializeMaterialCodeMappings() {
 
 /**
  * 设置模拟API拦截器
+ * @param {AxiosInstance} axiosInstance axios实例
  * @param {number} delay 模拟延迟时间（毫秒）
  */
-function setupMockInterceptor(delay = 500) {
+function setupMockInterceptor(axiosInstance, delay = 500) {
+  // 检查是否应该使用真实API
+  const useRealAPI = import.meta.env.VITE_USE_REAL_API === 'true' ||
+                     window.location.search.includes('real-api=true');
+
+  console.log('🔍 模拟API中间件检查:', {
+    'VITE_USE_REAL_API': import.meta.env.VITE_USE_REAL_API,
+    'useRealAPI': useRealAPI,
+    'URL参数': window.location.search
+  });
+
+  if (useRealAPI) {
+    console.log('🔗 使用真实API，跳过模拟拦截器');
+    return;
+  }
+
   // 创建模拟适配器
-  const mock = new MockAdapter(axios, { delayResponse: delay });
+  const mock = new MockAdapter(axiosInstance, { delayResponse: delay });
   
   // 模拟物料编码映射API
   mock.onGet('/api/material-code-mappings').reply(() => {
@@ -122,11 +138,14 @@ function setupMockInterceptor(delay = 500) {
       return [500, { message: '生成实验室测试数据失败' }];
     }
   });
-  
-  // 其他原有的API模拟...
-      }
-      
-// 初始化模拟API
-setupMockInterceptor();
 
-export default setupMockInterceptor; 
+  // 模拟助手API - 让所有assistant相关请求通过到真实后端
+  mock.onPost('/api/assistant/query').passThrough();
+  mock.onPost('/api/assistant/update-data').passThrough();
+  mock.onGet('/api/assistant/health').passThrough();
+
+  // 其他未匹配的API请求返回404
+  mock.onAny().reply(404, { message: 'API endpoint not found' });
+}
+
+export default setupMockInterceptor;

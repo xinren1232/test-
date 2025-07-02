@@ -98,25 +98,59 @@
       <el-table-column prop="material_name" label="物料名称" width="150" />
       <el-table-column prop="supplier_name" label="供应商" width="150" />
       <el-table-column prop="quantity" label="数量" sortable width="80" />
-      <el-table-column prop="created_date" label="创建日期" sortable width="120">
+      <el-table-column prop="created_date" label="入库日期" sortable width="120">
           <template #default="scope">
           {{ formatDate(scope.row.created_date) }}
           </template>
         </el-table-column>
-      <el-table-column prop="line_exceptions" label="产线异常" sortable width="120">
+      <el-table-column prop="line_exceptions" label="产线异常" sortable width="120" align="center">
           <template #default="scope">
-          <el-tag v-if="scope.row.line_exceptions > 0" type="danger">{{ scope.row.line_exceptions }}</el-tag>
-          <span v-else>0</span>
+          <el-popover v-if="scope.row.line_exceptions > 0" placement="top" trigger="hover" :width="350">
+            <template #reference>
+              <el-tag type="danger" effect="dark" style="cursor: pointer;">
+                {{ scope.row.line_exceptions }} 次
+              </el-tag>
+            </template>
+            <div class="exception-popover">
+              <div class="popover-title">产线异常详情</div>
+              <ul>
+                <li v-for="(detail, index) in scope.row.line_exception_details.slice(0, 5)" :key="index">
+                  <strong>{{ detail.date }}:</strong> 在 {{ detail.location }} 发现异常, 不良率 {{ (detail.defect_rate * 100).toFixed(2) }}%
+                </li>
+              </ul>
+              <div v-if="scope.row.line_exception_details.length > 5" class="popover-footer">
+                ...等共 {{ scope.row.line_exception_details.length }} 条记录
+              </div>
+            </div>
+          </el-popover>
+          <span v-else>无</span>
         </template>
       </el-table-column>
-      <el-table-column prop="test_exceptions" label="测试异常" sortable width="120">
+      <el-table-column prop="test_exceptions" label="测试异常" sortable width="120" align="center">
         <template #default="scope">
-          <el-tag v-if="scope.row.test_exceptions > 0" type="warning">{{ scope.row.test_exceptions }}</el-tag>
-          <span v-else>0</span>
-        </template>
-      </el-table-column>
+          <el-popover v-if="scope.row.test_exceptions > 0" placement="top" trigger="hover" :width="350">
+            <template #reference>
+              <el-tag type="warning" effect="dark" style="cursor: pointer;">
+                {{ scope.row.test_exceptions }} 次
+            </el-tag>
+            </template>
+            <div class="exception-popover">
+              <div class="popover-title">测试异常详情</div>
+              <ul>
+                <li v-for="(detail, index) in scope.row.test_exception_details.slice(0, 5)" :key="index">
+                  <strong>{{ detail.date }}:</strong> {{ detail.test_item }} - {{ detail.defect_desc }}
+                </li>
+              </ul>
+              <div v-if="scope.row.test_exception_details.length > 5" class="popover-footer">
+                ...等共 {{ scope.row.test_exception_details.length }} 条记录
+              </div>
+            </div>
+          </el-popover>
+          <span v-else>无</span>
+          </template>
+        </el-table-column>
       <el-table-column label="批次状态" width="120">
-        <template #default="scope">
+          <template #default="scope">
           <el-tag :type="getStatusTagType(scope.row.status)" size="small">
               {{ getStatusText(scope.row.status) }}
             </el-tag>
@@ -138,9 +172,6 @@
               </el-button>
             <el-button type="info" link size="small" @click="showTraceability(scope.row)">
                 追溯
-              </el-button>
-            <el-button type="danger" link size="small" @click="deleteBatch(scope.row)">
-              删除
               </el-button>
             </div>
           </template>
@@ -214,7 +245,7 @@
             </el-col>
             <el-col :span="8">
               <div class="detail-item">
-                <span class="detail-label">创建日期</span>
+                <span class="detail-label">入库日期</span>
                 <span class="detail-value">{{ formatDate(selectedBatch.created_date) }}</span>
               </div>
             </el-col>
@@ -543,13 +574,8 @@
           <el-descriptions-item label="物料名称">{{ selectedBatch.material_name }}</el-descriptions-item>
           <el-descriptions-item label="供应商">{{ selectedBatch.supplier_name }}</el-descriptions-item>
           <el-descriptions-item label="数量">{{ selectedBatch.quantity }}</el-descriptions-item>
-          <el-descriptions-item label="创建日期">{{ selectedBatch.created_date }}</el-descriptions-item>
-          <el-descriptions-item label="生产日期">{{ selectedBatch.production_date }}</el-descriptions-item>
-          <el-descriptions-item label="状态">
-            <el-tag :type="getStatusTagType(selectedBatch.status)">
-              {{ getStatusText(selectedBatch.status) }}
-            </el-tag>
-          </el-descriptions-item>
+          <el-descriptions-item label="入库日期">{{ formatDate(selectedBatch.created_date) }}</el-descriptions-item>
+          <el-descriptions-item label="生产日期">{{ formatDate(selectedBatch.production_date) }}</el-descriptions-item>
         </el-descriptions>
         
         <!-- 批次生命周期图示 -->
@@ -765,22 +791,15 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch, inject } from 'vue'
-import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-// 导入测试数据和物料批次数据
-import { labTestData } from '../data/samplesData.js'
-import axios from 'axios'
-import * as echarts from 'echarts'
-import { Plus, Refresh, Download, Search, Edit, Delete, View, Warning, Check, Close } from '@element-plus/icons-vue'
-import { materialCategories } from '../data/material_categories.js'
-import BatchService from '../services/BatchService'
-// import unifiedDataService from '../services/UnifiedDataService'
+import { ref, onMounted, computed, nextTick } from 'vue';
+import { useRouter } from 'vue-router';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import * as echarts from 'echarts';
+import { unifiedDataService } from '../services/UnifiedDataService';
+import BatchService from '../services/BatchService';
+import { h } from 'vue';
 
-const router = useRouter()
-
-// 注入统一数据服务
-const unifiedDataService = inject('unifiedDataService')
+const router = useRouter();
 
 // 供应商列表
 const suppliers = ref([])
@@ -1380,16 +1399,15 @@ function getSupplierRanking() {
 }
 
 // 获取风险建议
-function getRiskRecommendation() {
-  if (!selectedBatch.value) return '';
+function getRiskRecommendation(batch) {
+  if (!batch) return '无法评估风险，请检查批次数据。';
   
-  const riskLevel = selectedBatch.value.risk_level;
-  
-  switch (riskLevel) {
-    case 'high': return '建议增加检验频率';
-    case 'medium': return '建议常规监控';
-    case 'low': return '可减少检验频率';
-    default: return '';
+  if (batch.risk_level === 'high') {
+    return '建议暂停使用该批次物料，进行全面质量评估并联系供应商进行质量复核。';
+  } else if (batch.risk_level === 'medium') {
+    return '建议加强该批次物料的质量监控，对生产过程进行重点监控，并考虑增加抽检频率。';
+  } else {
+    return '该批次物料风险较低，可正常使用，建议按照常规质量管理流程进行监控。';
   }
 }
 
@@ -1765,11 +1783,14 @@ const aggregateBatchData = (inventory, factory, lab) => {
         material_name: item.materialName,
         supplier_name: item.supplier,
         quantity: item.quantity,
-        created_date: item.storageDate || item.inboundTime,
+        created_date: item.storageDate || item.inboundTime || new Date().toISOString().split('T')[0],
         status: item.status,
-        risk_level: item.riskLevel,
+        risk_level: item.riskLevel || 'low',
+        defect_rate: 0,
         line_exceptions: 0,
         test_exceptions: 0,
+        line_exception_details: [],
+        test_exception_details: []
       });
     }
   });
@@ -1777,18 +1798,56 @@ const aggregateBatchData = (inventory, factory, lab) => {
   // 2. 统计产线异常
   factory.forEach(item => {
     const batchId = item.batchId || item.batchNo;
-    if (batchMap.has(batchId) && item.exceptionCount > 0) {
-      const batch = batchMap.get(batchId);
-      batch.line_exceptions += item.exceptionCount;
+    if (!batchId || !batchMap.has(batchId)) return;
+
+    const batch = batchMap.get(batchId);
+    
+    // 确保数据类型正确
+    const defectRate = parseFloat(item.defectRate || 0);
+    const exceptionCount = parseInt(item.exceptionCount || 0);
+
+    // 检查是否有不良率或异常计数
+    if (defectRate > 0 || exceptionCount > 0) {
+      // 增加产线异常计数
+      batch.line_exceptions += 1;
+      
+      // 记录异常详情
+      batch.line_exception_details.push({
+        date: item.onlineDate || item.useTime,
+        location: `${item.factory || ''} ${item.line || ''}`,
+        defect_rate: defectRate,
+        exception_count: exceptionCount
+      });
+      
+      // 更新批次不良率为最大值
+      batch.defect_rate = Math.max(batch.defect_rate, defectRate);
     }
   });
 
   // 3. 统计测试异常
   lab.forEach(item => {
     const batchId = item.batchId || item.batchNo;
-    if (batchMap.has(batchId) && (item.result === 'NG' || item.result === '不合格')) {
-      const batch = batchMap.get(batchId);
+    if (!batchId || !batchMap.has(batchId)) return;
+
+    const batch = batchMap.get(batchId);
+    
+    // 检查测试结果是否为NG
+    const result = (item.result || '').toLowerCase();
+    if (result === 'ng' || result.includes('不合格') || result.includes('fail')) {
+      
+      // 增加测试异常计数
       batch.test_exceptions += 1;
+      
+      // 记录异常详情
+      batch.test_exception_details.push({
+        date: item.testDate,
+        test_item: item.testItem || '常规检测',
+        result: item.result,
+        defect_desc: item.defectDesc || '未记录'
+      });
+      
+      // 给批次增加基础不良率
+      batch.defect_rate = Math.max(batch.defect_rate, 0.01);
     }
   });
 
@@ -1807,6 +1866,190 @@ onMounted(() => {
   fetchBatchData();
   suppliers.value = BatchService.getSuppliers();
 })
+
+// 显示风险分析
+const showRiskAnalysis = (batch) => {
+  selectedBatch.value = batch;
+  ElMessageBox.confirm(
+    `<div class="risk-analysis-dialog">
+      <h3>批次风险分析</h3>
+      <div class="risk-level">
+        <span class="risk-label">风险等级:</span>
+        <span class="risk-value ${getRiskLevelClass(batch.risk_level)}">${getRiskLevelText(batch.risk_level)}</span>
+      </div>
+      <div class="risk-factors">
+        <h4>风险因素:</h4>
+        <ul>
+          <li>产线异常: <strong>${batch.line_exceptions}</strong> 次</li>
+          <li>测试异常: <strong>${batch.test_exceptions}</strong> 次</li>
+          <li>不良率: <strong>${(batch.defect_rate * 100).toFixed(2)}%</strong></li>
+        </ul>
+      </div>
+      <div class="risk-recommendation">
+        <h4>风险建议:</h4>
+        <p>${getRiskRecommendation(batch)}</p>
+      </div>
+    </div>`,
+    '批次风险分析',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      dangerouslyUseHTMLString: true,
+      customClass: 'risk-analysis-message-box'
+    }
+  ).catch(() => {
+    // 取消时不做任何操作
+  });
+};
+
+// 获取风险等级样式类
+const getRiskLevelClass = (level) => {
+  switch (level) {
+    case 'high': return 'risk-high';
+    case 'medium': return 'risk-medium';
+    case 'low': return 'risk-low';
+    default: return 'risk-low';
+  }
+};
+
+// 显示追溯信息
+const showTraceability = (batch) => {
+  selectedBatch.value = batch;
+  
+  // 查询相关数据
+  findMaterialTestData(batch.material_code);
+  findMaterialInventoryData(batch.material_code);
+  findMaterialProductionData(batch.material_code);
+  
+  // 生成批次活动时间线
+  generateBatchTimeline(batch);
+  
+  ElMessageBox.confirm(
+    `<div class="traceability-dialog">
+      <h3>批次追溯信息</h3>
+      <div class="batch-info">
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="批次号">{{ selectedBatch.batch_id }}</el-descriptions-item>
+          <el-descriptions-item label="物料编码">{{ selectedBatch.material_code }}</el-descriptions-item>
+          <el-descriptions-item label="物料名称">{{ selectedBatch.material_name }}</el-descriptions-item>
+          <el-descriptions-item label="供应商">{{ selectedBatch.supplier_name }}</el-descriptions-item>
+          <el-descriptions-item label="数量">{{ selectedBatch.quantity }}</el-descriptions-item>
+          <el-descriptions-item label="入库日期">{{ formatDate(selectedBatch.created_date) }}</el-descriptions-item>
+          <el-descriptions-item label="生产日期">{{ formatDate(selectedBatch.production_date) }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
+      <div class="traceability-timeline">
+        <el-timeline>
+          ${generateTraceabilityTimelineHTML(batch)}
+        </el-timeline>
+      </div>
+    </div>`,
+    '批次追溯',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      dangerouslyUseHTMLString: true,
+      customClass: 'traceability-message-box',
+      width: '700px'
+    }
+  ).catch(() => {
+    // 取消时不做任何操作
+  });
+};
+
+// 生成追溯时间线HTML
+const generateTraceabilityTimelineHTML = (batch) => {
+  let timelineHTML = '';
+  
+  // 入库记录
+  timelineHTML += `
+    <div class="el-timeline-item">
+      <div class="el-timeline-item__tail"></div>
+      <div class="el-timeline-item__node el-timeline-item__node--normal el-timeline-item__node--primary"></div>
+      <div class="el-timeline-item__wrapper">
+        <div class="el-timeline-item__timestamp is-top">${formatDate(batch.created_date)}</div>
+        <div class="el-timeline-item__content">
+          <h4>入库记录</h4>
+          <p>批次${batch.batch_id}入库，数量: ${batch.quantity}</p>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // 测试异常记录
+  if (batch.test_exception_details && batch.test_exception_details.length > 0) {
+    batch.test_exception_details.forEach((exception, index) => {
+      timelineHTML += `
+        <div class="el-timeline-item">
+          <div class="el-timeline-item__tail"></div>
+          <div class="el-timeline-item__node el-timeline-item__node--normal el-timeline-item__node--warning"></div>
+          <div class="el-timeline-item__wrapper">
+            <div class="el-timeline-item__timestamp is-top">${formatDate(exception.date)}</div>
+            <div class="el-timeline-item__content">
+              <h4>测试异常 #${index + 1}</h4>
+              <p>测试项目: ${exception.test_item}</p>
+              <p>结果: ${exception.result}</p>
+              <p>不良现象: ${exception.defect_desc}</p>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+  }
+  
+  // 产线异常记录
+  if (batch.line_exception_details && batch.line_exception_details.length > 0) {
+    batch.line_exception_details.forEach((exception, index) => {
+      timelineHTML += `
+        <div class="el-timeline-item">
+          <div class="el-timeline-item__tail"></div>
+          <div class="el-timeline-item__node el-timeline-item__node--normal el-timeline-item__node--danger"></div>
+          <div class="el-timeline-item__wrapper">
+            <div class="el-timeline-item__timestamp is-top">${formatDate(exception.date)}</div>
+            <div class="el-timeline-item__content">
+              <h4>产线异常 #${index + 1}</h4>
+              <p>工厂: ${exception.location}</p>
+              <p>不良率: ${exception.defect_rate.toFixed(2)}%</p>
+              <p>异常数量: ${exception.exception_count}</p>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+  }
+  
+  return timelineHTML;
+};
+
+// ... existing code ...
+
+// 格式化日期
+const formatDate = (dateString) => {
+  if (!dateString) return '未设置';
+  
+  // 如果是时间戳数字，转换为日期对象
+  if (typeof dateString === 'number') {
+    const date = new Date(dateString);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+  
+  // 如果是ISO格式的日期字符串，提取日期部分
+  if (typeof dateString === 'string' && dateString.includes('T')) {
+    return dateString.split('T')[0];
+  }
+  
+  // 尝试创建日期对象
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return dateString; // 如果不是有效日期，返回原字符串
+    }
+    
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  } catch (e) {
+    return dateString;
+  }
+};
 </script>
 
 <style scoped>
@@ -2060,6 +2303,176 @@ onMounted(() => {
   .charts-container {
     grid-template-columns: 1fr;
   }
+}
+
+.risk-analysis-dialog {
+  padding: 10px;
+}
+
+.risk-analysis-dialog h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 18px;
+  color: #303133;
+}
+
+.risk-analysis-dialog h4 {
+  margin-top: 15px;
+  margin-bottom: 10px;
+  font-size: 16px;
+  color: #303133;
+}
+
+.risk-level {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.risk-label {
+  font-weight: bold;
+  margin-right: 10px;
+}
+
+.risk-value {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.risk-high {
+  background-color: #f56c6c;
+  color: white;
+}
+
+.risk-medium {
+  background-color: #e6a23c;
+  color: white;
+}
+
+.risk-low {
+  background-color: #67c23a;
+  color: white;
+}
+
+.risk-factors ul {
+  padding-left: 20px;
+  margin: 10px 0;
+}
+
+.risk-factors li {
+  margin-bottom: 5px;
+}
+
+.risk-recommendation {
+  background-color: #f5f7fa;
+  padding: 10px;
+  border-radius: 4px;
+  margin-top: 15px;
+}
+
+.risk-recommendation p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.traceability-timeline {
+  padding: 10px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* 自定义消息框样式 */
+:deep(.risk-analysis-message-box) {
+  max-width: 500px;
+}
+
+:deep(.el-timeline-item__content h4) {
+  margin: 0;
+  font-size: 16px;
+  color: #303133;
+}
+
+:deep(.el-timeline-item__content p) {
+  margin: 5px 0 0;
+  color: #606266;
+}
+
+.traceability-dialog {
+  padding: 10px;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.traceability-dialog h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 18px;
+  color: #303133;
+  text-align: center;
+}
+
+.batch-info {
+  margin-bottom: 20px;
+}
+
+.traceability-timeline {
+  margin-top: 20px;
+  padding: 10px;
+  border-top: 1px solid #EBEEF5;
+}
+
+:deep(.el-timeline-item__content h4) {
+  margin: 0;
+  font-size: 16px;
+  font-weight: bold;
+  color: #303133;
+}
+
+:deep(.el-timeline-item__content p) {
+  margin: 5px 0 0;
+  color: #606266;
+}
+
+:deep(.traceability-message-box) {
+  max-width: 700px;
+  width: 90%;
+}
+
+:deep(.traceability-message-box .el-message-box__content) {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+:deep(.traceability-message-box .el-descriptions) {
+  margin-bottom: 15px;
+}
+
+:deep(.traceability-message-box .el-descriptions__label) {
+  width: 100px;
+  font-weight: bold;
+}
+
+.exception-popover {
+  font-size: 13px;
+}
+.exception-popover .popover-title {
+  font-weight: bold;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #ebeef5;
+}
+.exception-popover ul {
+  padding-left: 15px;
+  margin: 0;
+}
+.exception-popover li {
+  margin-bottom: 5px;
+}
+.exception-popover .popover-footer {
+  margin-top: 8px;
+  color: #909399;
+  font-style: italic;
 }
 </style> 
  

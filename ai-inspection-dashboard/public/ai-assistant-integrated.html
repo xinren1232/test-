@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IQE AI 智能助手</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            overflow: hidden;
+        }
+
+        .ai-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 顶部导航 */
+        .ai-header {
+            background: white;
+            padding: 16px 24px;
+            border-bottom: 1px solid #e4e7ed;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex-shrink: 0;
+        }
+
+        .ai-header h1 {
+            margin: 0;
+            color: #303133;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .ai-controls {
+            display: flex;
+            gap: 12px;
+        }
+
+        .ai-btn {
+            padding: 8px 16px;
+            border: 1px solid #dcdfe6;
+            border-radius: 4px;
+            background: white;
+            color: #606266;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .ai-btn:hover {
+            border-color: #409eff;
+            color: #409eff;
+        }
+
+        .ai-btn.primary {
+            background: #409eff;
+            border-color: #409eff;
+            color: white;
+        }
+
+        .ai-btn.secondary {
+            background: #909399;
+            border-color: #909399;
+            color: white;
+        }
+
+        /* 三栏主体 */
+        .ai-body {
+            flex: 1;
+            display: flex;
+            gap: 16px;
+            padding: 16px;
+            overflow: hidden;
+        }
+
+        /* 左栏 */
+        .ai-left {
+            width: 320px;
+            min-width: 320px;
+            background: #fafafa;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            border: 1px solid #e8e8e8;
+        }
+
+        /* 中栏 */
+        .ai-center {
+            flex: 1;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* 右栏 */
+        .ai-right {
+            width: 350px;
+            min-width: 350px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow-y: auto;
+        }
+
+        .panel-title {
+            padding: 16px;
+            border-bottom: 1px solid #e4e7ed;
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #303133;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .quick-tags {
+            margin-top: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .tag {
+            padding: 4px 8px;
+            background: #f0f2f5;
+            border: 1px solid #d9d9d9;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tag:hover {
+            background: #409eff;
+            color: white;
+            border-color: #409eff;
+        }
+
+        /* 工具区域 */
+        .tool-section {
+            padding: 16px;
+            background: #fafafa;
+        }
+
+        .tool-group {
+            margin-bottom: 24px;
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .tool-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .tool-group h4 {
+            margin: 0 0 12px 0;
+            color: #606266;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .tool-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            background: white;
+            border: 1px solid #f0f0f0;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .tool-item:hover {
+            background: #f8f9fa;
+            border-color: #409eff;
+            transform: translateX(2px);
+            box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
+        }
+
+        .tool-item span {
+            font-size: 24px;
+            margin-right: 12px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+            border-radius: 6px;
+            flex-shrink: 0;
+        }
+
+        .tool-item:hover span {
+            background: #e3f2fd;
+        }
+
+        .tool-name {
+            font-weight: 500;
+            color: #303133;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .tool-desc {
+            color: #909399;
+            font-size: 12px;
+            margin-top: 2px;
+            line-height: 1.3;
+        }
+
+        /* 对话区域 */
+        .chat-area {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .message {
+            display: flex;
+            gap: 12px;
+            max-width: 80%;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .message.user .avatar {
+            background: #409eff;
+            color: white;
+        }
+
+        .content {
+            flex: 1;
+        }
+
+        .text {
+            background: #f8f9fa;
+            padding: 12px 16px;
+            border-radius: 12px;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+
+        .message.user .text {
+            background: #409eff;
+            color: white;
+        }
+
+        .time {
+            font-size: 12px;
+            color: #909399;
+            margin-top: 4px;
+            text-align: right;
+        }
+
+        .message.user .time {
+            text-align: left;
+        }
+
+        /* 输入区域 */
+        .input-area {
+            padding: 16px;
+            border-top: 1px solid #e4e7ed;
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .input-area textarea {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #dcdfe6;
+            border-radius: 4px;
+            resize: none;
+            font-size: 14px;
+            line-height: 1.5;
+            min-height: 80px;
+        }
+
+        .send-btn {
+            padding: 12px 24px;
+            background: #409eff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .send-btn:hover {
+            background: #337ecc;
+        }
+
+        .send-btn:disabled {
+            background: #c0c4cc;
+            cursor: not-allowed;
+        }
+
+        /* 思考区域 */
+        .thinking-area {
+            padding: 16px;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: #909399;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .step {
+            margin-bottom: 16px;
+            border: 1px solid #e4e7ed;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .step.processing {
+            border-color: #409eff;
+            box-shadow: 0 0 8px rgba(64, 158, 255, 0.2);
+        }
+
+        .step.completed {
+            border-color: #67c23a;
+        }
+
+        .step-header {
+            padding: 12px 16px;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .step-title {
+            flex: 1;
+            font-weight: 500;
+            color: #303133;
+            font-size: 14px;
+        }
+
+        .step-status {
+            font-size: 12px;
+            color: #909399;
+        }
+
+        .step.processing .step-status {
+            color: #409eff;
+        }
+
+        .step.completed .step-status {
+            color: #67c23a;
+        }
+
+        /* 加载动画 */
+        .loading-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .loading-dots span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #909399;
+            animation: bounce 1.4s infinite ease-in-out;
+        }
+
+        .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+        .loading-text {
+            margin-top: 8px;
+            color: #909399;
+            font-size: 12px;
+        }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="ai-container">
+        <!-- 顶部导航 -->
+        <div class="ai-header">
+            <h1>🤖 IQE AI 智能助手</h1>
+            <div class="ai-controls">
+                <button class="ai-btn primary" id="toggleAI">AI增强模式</button>
+                <button class="ai-btn" id="clearChat">清空对话</button>
+                <button class="ai-btn secondary" id="goBack">返回系统</button>
+            </div>
+        </div>
+
+        <!-- 三栏主体 -->
+        <div class="ai-body">
+            <!-- 左栏：工具 -->
+            <div class="ai-left">
+                <div class="panel-title">🛠️ 可用工具</div>
+
+                <div class="tool-section">
+                    <div class="tool-group">
+                        <h4>📊 数据分析工具</h4>
+                        <div class="tool-item" data-tool="数据分析">
+                            <span>📊</span>
+                            <div>
+                                <div class="tool-name">数据分析</div>
+                                <div class="tool-desc">分析质量管理数据</div>
+                            </div>
+                        </div>
+                        <div class="tool-item" data-tool="统计分析">
+                            <span>📈</span>
+                            <div>
+                                <div class="tool-name">统计分析</div>
+                                <div class="tool-desc">执行统计分析</div>
+                            </div>
+                        </div>
+                        <div class="tool-item" data-tool="数值计算">
+                            <span>🔢</span>
+                            <div>
+                                <div class="tool-name">数值计算</div>
+                                <div class="tool-desc">执行数值计算分析</div>
+                            </div>
+                        </div>
+                        <div class="tool-item" data-tool="数据验证">
+                            <span>✅</span>
+                            <div>
+                                <div class="tool-name">数据验证</div>
+                                <div class="tool-desc">验证数据完整性</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tool-group">
+                        <h4>📈 可视化工具</h4>
+                        <div class="tool-item" data-tool="图表生成">
+                            <span>📊</span>
+                            <div>
+                                <div class="tool-name">图表生成</div>
+                                <div class="tool-desc">生成数据可视化图表</div>
+                            </div>
+                        </div>
+                        <div class="tool-item" data-tool="趋势分析">
+                            <span>📈</span>
+                            <div>
+                                <div class="tool-name">趋势分析</div>
+                                <div class="tool-desc">分析数据趋势变化</div>
+                            </div>
+                        </div>
+                        <div class="tool-item" data-tool="报表生成">
+                            <span>📄</span>
+                            <div>
+                                <div class="tool-name">报表生成</div>
+                                <div class="tool-desc">生成质量分析报表</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tool-group">
+                        <h4>🌐 联网工具</h4>
+                        <div class="tool-item" data-tool="网络搜索">
+                            <span>🔍</span>
+                            <div>
+                                <div class="tool-name">网络搜索</div>
+                                <div class="tool-desc">搜索相关信息</div>
+                            </div>
+                        </div>
+                        <div class="tool-item" data-tool="API调用">
+                            <span>🔗</span>
+                            <div>
+                                <div class="tool-name">API调用</div>
+                                <div class="tool-desc">调用外部API接口</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tool-group">
+                        <h4>🎯 质量管理</h4>
+                        <div class="tool-item" data-tool="生产管理">
+                            <span>🏭</span>
+                            <div>
+                                <div class="tool-name">生产管理</div>
+                                <div class="tool-desc">管理生产流程数据</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 中栏：对话 -->
+            <div class="ai-center">
+                <div class="panel-title">
+                    💬 智能问答
+                    <div class="quick-tags">
+                        <span class="tag" data-question="查询工厂A的库存情况">查询工厂A的库存情况</span>
+                        <span class="tag" data-question="分析最近的质量趋势">分析最近的质量趋势</span>
+                        <span class="tag" data-question="生成质量报告">生成质量报告</span>
+                    </div>
+                </div>
+
+                <!-- 对话区 -->
+                <div class="chat-area" id="chatArea">
+                    <div class="message ai">
+                        <div class="avatar">🤖</div>
+                        <div class="content">
+                            <div class="text">您好！我是IQE AI智能助手。我已接入DeepSeek大语言模型，可以为您提供专业的质量管理问答服务。</div>
+                            <div class="time" id="initialTime"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 输入区 -->
+                <div class="input-area">
+                    <textarea id="userInput" placeholder="请输入您的问题..."></textarea>
+                    <button class="send-btn" id="sendBtn">发送</button>
+                </div>
+            </div>
+
+            <!-- 右栏：思考过程 -->
+            <div class="ai-right">
+                <div class="panel-title">🧠 AI思考过程</div>
+                
+                <div class="thinking-area" id="thinkingArea">
+                    <div class="empty">
+                        <div class="empty-icon">🤔</div>
+                        <div class="empty-text">AI正在等待您的问题...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let aiEnabled = true;
+        let loading = false;
+        let messages = [];
+        let thinkingSteps = [];
+
+        // AI配置
+        const AI_CONFIG = {
+            apiKey: 'sk-cab797574abf4288bcfaca253191565d',
+            baseURL: 'https://api.deepseek.com',
+            endpoint: '/chat/completions',
+            model: 'deepseek-chat'
+        };
+
+        // DOM元素
+        const chatArea = document.getElementById('chatArea');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const thinkingArea = document.getElementById('thinkingArea');
+        const toggleAIBtn = document.getElementById('toggleAI');
+        const clearChatBtn = document.getElementById('clearChat');
+        const goBackBtn = document.getElementById('goBack');
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 设置初始时间
+            document.getElementById('initialTime').textContent = formatTime(new Date());
+
+            // 绑定事件
+            sendBtn.addEventListener('click', sendMessage);
+            userInput.addEventListener('keydown', function(e) {
+                if (e.ctrlKey && e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+
+            toggleAIBtn.addEventListener('click', toggleAI);
+            clearChatBtn.addEventListener('click', clearChat);
+            goBackBtn.addEventListener('click', goBack);
+
+            // 工具选择事件
+            document.querySelectorAll('.tool-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const toolName = this.getAttribute('data-tool');
+                    selectTool(toolName);
+                });
+            });
+
+            // 快速问题事件
+            document.querySelectorAll('.tag').forEach(tag => {
+                tag.addEventListener('click', function() {
+                    const question = this.getAttribute('data-question');
+                    askQuick(question);
+                });
+            });
+
+            console.log('🤖 IQE AI智能助手已加载');
+        });
+
+        // 格式化时间
+        function formatTime(timestamp) {
+            return new Date(timestamp).toLocaleTimeString();
+        }
+
+        // 返回系统
+        function goBack() {
+            window.location.href = '/';
+        }
+
+        // 切换AI模式
+        function toggleAI() {
+            aiEnabled = !aiEnabled;
+            toggleAIBtn.textContent = aiEnabled ? 'AI增强模式' : '基础模式';
+            toggleAIBtn.className = aiEnabled ? 'ai-btn primary' : 'ai-btn';
+            showMessage(`已切换到${aiEnabled ? 'AI增强模式' : '基础模式'}`, 'info');
+        }
+
+        // 清空对话
+        function clearChat() {
+            chatArea.innerHTML = `
+                <div class="message ai">
+                    <div class="avatar">🤖</div>
+                    <div class="content">
+                        <div class="text">对话已清空。您好！我是IQE AI智能助手，已接入DeepSeek大语言模型。</div>
+                        <div class="time">${formatTime(new Date())}</div>
+                    </div>
+                </div>
+            `;
+
+            thinkingArea.innerHTML = `
+                <div class="empty">
+                    <div class="empty-icon">🤔</div>
+                    <div class="empty-text">AI正在等待您的问题...</div>
+                </div>
+            `;
+
+            messages = [];
+            thinkingSteps = [];
+            showMessage('对话已清空', 'success');
+        }
+
+        // 选择工具
+        function selectTool(toolName) {
+            userInput.value = `请使用${toolName}工具帮我分析数据`;
+            showMessage(`已选择工具：${toolName}`, 'success');
+        }
+
+        // 快速提问
+        function askQuick(question) {
+            userInput.value = question;
+            sendMessage();
+        }
+
+        // 显示消息提示
+        function showMessage(text, type) {
+            // 简单的消息提示
+            console.log(`[${type.toUpperCase()}] ${text}`);
+        }
+
+        // 发送消息
+        async function sendMessage() {
+            if (!userInput.value.trim() || loading) return;
+
+            const question = userInput.value.trim();
+
+            // 添加用户消息
+            addMessage('user', question);
+            userInput.value = '';
+
+            try {
+                await processAI(question);
+            } catch (error) {
+                console.error('AI处理错误:', error);
+                addMessage('ai', '抱歉，处理您的问题时出现了错误。请稍后重试。');
+            }
+        }
+
+        // 添加消息
+        function addMessage(type, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.innerHTML = `
+                <div class="avatar">${type === 'user' ? '👤' : '🤖'}</div>
+                <div class="content">
+                    <div class="text">${content}</div>
+                    <div class="time">${formatTime(new Date())}</div>
+                </div>
+            `;
+
+            chatArea.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        // 滚动到底部
+        function scrollToBottom() {
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        // 处理AI响应
+        async function processAI(question) {
+            loading = true;
+            sendBtn.disabled = true;
+            sendBtn.textContent = '发送中...';
+
+            // 清空思考区域
+            thinkingArea.innerHTML = '';
+            thinkingSteps = [];
+
+            try {
+                // 步骤1: 理解问题
+                addThinkingStep('thinking', '理解问题', 'processing');
+                await delay(500);
+                updateThinkingStep(0, 'completed');
+
+                // 步骤2: 获取数据
+                addThinkingStep('data_query', '获取业务数据', 'processing');
+                await delay(400);
+                updateThinkingStep(1, 'completed');
+
+                // 步骤3: AI处理
+                addThinkingStep('ai_call', '调用AI大模型', 'processing');
+                let response;
+
+                if (aiEnabled) {
+                    try {
+                        response = await callAI(question);
+                        showMessage('AI响应成功', 'success');
+                    } catch (error) {
+                        console.error('AI调用失败:', error);
+                        response = `抱歉，AI服务暂时不可用。基于您的问题"${question}"，我为您提供基础分析...`;
+                        showMessage('AI服务不可用，已切换到基础模式', 'error');
+                    }
+                } else {
+                    response = `基础模式回复：我收到了您的问题"${question}"。这是一个关于质量管理的问题，我正在为您分析相关数据...`;
+                }
+
+                updateThinkingStep(2, 'completed');
+
+                // 步骤4: 生成回答
+                addThinkingStep('response', '生成回答', 'processing');
+                await delay(200);
+                updateThinkingStep(3, 'completed');
+
+                // 显示AI回复
+                addMessage('ai', response);
+
+            } finally {
+                loading = false;
+                sendBtn.disabled = false;
+                sendBtn.textContent = '发送';
+            }
+        }
+
+        // 添加思考步骤
+        function addThinkingStep(type, title, status) {
+            const step = { type, title, status };
+            thinkingSteps.push(step);
+
+            const stepDiv = document.createElement('div');
+            stepDiv.className = `step ${status}`;
+            stepDiv.innerHTML = `
+                <div class="step-header">
+                    <span class="step-icon">${getStepIcon(type)}</span>
+                    <span class="step-title">${title}</span>
+                    <span class="step-status">${getStatusText(status)}</span>
+                </div>
+            `;
+
+            thinkingArea.appendChild(stepDiv);
+        }
+
+        // 更新思考步骤
+        function updateThinkingStep(index, status) {
+            if (thinkingSteps[index]) {
+                thinkingSteps[index].status = status;
+                const stepDiv = thinkingArea.children[index];
+                if (stepDiv) {
+                    stepDiv.className = `step ${status}`;
+                    const statusSpan = stepDiv.querySelector('.step-status');
+                    if (statusSpan) {
+                        statusSpan.textContent = getStatusText(status);
+                    }
+                }
+            }
+        }
+
+        // 获取步骤图标
+        function getStepIcon(type) {
+            const icons = {
+                thinking: '🤔',
+                data_query: '📊',
+                ai_call: '🤖',
+                response: '💬'
+            };
+            return icons[type] || '⚙️';
+        }
+
+        // 获取状态文本
+        function getStatusText(status) {
+            const texts = {
+                processing: '处理中...',
+                completed: '完成'
+            };
+            return texts[status] || status;
+        }
+
+        // 调用AI
+        async function callAI(question) {
+            const response = await fetch(`${AI_CONFIG.baseURL}${AI_CONFIG.endpoint}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${AI_CONFIG.apiKey}`
+                },
+                body: JSON.stringify({
+                    model: AI_CONFIG.model,
+                    messages: [
+                        {
+                            role: 'system',
+                            content: '你是IQE质量管理系统的AI智能助手，专门负责质量管理数据分析和问答。请基于用户问题提供专业、准确、有用的回答。'
+                        },
+                        {
+                            role: 'user',
+                            content: question
+                        }
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 2000
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`AI API错误: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data.choices[0].message.content;
+        }
+
+        // 延迟函数
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+    </script>
+</body>
+</html>

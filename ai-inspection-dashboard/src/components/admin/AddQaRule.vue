@@ -1,427 +1,253 @@
 <template>
-  <div class="add-qa-rule">
-    <el-form ref="ruleForm" :model="ruleForm" :rules="rules" label-width="120px">
-      <!-- 基本信息 -->
-      <h3>基本信息</h3>
-      <el-form-item label="主题" prop="topic">
-        <el-input v-model="ruleForm.topic" placeholder="请输入知识主题" />
+  <el-dialog
+    :model-value="visible"
+    :title="title"
+    width="50%"
+    @close="onClose"
+  >
+    <el-form :model="form" ref="formRef" label-width="100px" :rules="rules">
+      <el-form-item label="意图名称" prop="intent_name">
+        <el-input v-model="form.intent_name" placeholder="例如：查询库存" />
+        <div class="form-tip">简洁明了的意图名称，用于识别用户查询意图</div>
       </el-form-item>
-      
-      <el-form-item label="分类" prop="category">
-        <el-select v-model="ruleForm.category" placeholder="请选择分类">
-          <el-option label="质量检验" value="质量检验" />
-          <el-option label="物料管理" value="物料管理" />
-          <el-option label="生产工艺" value="生产工艺" />
-          <el-option label="标准规范" value="标准规范" />
-          <el-option label="其他" value="其他" />
-        </el-select>
-      </el-form-item>
-      
-      <el-form-item label="来源" prop="source">
-        <el-input v-model="ruleForm.source" placeholder="请输入知识来源" />
-      </el-form-item>
-      
       <el-form-item label="描述" prop="description">
-        <el-input v-model="ruleForm.description" type="textarea" :rows="2" placeholder="请输入简短描述" />
+        <el-input type="textarea" v-model="form.description" placeholder="描述这个意图规则的功能" />
+        <div class="form-tip">详细描述这个规则的功能和用途</div>
       </el-form-item>
-      
-      <!-- 关键词 -->
-      <h3>关键词</h3>
-      <el-form-item label="关键词" prop="keywords">
-        <el-tag
-          v-for="(keyword, index) in ruleForm.keywords"
-          :key="index"
-          closable
-          :disable-transitions="false"
-          @close="removeKeyword(keyword)"
-          class="keyword-tag"
-        >
-          {{ keyword }}
-        </el-tag>
+      <el-form-item label="动作类型" prop="action_type">
+        <el-select v-model="form.action_type" placeholder="请选择动作类型">
+          <el-option label="API 调用" value="API_CALL" />
+          <el-option label="SQL 查询" value="SQL_QUERY" />
+        </el-select>
+        <div class="form-tip">选择执行的动作类型</div>
+      </el-form-item>
+      <el-form-item label="动作目标" prop="action_target">
         <el-input
-          v-if="inputVisible"
-          ref="keywordInput"
-          v-model="inputValue"
-          class="keyword-input"
-          size="small"
-          @keyup.enter="addKeyword"
-          @blur="addKeyword"
+          type="textarea"
+          :rows="4"
+          v-model="form.action_target" 
+          placeholder="如果是API调用，输入端点路径；如果是SQL查询，输入SQL模板，使用?作为参数占位符" 
         />
-        <el-button v-else class="button-new-tag" size="small" @click="showInput">
-          + 添加关键词
-        </el-button>
-      </el-form-item>
-      
-      <!-- 内容 -->
-      <h3>知识内容</h3>
-      <el-form-item label="内容" prop="content">
-        <el-tabs v-model="activeTab">
-          <el-tab-pane label="编辑" name="edit">
-            <el-input
-              v-model="ruleForm.content"
-              type="textarea"
-              :rows="12"
-              placeholder="请输入知识内容，支持Markdown格式"
-            />
-          </el-tab-pane>
-          <el-tab-pane label="预览" name="preview">
-            <div class="markdown-preview" v-html="renderedContent"></div>
-          </el-tab-pane>
-        </el-tabs>
-      </el-form-item>
-      
-      <!-- 示例问题 -->
-      <h3>示例问题</h3>
-      <el-form-item label="示例问题" prop="examples">
-        <div v-for="(example, index) in ruleForm.examples" :key="index" class="example-item">
-          <el-input v-model="ruleForm.examples[index]" placeholder="请输入示例问题">
-            <template #append>
-              <el-button @click="removeExample(index)" icon="Delete" />
-            </template>
-          </el-input>
+        <div class="form-tip">
+          <span v-if="form.action_type === 'API_CALL'">API端点路径，例如：/api/inventory/query</span>
+          <span v-else-if="form.action_type === 'SQL_QUERY'">SQL查询语句，使用?作为参数占位符，例如：SELECT * FROM inventory WHERE material_code = ?</span>
         </div>
-        <el-button type="primary" plain @click="addExample" icon="Plus">
-          添加示例问题
-        </el-button>
       </el-form-item>
-      
-      <!-- 相关主题 -->
-      <h3>相关主题</h3>
-      <el-form-item label="相关主题">
-        <el-tag
-          v-for="(topic, index) in ruleForm.related_topics"
-          :key="index"
-          closable
-          :disable-transitions="false"
-          @close="removeRelatedTopic(topic)"
-          class="topic-tag"
-        >
-          {{ topic }}
-        </el-tag>
-        <el-input
-          v-if="topicInputVisible"
-          ref="topicInput"
-          v-model="topicInputValue"
-          class="topic-input"
-          size="small"
-          @keyup.enter="addRelatedTopic"
-          @blur="addRelatedTopic"
+      <el-form-item label="示例问题" prop="example_query">
+        <el-input v-model="form.example_query" placeholder="例如：查一下某个物料的库存" />
+        <div class="form-tip">用户可能会如何提问，用于测试和示例</div>
+      </el-form-item>
+      <el-form-item label="状态" prop="status">
+        <el-switch
+          v-model="form.status"
+          active-value="active"
+          inactive-value="inactive"
+          active-text="启用"
+          inactive-text="禁用"
         />
-        <el-button v-else class="button-new-tag" size="small" @click="showTopicInput">
-          + 添加相关主题
-        </el-button>
+      </el-form-item>
+      <el-form-item label="参数定义" prop="parameters">
+        <div v-for="(param, index) in form.parameters" :key="index" class="parameter-item">
+          <el-input v-model="param.name" placeholder="参数名" style="width: 150px; margin-right: 10px;" />
+          <el-select v-model="param.type" placeholder="类型" style="width: 120px; margin-right: 10px;">
+            <el-option label="字符串" value="string" />
+            <el-option label="数字" value="number" />
+            <el-option label="日期" value="date" />
+            <el-option label="布尔值" value="boolean" />
+            <el-option label="列表" value="array" />
+          </el-select>
+            <el-input
+            v-if="param.type === 'string' || param.type === 'array'" 
+            v-model="param.default" 
+            placeholder="默认值(可选)" 
+            style="width: 150px; margin-right: 10px;" 
+          />
+          <el-input-number 
+            v-if="param.type === 'number'" 
+            v-model="param.default" 
+            placeholder="默认值" 
+            style="width: 150px; margin-right: 10px;" 
+          />
+          <el-button @click="removeParameter(index)" :icon="Delete" circle plain type="danger" />
+        </div>
+        <el-button @click="addParameter" :icon="Plus" type="primary" plain>添加参数</el-button>
+        <div class="form-tip">定义规则所需的参数，将用于匹配用户输入</div>
       </el-form-item>
       
-      <!-- 操作按钮 -->
-      <el-form-item>
-        <el-button type="primary" @click="submitForm">保存</el-button>
-        <el-button @click="cancel">取消</el-button>
-      </el-form-item>
+      <el-divider content-position="center">预览</el-divider>
+      
+      <div class="preview-section" v-if="form.action_type === 'SQL_QUERY'">
+        <h4>SQL查询预览</h4>
+        <pre>{{ form.action_target }}</pre>
+        <h4>参数列表</h4>
+        <el-tag v-for="(param, index) in form.parameters" :key="index" class="param-tag">
+          {{ param.name }}: {{ param.type }}
+        </el-tag>
+        <div v-if="form.parameters.length === 0" class="no-params">无参数</div>
+      </div>
     </el-form>
-  </div>
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button @click="onClose">取消</el-button>
+        <el-button type="primary" @click="submitForm">确定</el-button>
+      </span>
+    </template>
+  </el-dialog>
 </template>
 
-<script>
-import { ref, nextTick, computed } from 'vue';
-import { marked } from 'marked';
+<script setup>
+import { ref, watch, nextTick, computed } from 'vue';
+import { ElMessage } from 'element-plus';
 import { Delete, Plus } from '@element-plus/icons-vue';
 
-export default {
-  name: 'AddQaRule',
-  components: {
-    Delete,
-    Plus
-  },
-  emits: ['save', 'cancel'],
-  setup(props, { emit }) {
-    // 表单数据
-    const ruleForm = ref({
-      topic: '',
-      category: '',
-      keywords: [],
-      source: '',
+const props = defineProps({
+  visible: Boolean,
+  title: String,
+  data: Object,
+});
+
+const emit = defineEmits(['update:visible', 'submit']);
+
+const formRef = ref(null);
+const form = ref({
+  intent_name: '',
+  description: '',
+  action_type: 'SQL_QUERY',
+  action_target: '',
+  parameters: [],
+  example_query: '',
+  status: 'active',
+});
+
+const rules = {
+  intent_name: [{ required: true, message: '请输入意图名称', trigger: 'blur' }],
+  action_type: [{ required: true, message: '请选择动作类型', trigger: 'change' }],
+  action_target: [{ required: true, message: '请输入动作目标', trigger: 'blur' }],
+  example_query: [{ required: true, message: '请输入示例问题', trigger: 'blur' }],
+};
+
+watch(() => props.data, (newData) => {
+  if (newData) {
+    form.value = { 
+      ...newData,
+      parameters: typeof newData.parameters === 'string' ? JSON.parse(newData.parameters) : newData.parameters || []
+    };
+  } else {
+    form.value = {
+      intent_name: '',
       description: '',
-      content: '',
-      examples: [''],
-      related_topics: []
-    });
-    
-    // 表单校验规则
-    const rules = {
-      topic: [
-        { required: true, message: '请输入知识主题', trigger: 'blur' },
-        { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
-      ],
-      category: [
-        { required: true, message: '请选择分类', trigger: 'change' }
-      ],
-      content: [
-        { required: true, message: '请输入知识内容', trigger: 'blur' },
-        { min: 50, message: '内容至少需要50个字符', trigger: 'blur' }
-      ]
-    };
-    
-    // 关键词输入
-    const inputVisible = ref(false);
-    const inputValue = ref('');
-    const keywordInput = ref(null);
-    
-    // 相关主题输入
-    const topicInputVisible = ref(false);
-    const topicInputValue = ref('');
-    const topicInput = ref(null);
-    
-    // Markdown预览
-    const activeTab = ref('edit');
-    const renderedContent = computed(() => {
-      try {
-        return marked(ruleForm.value.content || '');
-      } catch (e) {
-        console.error('Markdown渲染失败:', e);
-        return ruleForm.value.content || '';
-      }
-    });
-    
-    // 表单引用
-    const ruleFormRef = ref(null);
-    
-    // 显示关键词输入框
-    const showInput = () => {
-      inputVisible.value = true;
-      nextTick(() => {
-        keywordInput.value.focus();
-      });
-    };
-    
-    // 添加关键词
-    const addKeyword = () => {
-      if (inputValue.value) {
-        if (!ruleForm.value.keywords.includes(inputValue.value)) {
-          ruleForm.value.keywords.push(inputValue.value);
-        }
-      }
-      inputVisible.value = false;
-      inputValue.value = '';
-    };
-    
-    // 移除关键词
-    const removeKeyword = (keyword) => {
-      const index = ruleForm.value.keywords.indexOf(keyword);
-      if (index !== -1) {
-        ruleForm.value.keywords.splice(index, 1);
-      }
-    };
-    
-    // 显示相关主题输入框
-    const showTopicInput = () => {
-      topicInputVisible.value = true;
-      nextTick(() => {
-        topicInput.value.focus();
-      });
-    };
-    
-    // 添加相关主题
-    const addRelatedTopic = () => {
-      if (topicInputValue.value) {
-        if (!ruleForm.value.related_topics.includes(topicInputValue.value)) {
-          ruleForm.value.related_topics.push(topicInputValue.value);
-        }
-      }
-      topicInputVisible.value = false;
-      topicInputValue.value = '';
-    };
-    
-    // 移除相关主题
-    const removeRelatedTopic = (topic) => {
-      const index = ruleForm.value.related_topics.indexOf(topic);
-      if (index !== -1) {
-        ruleForm.value.related_topics.splice(index, 1);
-      }
-    };
-    
-    // 添加示例问题
-    const addExample = () => {
-      ruleForm.value.examples.push('');
-    };
-    
-    // 移除示例问题
-    const removeExample = (index) => {
-      ruleForm.value.examples.splice(index, 1);
-      // 确保至少有一个示例问题
-      if (ruleForm.value.examples.length === 0) {
-        ruleForm.value.examples.push('');
-      }
-    };
-    
-    // 提交表单
-    const submitForm = () => {
-      ruleFormRef.value?.validate((valid) => {
-        if (valid) {
-          // 过滤空的示例问题
-          ruleForm.value.examples = ruleForm.value.examples.filter(example => example.trim() !== '');
-          
-          // 确保至少有一个关键词
-          if (ruleForm.value.keywords.length === 0) {
-            alert('请至少添加一个关键词');
-            return;
-          }
-          
-          // 添加ID和时间戳
-          const rule = {
-            ...ruleForm.value,
-            id: `qa-${Date.now()}`,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
-          
-          emit('save', rule);
-        } else {
-          return false;
-        }
-      });
-    };
-    
-    // 取消
-    const cancel = () => {
-      emit('cancel');
-    };
-    
-    return {
-      ruleForm,
-      rules,
-      ruleFormRef,
-      inputVisible,
-      inputValue,
-      keywordInput,
-      topicInputVisible,
-      topicInputValue,
-      topicInput,
-      activeTab,
-      renderedContent,
-      showInput,
-      addKeyword,
-      removeKeyword,
-      showTopicInput,
-      addRelatedTopic,
-      removeRelatedTopic,
-      addExample,
-      removeExample,
-      submitForm,
-      cancel
+      action_type: 'SQL_QUERY',
+      action_target: '',
+      parameters: [],
+      example_query: '',
+      status: 'active',
     };
   }
+}, { immediate: true, deep: true });
+
+const addParameter = () => {
+  form.value.parameters.push({ name: '', type: 'string', default: '' });
+    };
+    
+const removeParameter = (index) => {
+  form.value.parameters.splice(index, 1);
+    };
+    
+const onClose = () => {
+  emit('update:visible', false);
+    };
+    
+// 验证参数名称是否有效
+const validateParameters = () => {
+  const params = form.value.parameters;
+  for (let i = 0; i < params.length; i++) {
+    if (!params[i].name || params[i].name.trim() === '') {
+      ElMessage.error(`参数 #${i+1} 的名称不能为空`);
+      return false;
+    }
+    if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(params[i].name)) {
+      ElMessage.error(`参数 #${i+1} 的名称格式无效，必须以字母开头，只能包含字母、数字和下划线`);
+      return false;
+    }
+  }
+  return true;
+    };
+    
+// 验证SQL语句中的参数占位符数量是否与参数数量匹配
+const validateSqlParameters = () => {
+  if (form.value.action_type !== 'SQL_QUERY') return true;
+  
+  const sql = form.value.action_target;
+  const paramCount = (sql.match(/\?/g) || []).length;
+  
+  if (paramCount !== form.value.parameters.length) {
+    ElMessage.error(`SQL语句中的参数占位符数量(${paramCount})与定义的参数数量(${form.value.parameters.length})不匹配`);
+          return false;
+        }
+  
+  return true;
+    };
+    
+const submitForm = async () => {
+  if (!formRef.value) return;
+  await formRef.value.validate((valid) => {
+    if (valid) {
+      // 额外验证参数
+      if (!validateParameters()) return;
+      if (!validateSqlParameters()) return;
+      
+      const submissionData = {
+        ...form.value,
+        parameters: JSON.stringify(form.value.parameters),
+      };
+      emit('submit', submissionData);
+      onClose();
+    } else {
+      ElMessage.error('请填写所有必填项');
+  }
+  });
 };
 </script>
 
 <style scoped>
-.add-qa-rule {
-  padding: 20px 0;
+.parameter-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
 }
-
-h3 {
-  margin: 20px 0 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #ebeef5;
+.dialog-footer {
+  text-align: right;
 }
-
-.keyword-tag,
-.topic-tag {
-  margin-right: 10px;
-  margin-bottom: 10px;
+.form-tip {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 5px;
 }
-
-.keyword-input,
-.topic-input {
-  width: 120px;
-  vertical-align: bottom;
-}
-
-.button-new-tag {
-  margin-left: 10px;
-  height: 32px;
-  line-height: 30px;
-  padding-top: 0;
-  padding-bottom: 0;
-}
-
-.example-item {
-  margin-bottom: 10px;
-}
-
-.markdown-preview {
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
+.preview-section {
+  background-color: #f8f9fa;
   padding: 15px;
-  min-height: 300px;
-  background-color: #fafafa;
-  overflow-y: auto;
+  border-radius: 5px;
+  margin-top: 10px;
 }
-
-/* Markdown预览样式 */
-:deep(.markdown-preview h1) {
-  font-size: 24px;
-  border-bottom: 1px solid #eaecef;
-  padding-bottom: 0.3em;
-  margin-top: 24px;
-  margin-bottom: 16px;
-}
-
-:deep(.markdown-preview h2) {
-  font-size: 20px;
-  border-bottom: 1px solid #eaecef;
-  padding-bottom: 0.3em;
-  margin-top: 24px;
-  margin-bottom: 16px;
-}
-
-:deep(.markdown-preview h3) {
-  font-size: 18px;
-  margin-top: 24px;
-  margin-bottom: 16px;
-}
-
-:deep(.markdown-preview p) {
+.preview-section h4 {
   margin-top: 0;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
+  color: #606266;
 }
-
-:deep(.markdown-preview ul),
-:deep(.markdown-preview ol) {
-  padding-left: 2em;
-  margin-top: 0;
-  margin-bottom: 16px;
+.preview-section pre {
+  background-color: #edf2fc;
+  padding: 10px;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-family: monospace;
 }
-
-:deep(.markdown-preview li) {
-  margin-top: 0.25em;
+.param-tag {
+  margin-right: 8px;
+  margin-bottom: 8px;
 }
-
-:deep(.markdown-preview code) {
-  padding: 0.2em 0.4em;
-  margin: 0;
-  font-size: 85%;
-  background-color: rgba(27,31,35,0.05);
-  border-radius: 3px;
-}
-
-:deep(.markdown-preview pre) {
-  padding: 16px;
-  overflow: auto;
-  font-size: 85%;
-  line-height: 1.45;
-  background-color: #f6f8fa;
-  border-radius: 3px;
-}
-
-:deep(.markdown-preview pre code) {
-  display: inline;
-  max-width: auto;
-  padding: 0;
-  margin: 0;
-  overflow: visible;
-  line-height: inherit;
-  word-wrap: normal;
-  background-color: transparent;
-  border: 0;
+.no-params {
+  color: #909399;
+  font-style: italic;
 }
 </style> 

@@ -363,7 +363,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, defineEmits } from 'vue';
+import { ref, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import SystemDataUpdater from '@/services/SystemDataUpdater';
 import FactoryDataService from '@/services/FactoryDataService';
@@ -373,8 +373,8 @@ import { materialCategories, materialSuppliers, materialDefects } from '@/data/M
 import { projectBaselines } from '@/data/ProjectData';
 import api from '@/api/ApiClient.js';
 
-// 组件事件
 const emit = defineEmits(['generation-complete']);
+const generationLog = ref('');
 
 // 数据统计
 const stats = ref({
@@ -984,10 +984,13 @@ async function generateEmergencyData() {
 <style scoped>
 .data-generation-panel {
   padding: 20px;
+  background-color: #f5f7fa;
 }
 
 .panel-card {
-  margin-bottom: 20px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .panel-header {
@@ -998,45 +1001,40 @@ async function generateEmergencyData() {
 
 .panel-header h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.panel-content {
+  padding: 10px;
 }
 
 .section {
-  margin-bottom: 20px;
+  margin-bottom: 25px;
 }
 
 .section h4 {
-  font-size: 16px;
+  font-size: 1rem;
+  color: #555;
   margin-bottom: 15px;
-  color: #606266;
+  border-left: 4px solid #409eff;
+  padding-left: 10px;
 }
 
 .stats-container {
-  margin-bottom: 20px;
+  padding: 15px;
+  background: #fafafa;
+  border-radius: 4px;
 }
 
 .action-group {
-  display: flex;
-  gap: 12px;
   margin-top: 20px;
-  margin-bottom: 10px;
+  display: flex;
+  gap: 15px;
 }
 
 .tab-content {
-  padding: 15px 0;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-top: 15px;
-}
-
-.debug-info {
-  margin-top: 20px;
-  border-top: 1px solid #ebeef5;
-  padding-top: 15px;
+  padding: 20px 10px;
 }
 
 .data-generation-options {
@@ -1045,35 +1043,40 @@ async function generateEmergencyData() {
 
 .data-type-card {
   height: 100%;
-  transition: all 0.3s;
-}
-
-.data-type-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-}
-
-.data-type-content {
   display: flex;
   flex-direction: column;
-  gap: 10px;
 }
 
-.card-header {
+.data-type-card .el-card__header {
+  padding: 10px 15px;
+  background-color: #f9f9f9;
+}
+
+.data-type-card .el-card__body {
+  flex-grow: 1;
   display: flex;
+  flex-direction: column;
   justify-content: space-between;
-  align-items: center;
 }
 
 .card-header h4 {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 .debug-tip {
-  margin-top: 10px;
-  padding: 10px;
-  background-color: #f0f0f0;
+  margin-top: 15px;
+}
+
+.debug-info {
+  margin-top: 20px;
+  padding: 15px;
+  border: 1px dashed #e0e0e0;
   border-radius: 4px;
+  background-color: #fbfbfb;
+}
+
+.debug-info h5 {
+  margin: 0 0 10px 0;
 }
 </style> 

@@ -363,16 +363,45 @@ const materialYieldTrend = ref(0);
 
 // 方法
 function refreshData() {
+  console.log('🔄 开始刷新上线数据...');
+
+  // 检查数据生成器是否可用
+  if (typeof window.generateCompleteDataset === 'function') {
+    try {
+      console.log('🔧 重新生成完整数据集...');
+      const dataset = window.generateCompleteDataset();
+
+      console.log('🔍 生成的数据集:', dataset);
+
+      // 使用统一数据服务保存数据
+      unifiedDataService.saveInventoryData(dataset.inventory, true);
+      unifiedDataService.saveLabData(dataset.inspection, true);
+      unifiedDataService.saveFactoryData(dataset.production, true);
+
+      console.log('✅ 数据重新生成完成:', {
+        inventory: dataset.inventory.length,
+        inspection: dataset.inspection.length,
+        production: dataset.production.length
+      });
+
+      ElMessage.success('数据已重新生成');
+    } catch (error) {
+      console.error('❌ 数据生成失败:', error);
+      ElMessage.error('数据生成失败，将使用现有数据');
+    }
+  } else {
+    console.log('⚠️ 数据生成器不可用，仅刷新显示');
+  }
+
   // 重新读取数据
   materials.value = extractMaterialData();
   updateStatistics();
-  
+
   // 重新渲染图表
   nextTick(() => {
     renderFactoryChart();
-    renderQualityChart();
   });
-  
+
   ElMessage({
     type: 'success',
     message: '数据已刷新'
@@ -1054,16 +1083,59 @@ watch(exceptionDialogVisible, (newVal) => {
 // 从产线数据中提取物料数据
 function extractMaterialData() {
   try {
+    // 调试：检查localStorage中的数据
+    console.log('🔍 调试localStorage数据:');
+    console.log('unified_factory_data:', localStorage.getItem('unified_factory_data'));
+    console.log('factory_data:', localStorage.getItem('factory_data'));
+    console.log('online_data:', localStorage.getItem('online_data'));
+
     // 使用统一数据服务获取上线数据
     const factoryData = unifiedDataService.getFactoryData();
-    
+    console.log('🔍 unifiedDataService.getFactoryData() 返回:', factoryData);
+
     if (!factoryData || factoryData.length === 0) {
-      console.log('未找到上线数据');
+      console.log('⚠️ 未找到上线数据，请检查数据生成状态');
+      ElMessage.warning('未找到上线数据，请在"管理工具"中生成数据');
       return [];
     }
-    
-    console.log(`获取${factoryData.length}条上线数据，正在处理...`);
-    
+
+    console.log(`📦 获取${factoryData.length}条上线数据，正在处理...`);
+
+    // 验证数据是否为真实业务数据
+    const sampleItem = factoryData[0];
+    const materialName = sampleItem?.materialName || sampleItem?.material_name || '';
+    const materialCode = sampleItem?.materialCode || sampleItem?.material_code || '';
+
+    // 检查是否是测试数据特征
+    const isTestData = materialCode.match(/^CS-[A-Z]-\d+$/) ||
+                      ['电容器', '电阻器', '二极管'].includes(materialName);
+
+    if (isTestData) {
+      console.warn('❌ 检测到测试数据，这不是您的真实业务数据！');
+      console.warn('样本数据:', { materialCode, materialName, supplier: sampleItem?.supplier });
+      ElMessage.error('检测到测试数据，请重新生成真实业务数据');
+      return [];
+    }
+
+    // 验证是否包含真实物料
+    const realMaterialNames = [
+      '手机壳料', '电池盖', '中框', '摄像头模组', 'OLED显示屏', 'LCD显示屏',
+      '扬声器', '麦克风', '充电接口', '处理器', '内存芯片', '存储芯片',
+      '传感器', '天线', '振动马达', '散热片', '保护膜', '手机卡托', '侧键'
+    ];
+
+    const hasRealMaterials = factoryData.some(item => {
+      const name = item.materialName || item.material_name || '';
+      return realMaterialNames.some(realName => name.includes(realName));
+    });
+
+    if (!hasRealMaterials) {
+      console.warn('❌ 数据中未包含真实物料名称');
+      ElMessage.warning('数据中未包含真实物料，请检查数据生成器配置');
+    } else {
+      console.log('✅ 验证通过：数据包含真实业务物料');
+    }
+
     // 转换数据格式 - 确保不限制数据量
     const processedData = factoryData.map(item => ({
       id: item.id || `OL-${Math.floor(Math.random() * 100000)}`,
@@ -1074,27 +1146,32 @@ function extractMaterialData() {
       supplier: item.supplier || '',
       factory: item.factory || '',
       line: item.line || item.productionLine || '',
-      defectRate: parseFloat(item.defectRate || '0'),
+      defectRate: parseFloat(item.defectRate?.toString().replace('%', '') || '0'),
       yield: parseFloat(item.yield || '98.5'),
       project: item.project || item.projectId || '',
       project_display: item.project_display || `项目${item.project || ''}`,
       baseline_display: item.baseline_display || '',
       quality: item.quality || '合格',
       status: item.status || '正常',
-      useTime: item.useTime || new Date().toISOString(),
+      useTime: item.useTime || item.onlineDate || new Date().toISOString(),
       inspectionDate: item.inspectionDate || '',
       exceptionCount: parseInt(item.exceptionCount || '0'),
       defect: item.defect || ''
     }));
-    
-    console.log(`已成功处理${processedData.length}条上线数据`);
+
+    console.log(`✅ 已成功处理${processedData.length}条上线数据`);
     if (processedData.length > 0) {
-      console.log('上线数据样本:', processedData[0]);
+      console.log('📋 上线数据样本:', {
+        materialCode: processedData[0].materialCode,
+        materialName: processedData[0].materialName,
+        supplier: processedData[0].supplier,
+        factory: processedData[0].factory
+      });
     }
-    
+
     return processedData;
   } catch (error) {
-    console.error('处理上线数据失败:', error);
+    console.error('❌ 处理上线数据失败:', error);
     ElMessage.error('处理上线数据失败，请刷新页面重试');
     return [];
   }
@@ -1228,35 +1305,62 @@ function updateStatistics() {
 // 在组件挂载时初始化
 onMounted(async () => {
   try {
+    // 加载数据生成器到全局，以便刷新时使用
+    try {
+      const dataGenerator = await import('../data/data_generator.js');
+      window.generateCompleteDataset = dataGenerator.generateCompleteDataset;
+      console.log('✅ 数据生成器已加载到全局');
+    } catch (error) {
+      console.warn('⚠️ 数据生成器加载失败:', error);
+    }
+
     // 提取物料数据
     materials.value = extractMaterialData();
-    
+
     // 确保材料数据不为空
     if (!materials.value || materials.value.length === 0) {
-      console.warn('没有找到物料数据，将使用示例数据');
-      // 可以在这里添加一些示例数据以确保页面仍能显示
-      ElMessage.warning('未检测到物料数据，请在"管理工具"中生成数据');
+      console.warn('没有找到物料数据，尝试生成数据...');
+
+      // 尝试生成数据
+      if (typeof window.generateCompleteDataset === 'function') {
+        try {
+          console.log('🔧 自动生成数据集...');
+          const dataset = window.generateCompleteDataset();
+
+          // 使用统一数据服务保存数据
+          unifiedDataService.saveInventoryData(dataset.inventory, true);
+          unifiedDataService.saveLabData(dataset.inspection, true);
+          unifiedDataService.saveFactoryData(dataset.production, true);
+
+          // 重新提取数据
+          materials.value = extractMaterialData();
+
+          console.log('✅ 自动数据生成完成');
+          ElMessage.success('已自动生成数据');
+        } catch (error) {
+          console.error('❌ 自动数据生成失败:', error);
+          ElMessage.warning('未检测到物料数据，请在"管理工具"中生成数据');
+        }
+      } else {
+        ElMessage.warning('未检测到物料数据，请在"管理工具"中生成数据');
+      }
     }
-    
+
     // 更新统计信息
     updateStatistics();
-    
+
     // 初始化图表 - 确保在DOM更新后进行
     await nextTick();
-    
+
     // 使用try-catch单独处理每个图表，避免一个图表失败影响其他图表
     try {
     await renderFactoryChart();
     } catch (chartError) {
       console.error('工厂图表渲染失败:', chartError);
     }
-    
-    try {
-    await renderQualityChart();
-    } catch (chartError) {
-      console.error('质量图表渲染失败:', chartError);
-    }
-    
+
+    // 质量图表渲染已移除
+
   } catch (error) {
     console.error("初始化失败:", error);
     ElMessage.error("初始化失败，请刷新页面重试");
@@ -1285,7 +1389,6 @@ function confirmClearData() {
       // 重新渲染图表
       nextTick(() => {
         renderFactoryChart();
-        renderQualityChart();
       });
       
       ElMessage({
@@ -1424,7 +1527,6 @@ function handleDataUpdate() {
   // 重新渲染图表
   nextTick(() => {
     renderFactoryChart();
-    renderQualityChart();
   });
   
   ElMessage.success(`数据已更新，页面显示已刷新`);

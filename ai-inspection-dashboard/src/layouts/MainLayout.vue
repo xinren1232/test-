@@ -19,62 +19,22 @@
         router
         unique-opened
       >
-        <el-menu-item index="/">
-          <el-icon><HomeFilled /></el-icon>
-          <template #title>首页</template>
-        </el-menu-item>
-        
-        <el-menu-item index="/dashboard">
-          <el-icon><DataBoard /></el-icon>
-          <template #title>监控仪表板</template>
-        </el-menu-item>
-        
-        <el-sub-menu index="/inventory">
-          <template #title>
-            <el-icon><Goods /></el-icon>
-            <span>库存管理</span>
-          </template>
-          <el-menu-item index="/inventory">风险批次管理</el-menu-item>
-          <el-menu-item index="/inventory-management">库存明细管理</el-menu-item>
-        </el-sub-menu>
-        
-        <el-sub-menu index="/factory-menu">
-          <template #title>
-            <el-icon><OfficeBuilding /></el-icon>
-            <span>工厂管理</span>
-          </template>
-          <el-menu-item index="/factory">工厂状态</el-menu-item>
-          <el-menu-item index="/monitoring">实时监控</el-menu-item>
-        </el-sub-menu>
-        
-        <el-sub-menu index="/lab-menu">
-          <template #title>
-            <el-icon><Stopwatch /></el-icon>
-            <span>实验室测试</span>
-          </template>
-          <el-menu-item index="/lab">实验室状态</el-menu-item>
-          <el-menu-item index="/lab-inspection">检验任务</el-menu-item>
-        </el-sub-menu>
-        
-        <el-menu-item index="/batch">
-          <el-icon><Document /></el-icon>
-          <template #title>批次管理</template>
-        </el-menu-item>
-        
-        <el-menu-item index="/quality">
-          <el-icon><Operation /></el-icon>
-          <template #title>质量管理</template>
-        </el-menu-item>
-        
-        <el-menu-item index="/analysis">
-          <el-icon><DataAnalysis /></el-icon>
-          <template #title>数据分析</template>
-        </el-menu-item>
-        
-        <el-menu-item index="/knowledge-qa">
-          <el-icon><ChatLineRound /></el-icon>
-          <template #title>智能问答</template>
-        </el-menu-item>
+        <!-- 动态生成菜单项 -->
+        <template v-for="route in navigationRoutes" :key="route.path">
+          <el-menu-item :index="route.path" v-if="!route.children">
+            <el-icon><component :is="route.meta.iconComponent" /></el-icon>
+            <template #title>{{ route.meta.title }}</template>
+          </el-menu-item>
+          <el-sub-menu :index="route.path" v-else>
+            <template #title>
+              <el-icon><component :is="route.meta.iconComponent" /></el-icon>
+              <span>{{ route.meta.title }}</span>
+            </template>
+            <el-menu-item v-for="child in route.children" :key="child.path" :index="child.path">
+              {{ child.meta.title }}
+            </el-menu-item>
+          </el-sub-menu>
+        </template>
       </el-menu>
       
       <!-- 折叠按钮 -->
@@ -115,7 +75,7 @@
       
       <!-- 内容区域 -->
       <div class="content-container">
-        <slot></slot>
+        <router-view></router-view>
       </div>
     </div>
   </div>
@@ -123,23 +83,51 @@
 
 <script>
 import { ref, computed } from 'vue';
-import { useRoute } from 'vue-router';
-import { 
-  HomeFilled, DataBoard, Goods, OfficeBuilding, 
+import { useRoute, useRouter } from 'vue-router';
+import {
+  HomeFilled, DataBoard, Goods, OfficeBuilding,
   Document, Operation, Stopwatch, Fold, Expand,
-  DataAnalysis, ChatLineRound, CaretBottom
+  DataAnalysis, ChatDotRound, CaretBottom, Tickets, Cpu,
+  MagicStick, Tools, Setting, Warning, Upload, Connection, Clock
 } from '@element-plus/icons-vue';
+
+// 映射图标名称到组件
+const iconComponents = {
+  HomeFilled, DataBoard, Goods, OfficeBuilding,
+  Document, Operation, Stopwatch, Fold, Expand,
+  DataAnalysis, ChatDotRound, CaretBottom, Tickets, Cpu,
+  MagicStick, Tools, Setting, Warning, Upload, Connection, Clock,
+  Robot: MagicStick  // 使用MagicStick作为Robot图标的替代
+};
 
 export default {
   name: 'MainLayout',
   components: {
-    HomeFilled, DataBoard, Goods, OfficeBuilding, 
+    HomeFilled, DataBoard, Goods, OfficeBuilding,
     Document, Operation, Stopwatch, Fold, Expand,
-    DataAnalysis, ChatLineRound, CaretBottom
+    DataAnalysis, ChatDotRound, CaretBottom, Tickets, Cpu,
+    MagicStick, Tools, Setting, Warning, Upload, Connection, Clock
   },
   setup() {
     const route = useRoute();
+    const router = useRouter();
     const isCollapsed = ref(false);
+    
+    // 从路由配置中过滤出需要导航的路由
+    const navigationRoutes = computed(() => {
+      const allRoutes = router.options.routes;
+      // 假设路由元信息中有一个 `icon` 字段来标记它是否应在导航中显示
+      return allRoutes
+        .filter(r => r.meta && r.meta.icon)
+        .map(r => ({
+          ...r,
+          // 将字符串图标名称映射到实际的组件
+          meta: {
+            ...r.meta,
+            iconComponent: iconComponents[r.meta.icon]
+          }
+        }));
+    });
     
     // 获取当前活跃的菜单项
     const activeMenu = computed(() => {
@@ -154,7 +142,8 @@ export default {
     return {
       isCollapsed,
       activeMenu,
-      toggleCollapse
+      toggleCollapse,
+      navigationRoutes
     };
   }
 };

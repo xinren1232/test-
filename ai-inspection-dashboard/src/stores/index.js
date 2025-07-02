@@ -2,9 +2,6 @@
 import { ref, reactive, computed } from 'vue'
 import { createPinia, defineStore } from 'pinia'
 
-// 导入优化后的数据集
-import samplesData from '../data/samplesData.js'
-
 // 创建 Pinia 实例
 export const pinia = createPinia()
 
@@ -79,31 +76,31 @@ export const useContextStore = defineStore('context', () => {
 // 定义IQE数据存储
 export const useIQEStore = defineStore('iqe', () => {
   // 物料数据
-  const materials = ref(samplesData.materials || [])
+  const materials = ref([])
   
   // 批次数据
-  const batches = ref(samplesData.batches || [])
+  const batches = ref([])
   
   // 检验结果
-  const inspectionResults = ref(samplesData.inspectionResults || [])
+  const inspectionResults = ref([])
   
   // 实验室数据
-  const labTestData = ref(samplesData.labTestData || [])
+  const labTestData = ref([])
   
   // 趋势分析数据
-  const trendAnalysisData = ref(samplesData.trendAnalysisData || {})
+  const trendAnalysisData = ref({})
   
   // 批次比较数据
-  const batchComparisonData = ref(samplesData.batchComparisonData || {})
+  const batchComparisonData = ref({})
   
   // 风险分析数据
-  const riskAnalysisData = ref(samplesData.riskAnalysisData || {})
+  const riskAnalysisData = ref({})
   
   // 统计卡片数据
-  const statCardsData = ref(samplesData.statCardsData || {})
+  const statCardsData = ref({})
   
   // 质量预测数据
-  const qualityPredictionData = ref(samplesData.qualityPredictionData || [])
+  const qualityPredictionData = ref([])
   
   // 加载状态
   const loading = ref(false)

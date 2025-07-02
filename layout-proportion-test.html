@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三栏布局比例优化测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+        }
+        
+        .container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .main-layout {
+            flex: 1;
+            display: flex;
+            background: #e1e5e9;
+            gap: 1px;
+            overflow: hidden;
+        }
+        
+        /* 精确比例布局: 15% : 55% : 35% */
+        .left-panel {
+            width: 15%;
+            min-width: 200px;
+            max-width: 280px;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            flex-shrink: 0;
+        }
+
+        .center-panel {
+            width: 55%;
+            min-width: 400px;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            flex-shrink: 0;
+        }
+
+        .right-panel {
+            width: 35%;
+            min-width: 300px;
+            max-width: 500px;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            flex-shrink: 0;
+        }
+        
+        .panel-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #3498db;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .panel-content {
+            flex: 1;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            color: #495057;
+            font-size: 14px;
+        }
+        
+        .dimension-info {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            z-index: 1000;
+            min-width: 200px;
+        }
+        
+        .dimension-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        
+        .proportion-bar {
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            margin: 8px 0;
+            display: flex;
+            overflow: hidden;
+        }
+        
+        .bar-left {
+            background: #3498db;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+        }
+        
+        .bar-center {
+            background: #2ecc71;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+        }
+        
+        .bar-right {
+            background: #e74c3c;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+        }
+        
+        .feature-item {
+            padding: 8px 12px;
+            background: white;
+            border-radius: 6px;
+            border-left: 3px solid #3498db;
+            font-size: 13px;
+        }
+        
+        /* 响应式设计 - 保持15%:55%:35%比例 */
+        @media (max-width: 1400px) {
+            .left-panel { width: 15%; min-width: 180px; max-width: 250px; }
+            .center-panel { width: 55%; min-width: 350px; }
+            .right-panel { width: 35%; min-width: 280px; max-width: 450px; }
+        }
+
+        @media (max-width: 1200px) {
+            .left-panel { width: 15%; min-width: 160px; max-width: 220px; }
+            .center-panel { width: 55%; min-width: 300px; }
+            .right-panel { width: 35%; min-width: 250px; max-width: 400px; }
+        }
+
+        @media (max-width: 1000px) {
+            .left-panel { width: 15%; min-width: 140px; max-width: 200px; }
+            .center-panel { width: 55%; min-width: 280px; }
+            .right-panel { width: 35%; min-width: 220px; max-width: 350px; }
+        }
+        
+        @media (max-width: 768px) {
+            .main-layout {
+                flex-direction: column;
+            }
+            
+            .left-panel, .right-panel {
+                width: 100%;
+                height: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            🎯 三栏布局精确比例 15% : 55% : 35% - IQE AI智能助手
+        </div>
+        
+        <div class="main-layout">
+            <div class="left-panel">
+                <div class="panel-title">
+                    🛠️ 工具面板
+                    <span style="font-size: 12px; color: #7f8c8d;">(15%)</span>
+                </div>
+                <div class="panel-content">
+                    <div class="feature-item">📊 数据分析工具</div>
+                    <div class="feature-item">📈 图表生成工具</div>
+                    <div class="feature-item">🔍 智能查询工具</div>
+                    <div class="feature-item">⚡ 快捷操作面板</div>
+                    <div class="feature-item">🎨 可视化工具</div>
+                    <div class="feature-item">📋 模板管理</div>
+                </div>
+            </div>
+            
+            <div class="center-panel">
+                <div class="panel-title">
+                    💬 对话区域
+                    <span style="font-size: 12px; color: #7f8c8d;">(55%)</span>
+                </div>
+                <div class="panel-content">
+                    <div class="feature-item">🤖 AI智能对话界面</div>
+                    <div class="feature-item">📝 消息历史记录</div>
+                    <div class="feature-item">🎯 智能建议提示</div>
+                    <div class="feature-item">📤 文件上传区域</div>
+                    <div class="feature-item">🔄 实时响应状态</div>
+                    <div class="feature-item">⌨️ 多行输入支持</div>
+                    <div class="feature-item">🎨 富文本显示</div>
+                    <div class="feature-item">📊 结果可视化</div>
+                </div>
+            </div>
+            
+            <div class="right-panel">
+                <div class="panel-title">
+                    🧠 思考过程
+                    <span style="font-size: 12px; color: #7f8c8d;">(35%)</span>
+                </div>
+                <div class="panel-content">
+                    <div class="feature-item">🎯 步骤1: 问题分析</div>
+                    <div class="feature-item">🔍 步骤2: 数据查询</div>
+                    <div class="feature-item">🧠 步骤3: AI推理分析</div>
+                    <div class="feature-item">📝 步骤4: 结果生成</div>
+                    <div class="feature-item">⏱️ 执行时间统计</div>
+                    <div class="feature-item">📊 性能指标监控</div>
+                    <div class="feature-item">🔄 实时状态更新</div>
+                    <div class="feature-item">📈 思考链可视化</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="dimension-info">
+        <div style="font-weight: 600; margin-bottom: 8px;">📐 布局尺寸信息</div>
+        <div class="dimension-row">
+            <span>屏幕宽度:</span>
+            <span id="screen-width">0px</span>
+        </div>
+        <div class="dimension-row">
+            <span>屏幕高度:</span>
+            <span id="screen-height">0px</span>
+        </div>
+        <div class="dimension-row">
+            <span>左侧面板:</span>
+            <span id="left-width">260px</span>
+        </div>
+        <div class="dimension-row">
+            <span>中间区域:</span>
+            <span id="center-width">auto</span>
+        </div>
+        <div class="dimension-row">
+            <span>右侧面板:</span>
+            <span id="right-width">380px</span>
+        </div>
+        
+        <div class="proportion-bar">
+            <div class="bar-left" id="bar-left">左侧</div>
+            <div class="bar-center" id="bar-center">中间</div>
+            <div class="bar-right" id="bar-right">右侧</div>
+        </div>
+        
+        <div style="font-size: 10px; color: #ccc; text-align: center; margin-top: 4px;">
+            精确比例: 15% | 55% | 35%
+        </div>
+    </div>
+    
+    <script>
+        function updateDimensions() {
+            const screenWidth = window.innerWidth;
+            const screenHeight = window.innerHeight;
+            
+            document.getElementById('screen-width').textContent = screenWidth + 'px';
+            document.getElementById('screen-height').textContent = screenHeight + 'px';
+            
+            // 计算实际布局尺寸 - 15%:55%:35%比例
+            const leftWidth = Math.max(200, Math.min(280, screenWidth * 0.15));
+            const rightWidth = Math.max(300, Math.min(500, screenWidth * 0.35));
+            const centerWidth = Math.max(400, screenWidth * 0.55);
+
+            
+            document.getElementById('left-width').textContent = leftWidth + 'px';
+            document.getElementById('center-width').textContent = centerWidth + 'px';
+            document.getElementById('right-width').textContent = rightWidth + 'px';
+            
+            // 更新比例条
+            const total = leftWidth + centerWidth + rightWidth;
+            const leftPercent = (leftWidth / total) * 100;
+            const centerPercent = (centerWidth / total) * 100;
+            const rightPercent = (rightWidth / total) * 100;
+            
+            document.getElementById('bar-left').style.width = leftPercent + '%';
+            document.getElementById('bar-center').style.width = centerPercent + '%';
+            document.getElementById('bar-right').style.width = rightPercent + '%';
+            
+            document.getElementById('bar-left').textContent = Math.round(leftPercent) + '%';
+            document.getElementById('bar-center').textContent = Math.round(centerPercent) + '%';
+            document.getElementById('bar-right').textContent = Math.round(rightPercent) + '%';
+        }
+        
+        updateDimensions();
+        window.addEventListener('resize', updateDimensions);
+        
+        console.log('🎯 三栏布局精确比例测试页面已加载');
+        console.log('📊 精确比例: 左侧15% → 中间55% → 右侧35%');
+    </script>
+</body>
+</html>

@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 高级AI智能助手 - 数据驱动分析演示</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 50px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 36px;
+            font-weight: 700;
+        }
+        .header p {
+            margin: 20px 0 0 0;
+            font-size: 20px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 50px;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin: 30px 0;
+        }
+        .feature-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            border: 2px solid #e9ecef;
+            border-radius: 16px;
+            padding: 30px;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            border-color: #4facfe;
+        }
+        .feature-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+            display: block;
+        }
+        .feature-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .feature-desc {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .feature-list li {
+            padding: 8px 0;
+            color: #555;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .feature-list li::before {
+            content: '✅';
+            font-size: 16px;
+        }
+        .demo-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 16px;
+            margin: 40px 0;
+            text-align: center;
+        }
+        .demo-button {
+            display: inline-block;
+            padding: 18px 36px;
+            background: white;
+            color: #667eea;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 16px;
+            margin: 15px;
+            transition: all 0.3s;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        .demo-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        }
+        .workflow-section {
+            background: #f8f9fa;
+            border-radius: 16px;
+            padding: 40px;
+            margin: 40px 0;
+        }
+        .workflow-step {
+            display: flex;
+            align-items: center;
+            margin: 25px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .step-number {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 700;
+            margin-right: 20px;
+        }
+        .step-content {
+            flex: 1;
+        }
+        .step-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .step-desc {
+            color: #666;
+            font-size: 14px;
+        }
+        .test-examples {
+            background: #fff3cd;
+            border: 2px solid #ffeaa7;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 30px 0;
+        }
+        .test-examples h3 {
+            color: #856404;
+            margin-top: 0;
+        }
+        .example-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #ffc107;
+        }
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 25px 0;
+        }
+        .tech-item {
+            background: linear-gradient(135deg, #e9ecef, #f8f9fa);
+            padding: 10px 16px;
+            border-radius: 25px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #495057;
+            border: 1px solid #dee2e6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 高级AI智能助手</h1>
+            <p>数据驱动分析 + 流式回复 + 智能图表生成</p>
+        </div>
+        
+        <div class="content">
+            <div class="workflow-section">
+                <h2 style="text-align: center; color: #333; margin-bottom: 30px;">🔄 智能分析工作流程</h2>
+                
+                <div class="workflow-step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <div class="step-title">🧠 问题理解与数据源识别</div>
+                        <div class="step-desc">智能分析用户问题，识别涉及的数据源（库存/生产/检测），提取关键实体信息</div>
+                    </div>
+                </div>
+                
+                <div class="workflow-step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <div class="step-title">🔍 数据查询与汇总</div>
+                        <div class="step-desc">基于识别结果，从相关数据源查询匹配数据，进行数据质量评估和汇总</div>
+                    </div>
+                </div>
+                
+                <div class="workflow-step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <div class="step-title">🤖 DeepSeek AI深度分析</div>
+                        <div class="step-desc">将结构化数据和问题发送给DeepSeek AI，进行专业的质量管理分析</div>
+                    </div>
+                </div>
+                
+                <div class="workflow-step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <div class="step-title">⚙️ 智能工具调用</div>
+                        <div class="step-desc">分析AI回复内容，智能判断是否需要生成图表，自动选择最适合的图表类型</div>
+                    </div>
+                </div>
+                
+                <div class="workflow-step">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <div class="step-title">📊 流式结果呈现</div>
+                        <div class="step-desc">以打字机效果展示Markdown格式的分析结果，同时渲染相关图表</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <span class="feature-icon">🎯</span>
+                    <div class="feature-title">数据驱动分析</div>
+                    <div class="feature-desc">基于真实数据的智能分析流程</div>
+                    <ul class="feature-list">
+                        <li>自动识别相关数据源</li>
+                        <li>智能实体提取和匹配</li>
+                        <li>多数据源关联查询</li>
+                        <li>数据质量自动评估</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <span class="feature-icon">💬</span>
+                    <div class="feature-title">流式AI回复</div>
+                    <div class="feature-desc">打字机效果的实时回复体验</div>
+                    <ul class="feature-list">
+                        <li>Markdown格式渲染</li>
+                        <li>实时进度显示</li>
+                        <li>智能分段展示</li>
+                        <li>专业内容格式化</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <span class="feature-icon">🧠</span>
+                    <div class="feature-title">链式思考展示</div>
+                    <div class="feature-desc">类似DeepSeek-R1的思考过程</div>
+                    <ul class="feature-list">
+                        <li>五步骤分析流程</li>
+                        <li>实时状态更新</li>
+                        <li>详细执行信息</li>
+                        <li>工具调用可视化</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <span class="feature-icon">📊</span>
+                    <div class="feature-title">智能图表生成</div>
+                    <div class="feature-desc">基于数据内容自动生成图表</div>
+                    <ul class="feature-list">
+                        <li>智能图表类型选择</li>
+                        <li>真实数据可视化</li>
+                        <li>多种图表支持</li>
+                        <li>交互式图表展示</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="test-examples">
+                <h3>🧪 测试示例问题</h3>
+                <div class="example-item">
+                    <strong>物料综合查询：</strong>"查询电池盖的库存、生产和检测情况"
+                    <br><small>→ 会自动查询三个数据源，生成综合分析报告</small>
+                </div>
+                <div class="example-item">
+                    <strong>趋势分析：</strong>"分析最近的质量趋势变化"
+                    <br><small>→ 会生成时间序列图表，展示质量指标趋势</small>
+                </div>
+                <div class="example-item">
+                    <strong>对比分析：</strong>"对比各工厂的生产质量表现"
+                    <br><small>→ 会生成对比图表，分析各工厂差异</small>
+                </div>
+                <div class="example-item">
+                    <strong>异常诊断：</strong>"检查是否有质量异常或风险"
+                    <br><small>→ 会筛选异常数据，提供诊断建议</small>
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h2 style="margin-top: 0;">🌐 立即体验高级AI助手</h2>
+                <p style="font-size: 18px; margin-bottom: 30px;">
+                    完整的数据驱动AI分析流程已经实现，现在可以体验真正智能的质量管理助手
+                </p>
+                <a href="http://localhost:5173/#/assistant-ai" class="demo-button" target="_blank">
+                    🚀 打开AI智能助手
+                </a>
+                <a href="http://localhost:5173" class="demo-button" target="_blank">
+                    🏠 返回主页
+                </a>
+            </div>
+
+            <div class="workflow-section">
+                <h2 style="text-align: center; color: #333; margin-bottom: 30px;">🛠️ 技术架构</h2>
+                <div class="tech-stack">
+                    <span class="tech-item">Vue 3 Composition API</span>
+                    <span class="tech-item">DeepSeek AI API</span>
+                    <span class="tech-item">数据源分析器</span>
+                    <span class="tech-item">AI Prompt管理器</span>
+                    <span class="tech-item">流式回复处理器</span>
+                    <span class="tech-item">智能图表生成</span>
+                    <span class="tech-item">Markdown渲染</span>
+                    <span class="tech-item">ECharts集成</span>
+                    <span class="tech-item">链式思考算法</span>
+                    <span class="tech-item">实时数据查询</span>
+                </div>
+            </div>
+
+            <div style="background: #e8f5e8; border: 2px solid #4caf50; border-radius: 12px; padding: 30px; margin: 30px 0; text-align: center;">
+                <h3 style="color: #2e7d32; margin-top: 0;">✅ 实现完成</h3>
+                <p style="color: #388e3c; font-size: 16px; margin-bottom: 0;">
+                    数据驱动的AI智能助手已完全实现，包含流式回复、智能图表生成、链式思考展示等所有高级功能。
+                    现在可以体验真正智能的质量管理分析助手！
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        console.log('🎉 高级AI智能助手演示页面已加载！');
+        console.log('🎯 核心功能:');
+        console.log('  ✅ 数据驱动分析流程');
+        console.log('  ✅ DeepSeek AI深度集成');
+        console.log('  ✅ 流式回复 + Markdown渲染');
+        console.log('  ✅ 智能图表自动生成');
+        console.log('  ✅ 链式思考过程展示');
+        console.log('🚀 立即体验: http://localhost:5173/#/assistant-ai');
+    </script>
+</body>
+</html>
