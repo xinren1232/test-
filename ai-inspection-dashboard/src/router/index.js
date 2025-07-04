@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import HomeView from '../pages/HomeView.vue';
 import Dashboard from '../pages/Dashboard.vue';
 import InventoryView from '../pages/Inventory.vue';
 import LabView from '../pages/LabView.vue';
@@ -6,11 +7,10 @@ import FactoryView from '../pages/FactoryView.vue';
 import AdminDataPage from '../pages/AdminDataPage.vue';
 import DataImportExport from '../components/admin/DataImportExport.vue';
 import RuleLibraryView from '../pages/RuleLibraryView.vue';
-import HistoricalDataPage from '../pages/HistoricalDataPage.vue';
+
 import MaterialExceptionPage from '../pages/MaterialExceptionPage.vue';
 import BatchManagement from '../pages/BatchManagement.vue';
-import NewDataRulesPage from '../pages/NewDataRulesPage.vue';
-import DataRulesView from '../pages/admin/DataRulesView.vue';
+import DataRulesDefinitionPage from '../pages/DataRulesDefinitionPage.vue';
 import BackendTest from '../pages/BackendTest.vue';
 
 // 创建一个简单的 NotFound 组件
@@ -28,6 +28,15 @@ const NotFound = {
 const routes = [
   {
     path: '/',
+    name: 'Home',
+    component: HomeView,
+    meta: {
+      title: '首页',
+      icon: 'House'
+    }
+  },
+  {
+    path: '/dashboard',
     name: 'Dashboard',
     component: Dashboard,
     meta: {
@@ -113,33 +122,14 @@ const routes = [
   {
     path: '/admin/data/rules/definition',
     name: 'DataRulesDefinition',
-    component: NewDataRulesPage,
+    component: DataRulesDefinitionPage,
     meta: {
-      title: '数据结构定义',
+      title: '数据规则定义',
       icon: 'Document',
       requiresAuth: true
     }
   },
-  {
-    path: '/admin/data/rules/match',
-    name: 'DataRulesMatch',
-    component: DataRulesView,
-    meta: {
-      title: '匹配规则',
-      icon: 'Connection',
-      requiresAuth: true
-    }
-  },
-  {
-    path: '/admin/data/historical',
-    name: 'HistoricalData',
-    component: HistoricalDataPage,
-    meta: {
-      title: '历史数据',
-      icon: 'Clock',
-      requiresAuth: true
-    }
-  },
+
   {
     path: '/test-backend',
     name: 'BackendTest',
@@ -204,12 +194,7 @@ const routes = [
     component: () => import('../pages/EnhancedAIDemo.vue'),
     meta: { title: '增强AI演示', icon: 'MagicStick' }
   },
-  {
-    path: '/rules-inspection',
-    name: 'RulesInspection',
-    component: () => import('../pages/RulesInspectionPage.vue'),
-    meta: { title: '规则检查', icon: 'Document' }
-  },
+
   {
     path: '/ai-assistant-new',
     name: 'AIAssistantNew',
@@ -250,7 +235,13 @@ const routes = [
     path: '/assistant-ai-three-column',
     name: 'AssistantAIThreeColumn',
     component: () => import('../pages/SimpleAIThreeColumn.vue'),
-    meta: { title: 'AI助手(三栏布局)', icon: 'Grid' }
+    meta: { title: 'QMS问答助手', icon: 'Grid' }
+  },
+  {
+    path: '/qms-assistant-loading',
+    name: 'QMSAssistantLoading',
+    component: () => import('../pages/QMSAssistantLoading.vue'),
+    meta: { title: '正在加载QMS智能助手' }
   },
   {
     path: '/test-ai-three-column',
@@ -264,23 +255,18 @@ const routes = [
     component: () => import('../pages/SimpleAIThreeColumn.vue'),
     meta: { title: '简化AI三栏布局', icon: 'Grid' }
   },
-  {
-    path: '/three-column-test',
-    name: 'ThreeColumnTest',
-    component: () => import('../pages/ThreeColumnLayoutTest.vue'),
-    meta: { title: '三栏布局测试', icon: 'Grid' }
-  },
+
   {
     path: '/ai-assistant-three-column',
     name: 'AIAssistantThreeColumn',
     component: () => import('../pages/AIAssistantThreeColumn.vue'),
-    meta: { title: 'AI智能助手(三栏版)', icon: 'ChatDotRound' }
+    meta: { title: 'QMS AI智能助手(三栏版)', icon: 'ChatDotRound' }
   },
   {
     path: '/ai-assistant-final',
     name: 'AIAssistantFinal',
     component: () => import('../pages/AIAssistantFinal.vue'),
-    meta: { title: 'AI智能助手(最终版)', icon: 'MagicStick' }
+    meta: { title: 'QMS AI智能助手(最终版)', icon: 'MagicStick' }
   },
   {
     path: '/ai-assistant-standalone',
@@ -304,19 +290,44 @@ const routes = [
     path: '/ai-assistant',
     name: 'AIAssistant',
     component: () => import('../pages/AIAssistantRedirect.vue'),
-    meta: { title: 'AI智能助手', icon: 'MagicStick' }
+    meta: { title: 'QMS AI智能助手', icon: 'MagicStick' }
   },
   {
     path: '/ai-assistant-main',
     name: 'AIAssistantMain',
     component: () => import('../pages/AIAssistantMain.vue'),
-    meta: { title: 'AI智能助手(主版本)', icon: 'MagicStick' }
+    meta: { title: 'QMS AI智能助手(主版本)', icon: 'MagicStick' }
   },
   {
     path: '/ai-assistant-redesigned',
     name: 'AIAssistantRedesigned',
     component: () => import('../pages/AIAssistantRedesigned.vue'),
     meta: { title: 'AI智能助手(重新设计)', icon: 'MagicStick' }
+  },
+  {
+    path: '/assistant-page-ai-three-column',
+    name: 'AssistantPageAIThreeColumn',
+    component: () => import('../pages/AssistantPageAIThreeColumn.vue'),
+    meta: { title: 'AI智能助手(三栏页面版)', icon: 'Grid' }
+  },
+  // 阶段三：AI建设规划页面
+  {
+    path: '/ai-planning',
+    name: 'AIPlanningPage',
+    component: () => import('../pages/AIPlanningPage.vue'),
+    meta: { title: 'AI规划文档', icon: 'Document' }
+  },
+  {
+    path: '/ai-roadmap',
+    name: 'AIRoadmapPage',
+    component: () => import('../pages/AIRoadmapPage.vue'),
+    meta: { title: '技术路线图', icon: 'Connection' }
+  },
+  {
+    path: '/ai-architecture',
+    name: 'AIArchitecturePage',
+    component: () => import('../pages/AIArchitecturePage.vue'),
+    meta: { title: '架构设计', icon: 'Operation' }
   },
   {
     path: '/:pathMatch(.*)*',

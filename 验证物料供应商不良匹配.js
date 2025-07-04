@@ -6,8 +6,8 @@
 console.log('🔍 开始验证物料-供应商-不良匹配规则...\n');
 
 try {
-  // 导入相关模块
-  const { getAllMaterials, getRandomSupplierForMaterial } = await import('./ai-inspection-dashboard/src/data/material_supplier_mapping.js');
+  // 导入相关模块 - 使用正确的数据源
+  const { getAllMaterials, getRandomSupplierForMaterial } = await import('./ai-inspection-dashboard/src/data/MaterialSupplierMap.js');
   const { materialSuppliers, materialDefects } = await import('./ai-inspection-dashboard/src/data/MaterialData.js');
   
   console.log('✅ 模块导入成功\n');

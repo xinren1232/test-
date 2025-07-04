@@ -120,9 +120,17 @@ const router = createRouter({
     {
       path: '/admin/data/rules',
       name: 'dataRules',
-      component: () => import('./pages/NewDataRulesPage.vue'),
+      component: () => import('./pages/TestDataRulesPage.vue'),
       meta: {
-        title: '数据规则文档',
+        title: '数据规则管理',
+      }
+    },
+    {
+      path: '/admin/data/rules/match',
+      name: 'dataRulesMatch',
+      redirect: '/admin/data/rules',
+      meta: {
+        title: '数据匹配规则',
       }
     },
     {

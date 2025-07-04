@@ -1,6 +1,6 @@
 import express from 'express';
 import { processQuery, updateInMemoryData } from '../services/assistantService.js';
-import { processRealQuery, updateRealInMemoryData, processChartQuery } from '../services/realDataAssistantService.js';
+import { processRealQuery, updateRealInMemoryData, getRealInMemoryData, processChartQuery } from '../services/realDataAssistantService.js';
 import AIEnhancedService from '../services/AIEnhancedService.js';
 import SimpleAIService from '../services/SimpleAIService.js';
 import DeepSeekService from '../services/DeepSeekService.js';
@@ -33,22 +33,114 @@ const handleDataUpdate = (req, res) => {
   }
 
   try {
+    console.log('📥 接收到数据更新请求:', {
+      inventory: data.inventory?.length || 0,
+      inspection: data.inspection?.length || 0,
+      production: data.production?.length || 0
+    });
+
+    // 数据验证
+    const validationResult = validateIncomingData(data);
+    if (!validationResult.valid) {
+      console.error('❌ 数据验证失败:', validationResult.errors);
+      return res.status(400).json({
+        success: false,
+        error: 'Data validation failed',
+        details: validationResult.errors
+      });
+    }
+
     // 同时更新两个服务的数据（兼容性）
     updateInMemoryData(data);
     updateRealInMemoryData(data);
+
+    // 验证数据是否真的被更新了
+    const verifyData = getRealInMemoryData();
+
+    // 检查数据完整性
+    const integrityCheck = {
+      inventory: {
+        expected: data.inventory?.length || 0,
+        actual: verifyData.inventory?.length || 0,
+        match: (data.inventory?.length || 0) === (verifyData.inventory?.length || 0)
+      },
+      inspection: {
+        expected: data.inspection?.length || 0,
+        actual: verifyData.inspection?.length || 0,
+        match: (data.inspection?.length || 0) === (verifyData.inspection?.length || 0)
+      },
+      production: {
+        expected: data.production?.length || 0,
+        actual: verifyData.production?.length || 0,
+        match: (data.production?.length || 0) === (verifyData.production?.length || 0)
+      }
+    };
+
+    const allMatched = integrityCheck.inventory.match &&
+                      integrityCheck.inspection.match &&
+                      integrityCheck.production.match;
+
+    console.log('✅ 数据完整性检查:', integrityCheck);
 
     logger.info('Real data updated successfully', {
       inventory: data.inventory?.length || 0,
       inspection: data.inspection?.length || 0,
       production: data.production?.length || 0,
+      verifyInventory: verifyData.inventory?.length || 0,
+      verifyInspection: verifyData.inspection?.length || 0,
+      verifyProduction: verifyData.production?.length || 0,
+      integrityCheck,
       requestId: req.requestId
     });
 
-    res.json({ success: true, message: 'Real data updated successfully.' });
+    res.json({
+      success: true,
+      message: 'Real data updated successfully.',
+      integrityCheck,
+      verified: allMatched,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
+    console.error('❌ 数据更新失败:', error);
     logger.error('Error updating real data:', { error, requestId: req.requestId });
-    res.status(500).json({ error: 'Failed to update real data.' });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update real data.',
+      details: error.message
+    });
   }
+};
+
+// 数据验证函数
+const validateIncomingData = (data) => {
+  const errors = [];
+
+  // 检查数据结构
+  if (!data || typeof data !== 'object') {
+    errors.push('数据不是有效对象');
+    return { valid: false, errors };
+  }
+
+  // 检查必要字段
+  const requiredFields = ['inventory', 'inspection', 'production'];
+  for (const field of requiredFields) {
+    if (!Array.isArray(data[field])) {
+      errors.push(`${field} 不是有效数组`);
+    }
+  }
+
+  // 检查数据内容
+  if (data.inventory && data.inventory.length > 0) {
+    const sample = data.inventory[0];
+    const requiredInventoryFields = ['materialName', 'batchNo', 'supplier'];
+    for (const field of requiredInventoryFields) {
+      if (!sample[field]) {
+        errors.push(`库存数据缺少必要字段: ${field}`);
+      }
+    }
+  }
+
+  return { valid: errors.length === 0, errors };
 };
 
 /**
@@ -105,6 +197,7 @@ const handleQuery = async (req, res) => {
       }
     } catch (intentError) {
       console.log(`⚠️ 智能意图处理失败:`, intentError.message);
+      console.log(`⚠️ 错误堆栈:`, intentError.stack);
     }
 
     // 第二步：尝试AI增强处理 - 作为智能意图的补充
@@ -479,5 +572,145 @@ router.post('/debug-ai', async (req, res) => {
     });
   }
 });
+
+// 健康检查端点
+const handleHealthCheck = (req, res) => {
+  try {
+    const verifyData = getRealInMemoryData();
+    const status = {
+      healthy: true,
+      timestamp: new Date().toISOString(),
+      services: {
+        assistant: 'running',
+        realDataService: 'running',
+        aiEnhanced: 'running'
+      },
+      dataStatus: {
+        inventory: verifyData.inventory?.length || 0,
+        inspection: verifyData.inspection?.length || 0,
+        production: verifyData.production?.length || 0,
+        hasData: (verifyData.inventory?.length || 0) > 0 ||
+                 (verifyData.inspection?.length || 0) > 0 ||
+                 (verifyData.production?.length || 0) > 0
+      }
+    };
+
+    console.log('🏥 健康检查:', status);
+    res.json(status);
+  } catch (error) {
+    console.error('❌ 健康检查失败:', error);
+    res.status(500).json({
+      healthy: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+};
+
+// 数据验证端点
+const handleDataVerification = (req, res) => {
+  try {
+    const { expectedCounts } = req.body;
+    const actualData = getRealInMemoryData();
+
+    const verification = {
+      verified: true,
+      timestamp: new Date().toISOString(),
+      checks: {
+        inventory: {
+          expected: expectedCounts.inventory || 0,
+          actual: actualData.inventory?.length || 0,
+          match: (expectedCounts.inventory || 0) === (actualData.inventory?.length || 0)
+        },
+        inspection: {
+          expected: expectedCounts.inspection || 0,
+          actual: actualData.inspection?.length || 0,
+          match: (expectedCounts.inspection || 0) === (actualData.inspection?.length || 0)
+        },
+        production: {
+          expected: expectedCounts.production || 0,
+          actual: actualData.production?.length || 0,
+          match: (expectedCounts.production || 0) === (actualData.production?.length || 0)
+        }
+      }
+    };
+
+    verification.verified = verification.checks.inventory.match &&
+                           verification.checks.inspection.match &&
+                           verification.checks.production.match;
+
+    verification.message = verification.verified ?
+      '数据验证成功，所有数据计数匹配' :
+      '数据验证失败，存在数据计数不匹配';
+
+    console.log('🔍 数据验证结果:', verification);
+    res.json(verification);
+  } catch (error) {
+    console.error('❌ 数据验证失败:', error);
+    res.status(500).json({
+      verified: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+};
+
+// 分批数据更新端点
+const handleBatchDataUpdate = (req, res) => {
+  try {
+    const { type, data } = req.body;
+
+    if (!type || !data || !Array.isArray(data)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid batch data format'
+      });
+    }
+
+    console.log(`📦 接收批次数据: ${type}, ${data.length}条记录`);
+
+    // 获取当前数据
+    const currentData = getRealInMemoryData();
+
+    // 根据类型更新数据
+    switch (type) {
+      case 'inventory':
+        currentData.inventory = [...(currentData.inventory || []), ...data];
+        break;
+      case 'inspection':
+        currentData.inspection = [...(currentData.inspection || []), ...data];
+        break;
+      case 'production':
+        currentData.production = [...(currentData.production || []), ...data];
+        break;
+      default:
+        return res.status(400).json({
+          success: false,
+          error: `Unknown data type: ${type}`
+        });
+    }
+
+    // 更新数据
+    updateRealInMemoryData(currentData);
+
+    res.json({
+      success: true,
+      message: `Batch ${type} data updated successfully`,
+      count: data.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ 批次数据更新失败:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+// 新增路由
+router.get('/health', handleHealthCheck);
+router.post('/verify-data', handleDataVerification);
+router.post('/update-data-batch', handleBatchDataUpdate);
 
 export { router as default };

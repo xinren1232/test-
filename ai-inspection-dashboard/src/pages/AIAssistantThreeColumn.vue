@@ -2,7 +2,7 @@
   <div class="ai-assistant-container">
     <!-- 顶部导航栏 -->
     <div class="top-header">
-      <h1>🤖 IQE AI 智能助手</h1>
+      <h1>🤖 QMS AI 智能助手</h1>
       <div class="header-controls">
         <el-switch
           v-model="aiEnabled"
@@ -167,7 +167,7 @@ const inputMessage = ref('')
 const messages = ref([
   {
     type: 'ai',
-    content: '您好！我是IQE AI智能助手。我已接入DeepSeek大语言模型，可以为您提供专业的质量管理问答服务。',
+    content: '您好！我是QMS AI智能助手。我已接入DeepSeek大语言模型，可以为您提供专业的质量管理问答服务。',
     timestamp: new Date()
   }
 ])

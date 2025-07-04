@@ -438,6 +438,9 @@ const assistantAvatar = ref(AssistantAvatar);
 const messagesContainer = ref(null);
 const scrollbarRef = ref(null);
 
+// 当前分析结果
+const currentAnalysis = ref(null);
+
 // 展开状态
 const expandedSections = reactive({
   basic: true,
@@ -471,7 +474,7 @@ const initializeRules = () => {
 // 从后端获取实际规则
 const loadRulesFromBackend = async () => {
   try {
-    const response = await fetch('http://localhost:3002/api/assistant/rules');
+    const response = await fetch('http://localhost:3001/api/assistant/rules');
     if (response.ok) {
       const data = await response.json();
       const rules = data.rules || [];
@@ -821,7 +824,7 @@ const handleSendMessage = async () => {
     }
 
     // 降级到传统查询
-    const response = await fetch('http://localhost:3002/api/assistant/query', {
+    const response = await fetch('http://localhost:3001/api/assistant/query', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

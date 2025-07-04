@@ -415,15 +415,7 @@
           </router-link>
         </el-col>
         
-        <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <router-link to="/admin/data/historical">
-            <el-card shadow="hover" class="module-card">
-              <el-icon class="module-icon"><Histogram /></el-icon>
-              <h3 class="module-title">历史数据管控</h3>
-              <p class="module-desc">导入、管理和查看历史数据，用于与新生成数据集成</p>
-            </el-card>
-          </router-link>
-        </el-col>
+
         
         <el-col :xs="24" :sm="12" :md="8" :lg="6">
           <router-link to="/admin/data">

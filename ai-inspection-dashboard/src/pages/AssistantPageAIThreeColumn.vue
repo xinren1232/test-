@@ -50,6 +50,11 @@
               <span class="toggle-icon" :class="{ 'expanded': expandedSections.basic }">▼</span>
             </div>
             <div class="tool-list" v-show="expandedSections.basic">
+              <!-- 调试信息 -->
+              <div style="background: #f0f0f0; padding: 5px; margin: 5px 0; font-size: 12px; border-radius: 3px;">
+                🔍 调试: 规则数量 {{ qaRules.basic.length }} | 第一个规则: {{ qaRules.basic[0]?.name }}
+                <button @click="forceRefreshRules" style="margin-left: 10px; font-size: 10px; padding: 2px 6px;">强制刷新</button>
+              </div>
               <div
                 v-for="rule in qaRules.basic"
                 :key="rule.name"
@@ -564,18 +569,18 @@ const simpleEnhancedAIService = {
       outputFormat: 'table'
     }
 
-    // 实体抽取映射表
+    // 实体抽取映射表 - 基于真实数据
     const entityMappings = {
-      // 供应商实体
+      // 供应商实体 - 使用真实供应商
       suppliers: {
-        patterns: ['聚龙', '泰科电子', '三星电子', '英特尔', '华为', '小米'],
+        patterns: ['聚龙', '欣冠', '广正', 'BOE', '天马', '华星', '帝晶', '盛泰', '天实', '深奥', '百俊达', '奥海', '辰阳', '锂威', '风华', '维科', '东声', '豪声', '歌尔', '丽德宝', '裕同', '富群'],
         field: 'supplier_name',
         table: 'suppliers'
       },
 
-      // 物料类型实体
+      // 物料类型实体 - 使用真实物料
       materials: {
-        patterns: ['OLED显示屏', '电容器', '电阻器', '芯片', '电池', '传感器'],
+        patterns: ['电池盖', '中框', '手机卡托', '侧键', '装饰件', 'LCD显示屏', 'OLED显示屏', '摄像头模组', '电池', '充电器', '扬声器', '听筒', '保护套', '标签', '包装盒'],
         field: 'material_type',
         table: 'inventory'
       },
@@ -587,11 +592,18 @@ const simpleEnhancedAIService = {
         table: 'inventory'
       },
 
-      // 项目名称实体
+      // 项目名称实体 - 使用真实项目
       projects: {
-        patterns: ['IQE', '质量管理', '供应商评估', '生产线优化'],
+        patterns: ['X6827', 'S665LN', 'KI4K', 'X6828', 'X6831', 'KI5K', 'KI3K', 'S662LN', 'S663LN', 'S664LN'],
         field: 'project_name',
         table: 'online_tracking'
+      },
+
+      // 工厂实体 - 使用真实工厂
+      factories: {
+        patterns: ['深圳工厂', '重庆工厂', '南昌工厂', '宜宾工厂'],
+        field: 'factory',
+        table: 'inventory'
       }
     }
 
@@ -687,8 +699,8 @@ const simpleEnhancedAIService = {
         fields: ['material_name', 'supplier_name', 'batch_number', 'quantity', 'status', 'risk_level'],
         description: '库存物料表',
         sample_data: [
-          { material_name: '电容器C001', supplier_name: '泰科电子', batch_number: 'B001', status: '合格', risk_level: 0.2 },
-          { material_name: '电阻器R002', supplier_name: '三星电子', batch_number: 'B002', status: '不合格', risk_level: 0.8 }
+          { material_name: '电池盖', supplier_name: '聚龙', batch_number: 'B001', status: '合格', risk_level: 0.2 },
+          { material_name: 'LCD显示屏', supplier_name: 'BOE', batch_number: 'B002', status: '不合格', risk_level: 0.8 }
         ]
       },
 
@@ -720,8 +732,8 @@ const simpleEnhancedAIService = {
         fields: ['supplier_name', 'contact_info', 'quality_rating', 'certification_status'],
         description: '供应商基础信息表',
         sample_data: [
-          { supplier_name: '泰科电子', quality_rating: 'A', certification_status: 'ISO9001' },
-          { supplier_name: '三星电子', quality_rating: 'B+', certification_status: 'ISO9001' }
+          { supplier_name: '聚龙', quality_rating: 'A', certification_status: 'ISO9001' },
+          { supplier_name: 'BOE', quality_rating: 'B+', certification_status: 'ISO9001' }
         ]
       }
     }
@@ -1199,12 +1211,12 @@ const simpleEnhancedAIService = {
     const { paramResult } = queryTemplateResult.dataSourceResult
     const { extractedParams } = paramResult
 
-    // 根据选择的表生成相应的模拟数据
+    // 根据选择的表生成相应的模拟数据 - 使用真实数据
     if (selectedTables.includes('inventory')) {
       mockData.push(
-        { id: 1, material_name: '电容器C001', supplier_name: '泰科电子', batch_number: 'B001', quantity: 1500, status: '合格', risk_level: 0.2, created_at: '2024-01-20' },
-        { id: 2, material_name: '电阻器R002', supplier_name: '三星电子', batch_number: 'B002', quantity: 800, status: '不合格', risk_level: 0.8, created_at: '2024-01-21' },
-        { id: 3, material_name: '芯片IC003', supplier_name: '英特尔', batch_number: 'B003', quantity: 2000, status: '合格', risk_level: 0.1, created_at: '2024-01-22' }
+        { id: 1, material_name: '电池盖', supplier_name: '聚龙', batch_number: 'B001', quantity: 1500, status: '合格', risk_level: 0.2, created_at: '2024-01-20' },
+        { id: 2, material_name: 'LCD显示屏', supplier_name: 'BOE', batch_number: 'B002', quantity: 800, status: '不合格', risk_level: 0.8, created_at: '2024-01-21' },
+        { id: 3, material_name: '扬声器', supplier_name: '歌尔', batch_number: 'B003', quantity: 2000, status: '合格', risk_level: 0.1, created_at: '2024-01-22' }
       )
     }
 
@@ -2129,9 +2141,9 @@ ${Object.entries(analysisContext.summaryStats).map(([key, value]) => `• ${key}
       mockData.summary = { 进行中: 1, 已完成: 1, 计划中: 1 }
     } else if (analysisDetails.identifiedFields.some(f => f.chinese === '物料')) {
       mockData.results = [
-        { material_name: '电容器C001', supplier: '泰科电子', status: '合格', quantity: 1500, defect_rate: '0.2%' },
-        { material_name: '电阻器R002', supplier: '三星电子', status: '不合格', quantity: 800, defect_rate: '2.1%' },
-        { material_name: '芯片IC003', supplier: '英特尔', status: '合格', quantity: 2000, defect_rate: '0.1%' }
+        { material_name: '电池盖', supplier: '聚龙', status: '合格', quantity: 1500, defect_rate: '0.2%' },
+        { material_name: 'LCD显示屏', supplier: 'BOE', status: '不合格', quantity: 800, defect_rate: '2.1%' },
+        { material_name: '扬声器', supplier: '歌尔', status: '合格', quantity: 2000, defect_rate: '0.1%' }
       ]
       mockData.totalCount = 3
       mockData.summary = { 合格: 2, 不合格: 1 }
@@ -2958,6 +2970,7 @@ const selectedTool = ref(null)
 const thinkingSteps = ref([])
 const debugMode = ref(localStorage.getItem('ai_debug_mode') === 'true')
 const webSearchEnabled = ref(localStorage.getItem('web_search_enabled') !== 'false') // 默认启用
+const currentChatStyle = ref('professional') // 添加缺失的聊天样式变量
 
 // 多步骤AI分析工作流
 const currentWorkflow = ref(null)
@@ -3010,60 +3023,63 @@ const expandedSections = ref({
   charts: false   // 图表工具默认折叠
 })
 
-// 智能问答规则数据 - 每个类别只保留1个代表性规则
+// 智能问答规则数据 - 基于真实数据结构设计 - 强制更新版本 - 时间戳: ${Date.now()}
 const qaRules = ref({
-  // 基础查询规则 - 基于整体业务逻辑的多规则结合检索
+  // 基础查询规则 - 基于真实数据的查询 - 更新版本
   basic: [
-    // 物料分类整合查询
-    { name: '结构件类分析', query: '结合库存、测试、生产数据，分析结构件类物料（电池盖、中框等）的整体质量状况和风险分布', icon: '🏗️', category: 'integrated' },
+    // 工厂库存查询 - 基于真实工厂 - 更新
+    { name: '🏭 工厂库存查询 [NEW]', query: '查询深圳工厂的库存情况', icon: '🏭', category: 'factory_query' },
 
-    // 供应商整合查询
-    { name: '供应商综合评估', query: '整合聚龙、BOE、歌尔等供应商在不同物料类别、工厂、项目中的表现数据', icon: '🏢', category: 'integrated' },
+    // 供应商查询 - 基于真实供应商 - 更新
+    { name: '🏢 供应商物料查询 [NEW]', query: '查询聚龙供应商的物料批次', icon: '🏢', category: 'supplier_query' },
 
-    // 项目-基线关联查询
-    { name: '项目质量追踪', query: '基于项目-基线关系，追踪X6827(I6789)、KI5K(I6788)等项目的物料质量链路', icon: '📊', category: 'integrated' },
+    // 物料分类查询 - 基于真实物料 - 更新
+    { name: '🏗️ 结构件类查询 [NEW]', query: '查询电池盖的库存状态', icon: '🏗️', category: 'material_query' },
 
-    // 工厂-仓库关联查询
-    { name: '工厂效率分析', query: '结合工厂-仓库映射关系，分析深圳工厂等的库存流转和生产效率', icon: '🏭', category: 'integrated' },
+    // 状态查询 - 基于真实状态 - 更新
+    { name: '⚠️ 风险物料查询 [NEW]', query: '查询风险状态的物料批次', icon: '⚠️', category: 'status_query' },
 
-    // 风险预警整合查询
-    { name: '风险预警系统', query: '整合风险等级、质量阈值、异常批次等多维度数据，生成综合风险预警', icon: '⚠️', category: 'integrated' },
+    // 批次查询 - 基于真实批次 - 更新
+    { name: '📦 批次详情查询 [NEW]', query: '查询批次号的详细信息', icon: '📦', category: 'batch_query' },
 
-    // 质量链路追踪
-    { name: '质量链路追踪', query: '跨表追踪物料从库存→测试→生产的完整质量链路和问题根因', icon: '🔗', category: 'integrated' }
+    // 仓库查询 - 基于真实仓库 - 更新
+    { name: '🏪 仓库分布查询 [NEW]', query: '查询中央库存的物料分布', icon: '🏪', category: 'warehouse_query' }
   ],
 
-  // 高级分析规则 - 基于多规则结合的深度业务洞察
+  // 高级分析规则 - 基于真实数据的深度分析
   advanced: [
-    // 多维度关联分析
-    { name: '多维关联分析', query: '基于物料分类、供应商映射、项目基线、工厂仓库等多个业务规则，进行深度关联分析', icon: '🔗', category: 'multi-dimensional' },
+    // 供应商质量分析
+    { name: '供应商质量分析', query: '分析聚龙、欣冠、广正等供应商的质量表现和风险分布', icon: '📊', category: 'supplier_analysis' },
 
-    // 业务规则验证
-    { name: '业务规则验证', query: '验证供应商-物料匹配、项目-基线关系、工厂-仓库映射等业务规则的执行情况', icon: '✅', category: 'rule-validation' },
+    // 物料分类趋势
+    { name: '物料分类趋势', query: '分析结构件类、光学类、声学类物料的质量趋势', icon: '📈', category: 'category_trend' },
 
-    // 智能预测分析
-    { name: '智能预测分析', query: '基于历史数据和业务规则，预测质量风险、库存需求、供应商表现等趋势', icon: '🔮', category: 'predictive' },
+    // 工厂效率对比
+    { name: '工厂效率对比', query: '对比深圳工厂、重庆工厂、南昌工厂、宜宾工厂的生产效率', icon: '🏭', category: 'factory_comparison' },
 
-    // 根因分析
-    { name: '问题根因分析', query: '当发现质量问题时，跨表追踪从供应商→物料→测试→生产的完整链路，定位根本原因', icon: '🎯', category: 'root-cause' }
+    // 批次质量追踪
+    { name: '批次质量追踪', query: '追踪特定批次从库存到生产的完整质量链路', icon: '🔍', category: 'batch_tracking' }
   ],
 
-  // 图表规则 - 基于物料分类体系的综合数据分析
+  // 图表工具规则 - 基于真实数据的可视化分析
   charts: [
-    // 🏗️ 物料分类综合分析 - 结合分类定义和实际数据
-    { name: '结构件类质量分析', query: '综合分析结构件类物料（电池盖、中框、手机卡托等）的库存-测试-生产全链路质量状况', icon: '🏗️', category: 'chart' },
-    { name: '光学类风险评估', query: '综合分析光学类物料（LCD显示屏、OLED显示屏、摄像头模组）的风险分布和供应商表现', icon: '📷', category: 'chart' },
-    { name: '电子元件类趋势', query: '综合分析电子元件类物料的不良率趋势和批次稳定性，结合供应商质量表现', icon: '🔌', category: 'chart' },
+    // 物料分类图表
+    { name: '结构件类分布图', query: '生成电池盖、中框、手机卡托等结构件类物料的库存分布图表', icon: '🏗️', category: 'chart' },
 
-    // 🏭 工厂-物料-供应商关联分析
-    { name: '深圳工厂物料流', query: '分析深圳工厂各类物料的库存流转、测试通过率和供应商配送情况的关联关系', icon: '🏭', category: 'chart' },
-    { name: '供应商-物料匹配', query: '分析聚龙（结构件）、BOE（光学类）、歌尔（声学类）等供应商与物料类别的质量匹配度', icon: '🤝', category: 'chart' },
-    { name: '批次-项目关联', query: '分析X6827、KI5K等项目下不同物料批次的质量表现和风险分布关联性', icon: '📋', category: 'chart' },
+    // 供应商对比图表
+    { name: '供应商质量对比', query: '生成聚龙、欣冠、广正等供应商的质量对比图表', icon: '📊', category: 'chart' },
 
-    // 📊 跨数据表综合洞察
-    { name: '质量-库存-生产联动', query: '综合库存、测试、生产三个数据表，分析物料质量问题对库存和生产的影响', icon: '🔗', category: 'chart' },
-    { name: '风险预警雷达', query: '基于物料分类、供应商、工厂、项目四个维度构建综合风险预警雷达图', icon: '⚠️', category: 'chart' },
-    { name: '业务全景仪表盘', query: '整合所有数据维度，展示物料分类、供应商表现、工厂效率、项目质量的全景视图', icon: '📈', category: 'chart' }
+    // 工厂效率图表
+    { name: '工厂库存分布', query: '生成深圳工厂、重庆工厂等各工厂的库存分布图表', icon: '🏭', category: 'chart' },
+
+    // 状态分析图表
+    { name: '物料状态分析', query: '生成正常、风险、冻结状态物料的分布饼图', icon: '📈', category: 'chart' },
+
+    // 趋势分析图表
+    { name: '质量趋势分析', query: '生成物料质量随时间变化的趋势图表', icon: '📉', category: 'chart' },
+
+    // 批次分析图表
+    { name: '批次质量分析', query: '生成不同批次物料的质量分析图表', icon: '📋', category: 'chart' }
   ]
 })
 
@@ -3162,37 +3178,38 @@ const sendMessage = async () => {
   thinkingSteps.value = []
 
   try {
-    console.log('🔄 启动多步骤AI分析...')
+    console.log('🔄 启动智能查询分析...')
 
-    // 调用多步骤AI服务
-    const response = await fetch(`${multiStepServiceUrl}/api/multi-step-query`, {
+    // 调用基础查询服务
+    const response = await fetch('/api/assistant/query', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        question: userQuestion
+        query: userQuestion,
+        scenario: 'basic',
+        analysisMode: 'rule',
+        requireDataAnalysis: false
       })
     })
 
     if (!response.ok) {
-      throw new Error(`多步骤AI服务请求失败: ${response.status}`)
+      throw new Error(`查询服务请求失败: ${response.status}`)
     }
 
     const result = await response.json()
-    console.log('✅ 多步骤AI分析完成:', result)
-
-    // 更新工作流状态
-    currentWorkflow.value = result.workflow
+    console.log('✅ 智能查询分析完成:', result)
 
     // 添加AI回复
     const messageToAdd = {
       type: 'assistant',
-      content: result.result?.answer || '抱歉，分析过程中出现问题。',
+      content: result.reply || '抱歉，查询过程中出现问题。',
       timestamp: new Date(),
-      workflow: result.workflow,
-      data: result.result?.data,
-      tools: result.result?.tools
+      source: result.source,
+      scenario: result.scenario,
+      analysisMode: result.analysisMode,
+      aiEnhanced: result.aiEnhanced
     }
 
     console.log('📨 准备添加消息:', messageToAdd)
@@ -4605,22 +4622,27 @@ const formatMessageContent = (content) => {
   return formatProfessionalAIResponse(content);
 }
 
-// 格式化专业AI回答
+// 格式化专业AI回答 - 增强版，支持表格和统计数据
 const formatProfessionalAIResponse = (content) => {
   let formatted = content
 
-  // 1. 处理标题层级
+  // 1. 处理表格格式 - 检测ASCII表格
+  if (content.includes('┌') && content.includes('│') && content.includes('└')) {
+    formatted = formatASCIITable(formatted);
+  }
+
+  // 2. 处理标题层级
   formatted = formatted
     .replace(/^## (.*$)/gm, '<h3 class="ai-section-title">$1</h3>')
     .replace(/^### (.*$)/gm, '<h4 class="ai-subsection-title">$1</h4>')
     .replace(/^# (.*$)/gm, '<h2 class="ai-main-title">$1</h2>')
 
-  // 2. 处理强调文本
+  // 3. 处理强调文本
   formatted = formatted
     .replace(/\*\*(.*?)\*\*/g, '<strong class="ai-emphasis">$1</strong>')
     .replace(/\*(.*?)\*/g, '<em class="ai-italic">$1</em>')
 
-  // 3. 处理代码和专业术语
+  // 4. 处理代码和专业术语
   formatted = formatted
     .replace(/`(.*?)`/g, '<code class="ai-code">$1</code>')
 
@@ -4694,6 +4716,72 @@ const formatProfessionalAIResponse = (content) => {
 
   console.log('✅ 专业AI回答格式化完成')
   return formatted;
+}
+
+// 格式化ASCII表格为HTML表格
+const formatASCIITable = (content) => {
+  const lines = content.split('\n');
+  let inTable = false;
+  let tableRows = [];
+  let processedLines = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // 检测表格开始
+    if (line.includes('┌') && line.includes('─') && line.includes('┐')) {
+      inTable = true;
+      tableRows = [];
+      processedLines.push('<div class="ascii-table-container">');
+      processedLines.push('<table class="ascii-table">');
+      continue;
+    }
+
+    // 检测表格结束
+    if (line.includes('└') && line.includes('─') && line.includes('┘')) {
+      inTable = false;
+      processedLines.push('</table>');
+      processedLines.push('</div>');
+      continue;
+    }
+
+    // 处理表格内容
+    if (inTable && line.includes('│')) {
+      // 跳过分隔线
+      if (line.includes('├') || line.includes('┼') || line.includes('┤')) {
+        continue;
+      }
+
+      // 解析表格行
+      const cells = line.split('│').slice(1, -1).map(cell => cell.trim());
+
+      // 检测是否是表头
+      const isHeader = i > 0 && lines[i-1].includes('┌') ||
+                      (i < lines.length - 1 && lines[i+1].includes('├'));
+
+      if (isHeader) {
+        processedLines.push('<thead><tr>');
+        cells.forEach(cell => {
+          processedLines.push(`<th class="table-header">${cell}</th>`);
+        });
+        processedLines.push('</tr></thead><tbody>');
+      } else {
+        processedLines.push('<tr>');
+        cells.forEach(cell => {
+          processedLines.push(`<td class="table-cell">${cell}</td>`);
+        });
+        processedLines.push('</tr>');
+      }
+    } else {
+      // 非表格内容
+      if (inTable) {
+        processedLines.push('</tbody>');
+      }
+      processedLines.push(line);
+    }
+  }
+
+  return processedLines.join('\n');
 }
 
 // 格式化结构化响应
@@ -4886,12 +4974,20 @@ const scrollToBottom = () => {
   })
 }
 
-// 数据同步函数
+// 数据同步函数 - 增强版
 const syncDataToBackend = async () => {
   try {
-    console.log('🔄 开始同步数据到后端...')
+    console.log('🔄 开始同步真实数据到后端...')
 
-    // 从localStorage获取数据
+    // 1. 首先检查后端服务状态
+    const healthCheck = await checkBackendHealth()
+    if (!healthCheck.healthy) {
+      console.error('❌ 后端服务不可用:', healthCheck.error)
+      ElMessage.error('后端服务不可用，请检查服务状态')
+      return false
+    }
+
+    // 2. 从localStorage获取数据
     const inventoryData = localStorage.getItem('unified_inventory_data') || localStorage.getItem('inventory_data')
     const labData = localStorage.getItem('unified_lab_data') || localStorage.getItem('lab_data')
     const factoryData = localStorage.getItem('unified_factory_data') || localStorage.getItem('factory_data')
@@ -4904,12 +5000,46 @@ const syncDataToBackend = async () => {
 
     console.log(`📊 准备推送数据: 库存${dataToPush.inventory.length}条, 检测${dataToPush.inspection.length}条, 生产${dataToPush.production.length}条`)
 
+    // 3. 如果没有数据，尝试重新生成
     if (dataToPush.inventory.length === 0 && dataToPush.inspection.length === 0 && dataToPush.production.length === 0) {
-      console.log('⚠️ 没有数据可推送')
-      return
+      console.log('⚠️ 没有数据可推送，尝试重新生成数据...')
+
+      try {
+        // 调用数据生成服务
+        const generateResponse = await fetch('/api/assistant/generate-real-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        })
+
+        if (generateResponse.ok) {
+          const generatedData = await generateResponse.json()
+          if (generatedData.success) {
+            dataToPush.inventory = generatedData.data.inventory || []
+            dataToPush.inspection = generatedData.data.inspection || []
+            dataToPush.production = generatedData.data.production || []
+            console.log('✅ 重新生成数据成功')
+          }
+        }
+      } catch (generateError) {
+        console.warn('⚠️ 数据生成失败，使用空数据继续:', generateError.message)
+      }
+
+      if (dataToPush.inventory.length === 0 && dataToPush.inspection.length === 0 && dataToPush.production.length === 0) {
+        console.log('❌ 仍然没有数据可推送')
+        ElMessage.warning('没有可用数据，请先在管理工具中生成数据')
+        return false
+      }
     }
 
-    // 推送数据到后端
+    // 4. 数据验证
+    const validationResult = validateDataStructure(dataToPush)
+    if (!validationResult.valid) {
+      console.error('❌ 数据验证失败:', validationResult.errors)
+      ElMessage.error('数据格式验证失败')
+      return false
+    }
+
+    // 5. 推送数据到后端
     const response = await fetch('/api/assistant/update-data', {
       method: 'POST',
       headers: {
@@ -4920,16 +5050,184 @@ const syncDataToBackend = async () => {
 
     if (response.ok) {
       const result = await response.json()
-      console.log('✅ 数据同步成功:', result)
-      ElMessage.success('数据同步成功！')
+      console.log('✅ 数据同步响应:', result)
+
+      if (result.success) {
+        // 6. 验证数据是否真正同步成功
+        const verifyResult = await verifyDataSync(dataToPush)
+        if (verifyResult.verified) {
+          console.log('✅ 数据同步验证成功')
+          ElMessage.success('数据同步成功！')
+          return true
+        } else {
+          console.warn('⚠️ 数据同步验证失败:', verifyResult.message)
+          ElMessage.warning('数据同步可能不完整，请重试')
+          return false
+        }
+      } else {
+        throw new Error(result.error || '未知错误')
+      }
     } else {
       const error = await response.text()
       console.log('❌ 数据同步失败:', error)
       ElMessage.error('数据同步失败，请检查后端服务')
+      return false
     }
   } catch (error) {
     console.error('❌ 数据同步出错:', error)
     ElMessage.error('数据同步出错: ' + error.message)
+
+    // 7. 失败重试机制
+    if (error.message.includes('413') || error.message.includes('Request Entity Too Large')) {
+      console.log('🔄 数据过大，尝试分批推送...')
+      return await syncDataInBatches(dataToPush)
+    }
+
+    return false
+  }
+}
+
+// 后端健康检查
+const checkBackendHealth = async () => {
+  try {
+    const response = await fetch('/api/assistant/health', {
+      method: 'GET',
+      timeout: 5000
+    })
+
+    if (response.ok) {
+      const result = await response.json()
+      return { healthy: true, data: result }
+    } else {
+      return { healthy: false, error: `HTTP ${response.status}` }
+    }
+  } catch (error) {
+    return { healthy: false, error: error.message }
+  }
+}
+
+// 数据结构验证
+const validateDataStructure = (data) => {
+  const errors = []
+
+  // 检查数据结构
+  if (!data || typeof data !== 'object') {
+    errors.push('数据不是有效对象')
+    return { valid: false, errors }
+  }
+
+  // 检查必要字段
+  const requiredFields = ['inventory', 'inspection', 'production']
+  for (const field of requiredFields) {
+    if (!Array.isArray(data[field])) {
+      errors.push(`${field} 不是有效数组`)
+    }
+  }
+
+  // 检查数据内容
+  if (data.inventory.length > 0) {
+    const sample = data.inventory[0]
+    const requiredInventoryFields = ['materialName', 'batchNo', 'supplier']
+    for (const field of requiredInventoryFields) {
+      if (!sample[field]) {
+        errors.push(`库存数据缺少必要字段: ${field}`)
+      }
+    }
+  }
+
+  return { valid: errors.length === 0, errors }
+}
+
+// 验证数据同步
+const verifyDataSync = async (originalData) => {
+  try {
+    const response = await fetch('/api/assistant/verify-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        expectedCounts: {
+          inventory: originalData.inventory.length,
+          inspection: originalData.inspection.length,
+          production: originalData.production.length
+        }
+      })
+    })
+
+    if (response.ok) {
+      const result = await response.json()
+      return { verified: result.verified, message: result.message }
+    } else {
+      return { verified: false, message: '验证请求失败' }
+    }
+  } catch (error) {
+    console.warn('数据验证失败:', error)
+    return { verified: false, message: error.message }
+  }
+}
+
+// 分批推送数据
+const syncDataInBatches = async (data) => {
+  try {
+    console.log('🔄 开始分批推送数据...')
+
+    const batchSize = 50 // 每批50条记录
+    const batches = []
+
+    // 分割库存数据
+    for (let i = 0; i < data.inventory.length; i += batchSize) {
+      batches.push({
+        type: 'inventory',
+        data: data.inventory.slice(i, i + batchSize)
+      })
+    }
+
+    // 分割检测数据
+    for (let i = 0; i < data.inspection.length; i += batchSize) {
+      batches.push({
+        type: 'inspection',
+        data: data.inspection.slice(i, i + batchSize)
+      })
+    }
+
+    // 分割生产数据
+    for (let i = 0; i < data.production.length; i += batchSize) {
+      batches.push({
+        type: 'production',
+        data: data.production.slice(i, i + batchSize)
+      })
+    }
+
+    let successCount = 0
+    for (const batch of batches) {
+      try {
+        const response = await fetch('/api/assistant/update-data-batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(batch)
+        })
+
+        if (response.ok) {
+          successCount++
+        } else {
+          console.error(`批次推送失败: ${batch.type}`)
+        }
+      } catch (batchError) {
+        console.error(`批次推送异常: ${batch.type}`, batchError)
+      }
+    }
+
+    const success = successCount === batches.length
+    if (success) {
+      ElMessage.success('分批数据同步成功！')
+    } else {
+      ElMessage.warning(`部分数据同步成功 (${successCount}/${batches.length})`)
+    }
+
+    return success
+  } catch (error) {
+    console.error('分批推送失败:', error)
+    ElMessage.error('分批数据同步失败')
+    return false
   }
 }
 
@@ -4937,11 +5235,40 @@ const syncDataToBackend = async () => {
 onMounted(async () => {
   console.log('🤖 AI智能助手三栏布局已加载')
 
+  // 调试规则数据
+  console.log('🔍 调试规则数据:', qaRules.value)
+  console.log('📊 基础规则数量:', qaRules.value.basic.length)
+  console.log('📋 基础规则列表:', qaRules.value.basic.map(r => r.name))
+
+  // 强制重新赋值规则数据（解决可能的响应式问题）- 更新版本 - ${Date.now()}
+  qaRules.value = {
+    ...qaRules.value,
+    basic: [
+      { name: '🏭 工厂库存查询 [MOUNTED]', query: '查询深圳工厂的库存情况', icon: '🏭', category: 'factory_query' },
+      { name: '🏢 供应商物料查询 [MOUNTED]', query: '查询聚龙供应商的物料批次', icon: '🏢', category: 'supplier_query' },
+      { name: '🏗️ 结构件类查询 [MOUNTED]', query: '查询电池盖的库存状态', icon: '🏗️', category: 'material_query' },
+      { name: '⚠️ 风险物料查询 [MOUNTED]', query: '查询风险状态的物料批次', icon: '⚠️', category: 'status_query' },
+      { name: '📦 批次详情查询 [MOUNTED]', query: '查询批次号的详细信息', icon: '📦', category: 'batch_query' },
+      { name: '🏪 仓库分布查询 [MOUNTED]', query: '查询中央库存的物料分布', icon: '🏪', category: 'warehouse_query' }
+    ]
+  }
+
+  console.log('🔄 强制更新后的规则:', qaRules.value.basic.map(r => r.name))
+
   // 初始化用户会话
   initializeUserSession()
 
-  // 先同步数据到后端
-  await syncDataToBackend()
+  // 先同步数据到后端 - 增强版
+  console.log('🔄 开始数据同步流程...')
+  const syncSuccess = await syncDataToBackend()
+
+  if (!syncSuccess) {
+    console.warn('⚠️ 数据同步失败，尝试重新生成数据...')
+    ElMessage.warning('数据同步失败，请在管理工具中重新生成数据')
+  } else {
+    console.log('✅ 数据同步成功，系统已准备就绪')
+    ElMessage.success('系统数据已同步，可以开始使用智能问答')
+  }
 
   // 调试布局信息
   nextTick(() => {
@@ -5195,6 +5522,28 @@ const toggleWebSearch = () => {
   localStorage.setItem('web_search_enabled', webSearchEnabled.value.toString())
   simpleEnhancedAIService.setWebSearchEnabled(webSearchEnabled.value)
   console.log('🌐 联网搜索:', webSearchEnabled.value ? '已启用' : '已禁用')
+}
+
+// 强制刷新规则
+const forceRefreshRules = () => {
+  console.log('🔄 强制刷新规则数据...')
+
+  // 完全重新创建规则对象
+  qaRules.value = {
+    basic: [
+      { name: '🏭 工厂库存查询 [刷新]', query: '查询深圳工厂的库存情况', icon: '🏭', category: 'factory_query' },
+      { name: '🏢 供应商物料查询 [刷新]', query: '查询聚龙供应商的物料批次', icon: '🏢', category: 'supplier_query' },
+      { name: '🏗️ 结构件类查询 [刷新]', query: '查询电池盖的库存状态', icon: '🏗️', category: 'material_query' },
+      { name: '⚠️ 风险物料查询 [刷新]', query: '查询风险状态的物料批次', icon: '⚠️', category: 'status_query' },
+      { name: '📦 批次详情查询 [刷新]', query: '查询批次号的详细信息', icon: '📦', category: 'batch_query' },
+      { name: '🏪 仓库分布查询 [刷新]', query: '查询中央库存的物料分布', icon: '🏪', category: 'warehouse_query' }
+    ],
+    advanced: qaRules.value.advanced,
+    charts: qaRules.value.charts
+  }
+
+  console.log('✅ 规则刷新完成:', qaRules.value.basic.map(r => r.name))
+  ElMessage.success('规则已强制刷新')
 }
 </script>
 
@@ -7837,6 +8186,108 @@ input:checked + .slider:before {
   font-size: 12px;
   color: #6c757d;
   line-height: 1.4;
+}
+
+/* ASCII表格样式 */
+.ascii-table-container {
+  margin: 16px 0;
+  overflow-x: auto;
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid #e9ecef;
+}
+
+.ascii-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  background: white;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.ascii-table th.table-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px 8px;
+  text-align: center;
+  font-weight: 600;
+  border: 1px solid #5a67d8;
+  font-size: 11px;
+}
+
+.ascii-table td.table-cell {
+  padding: 10px 8px;
+  text-align: center;
+  border: 1px solid #e2e8f0;
+  background: white;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.ascii-table tr:nth-child(even) td {
+  background: #f7fafc;
+}
+
+.ascii-table tr:hover td {
+  background: #edf2f7;
+  transition: background-color 0.2s ease;
+}
+
+/* 专业AI响应样式增强 */
+.professional-ai-response {
+  line-height: 1.6;
+  color: #2d3748;
+}
+
+.ai-section-title {
+  color: #2b6cb0;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 16px 0 8px 0;
+  padding-bottom: 4px;
+  border-bottom: 2px solid #bee3f8;
+}
+
+.ai-subsection-title {
+  color: #2c5282;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 12px 0 6px 0;
+}
+
+.ai-emphasis {
+  color: #2b6cb0;
+  font-weight: 600;
+}
+
+.ai-icon {
+  font-size: 14px;
+  margin-right: 4px;
+}
+
+.ai-bullet-list, .ai-numbered-list {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.ai-list-item {
+  margin: 4px 0;
+  line-height: 1.5;
+}
+
+.ai-numbered-item {
+  margin: 4px 0;
+  line-height: 1.5;
+}
+
+.item-number {
+  color: #4299e1;
+  font-weight: 600;
+  margin-right: 8px;
 }
 
 /* 响应式设计 - 保持15%:55%:35%比例 */

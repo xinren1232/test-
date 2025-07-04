@@ -365,33 +365,9 @@ const materialYieldTrend = ref(0);
 function refreshData() {
   console.log('🔄 开始刷新上线数据...');
 
-  // 检查数据生成器是否可用
-  if (typeof window.generateCompleteDataset === 'function') {
-    try {
-      console.log('🔧 重新生成完整数据集...');
-      const dataset = window.generateCompleteDataset();
-
-      console.log('🔍 生成的数据集:', dataset);
-
-      // 使用统一数据服务保存数据
-      unifiedDataService.saveInventoryData(dataset.inventory, true);
-      unifiedDataService.saveLabData(dataset.inspection, true);
-      unifiedDataService.saveFactoryData(dataset.production, true);
-
-      console.log('✅ 数据重新生成完成:', {
-        inventory: dataset.inventory.length,
-        inspection: dataset.inspection.length,
-        production: dataset.production.length
-      });
-
-      ElMessage.success('数据已重新生成');
-    } catch (error) {
-      console.error('❌ 数据生成失败:', error);
-      ElMessage.error('数据生成失败，将使用现有数据');
-    }
-  } else {
-    console.log('⚠️ 数据生成器不可用，仅刷新显示');
-  }
+  // 不再自动生成数据，只刷新现有数据的显示
+  console.log('⚠️ 仅刷新显示，不自动生成数据');
+  ElMessage.info('数据已刷新');
 
   // 重新读取数据
   materials.value = extractMaterialData();
@@ -1317,33 +1293,10 @@ onMounted(async () => {
     // 提取物料数据
     materials.value = extractMaterialData();
 
-    // 确保材料数据不为空
+    // 检查材料数据状态，但不自动生成
     if (!materials.value || materials.value.length === 0) {
-      console.warn('没有找到物料数据，尝试生成数据...');
-
-      // 尝试生成数据
-      if (typeof window.generateCompleteDataset === 'function') {
-        try {
-          console.log('🔧 自动生成数据集...');
-          const dataset = window.generateCompleteDataset();
-
-          // 使用统一数据服务保存数据
-          unifiedDataService.saveInventoryData(dataset.inventory, true);
-          unifiedDataService.saveLabData(dataset.inspection, true);
-          unifiedDataService.saveFactoryData(dataset.production, true);
-
-          // 重新提取数据
-          materials.value = extractMaterialData();
-
-          console.log('✅ 自动数据生成完成');
-          ElMessage.success('已自动生成数据');
-        } catch (error) {
-          console.error('❌ 自动数据生成失败:', error);
-          ElMessage.warning('未检测到物料数据，请在"管理工具"中生成数据');
-        }
-      } else {
-        ElMessage.warning('未检测到物料数据，请在"管理工具"中生成数据');
-      }
+      console.warn('没有找到物料数据，请在"管理工具"中手动生成数据');
+      ElMessage.warning('未检测到物料数据，请在"管理工具"中生成数据');
     }
 
     // 更新统计信息

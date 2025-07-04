@@ -1,7 +1,17 @@
 /**
- * 物料供应商映射表
- * 用于生成模拟数据和业务场景时保持一致性
+ * ⚠️ 历史数据文件 - 已弃用 ⚠️
+ *
+ * 此文件包含与实际数据不符的历史设计，已被MaterialSupplierMap.js替代
+ * 保留作为备份参考，请勿在生产环境中使用
+ *
+ * 问题：
+ * 1. 物料名称不匹配：使用"手机壳料-后盖"而非实际的"电池盖"
+ * 2. 供应商不匹配：使用"歌尔股份"等而非实际的"聚龙、欣冠、广正"
+ *
+ * ✅ 请使用 MaterialSupplierMap.js 作为唯一数据源
  */
+
+console.warn('⚠️ material_supplier_mapping.js 已弃用，请使用 MaterialSupplierMap.js');
 
 const materialSupplierMapping = {
   // 1️⃣ 结构件-量产管理组

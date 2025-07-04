@@ -136,8 +136,8 @@ export function checkMaterialData() {
   };
   
   try {
-    // 从模块导入相关函数
-    const { getAllMaterials, getAllCategories, getAllSuppliers } = require('../data/material_supplier_mapping');
+    // 从模块导入相关函数 - 使用正确的数据源
+    const { getAllMaterials, getAllCategories, getAllSuppliers } = require('../data/MaterialSupplierMap');
     
     // 检查各种方法是否可用
     console.log('getAllMaterials类型:', typeof getAllMaterials);
@@ -184,9 +184,9 @@ export function checkMaterialData() {
       console.error('供应商获取失败:', error);
     }
     
-    // 尝试直接导入物料映射
+    // 尝试直接导入物料映射 - 使用正确的数据源
     try {
-      const materialMapping = require('../data/material_supplier_mapping').default;
+      const materialMapping = require('../data/MaterialSupplierMap').default;
       console.log('物料映射对象:', materialMapping ? '已获取' : '未获取');
       
       if (materialMapping) {

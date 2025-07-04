@@ -1738,17 +1738,11 @@ const fetchBatchData = async () => {
   try {
     let inventoryData = unifiedDataService.getInventoryData();
     
-    // 如果没有数据，则生成并保存模拟数据
+    // 检查数据状态，但不自动生成
     if (!inventoryData || inventoryData.length === 0) {
-      console.warn("库存数据为空，将自动生成模拟数据。");
-      
-      // 直接调用服务来生成和保存数据
-      const mockInventory = unifiedDataService.generateAndSaveInventoryData(50);
-      const mockLab = unifiedDataService.generateAndSaveLabData(100, mockInventory);
-      const mockFactory = unifiedDataService.generateAndSaveFactoryData(80, mockInventory);
-      
-      // 重新获取数据
-      inventoryData = mockInventory;
+      console.warn("库存数据为空，请在管理工具中手动生成数据。");
+      ElMessage.warning('未检测到库存数据，请在"管理工具"中生成数据');
+      return; // 直接返回，不继续处理
     }
 
     const factoryData = unifiedDataService.getFactoryData();

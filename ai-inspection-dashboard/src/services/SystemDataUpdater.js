@@ -163,92 +163,222 @@ class SystemDataUpdater {
   }
   
   /**
-   * 新增：推送数据到AI助手后端 - 支持大规模数据
+   * 优化：推送数据到AI助手后端 - 增强数据同步可靠性
    */
   async pushDataToAssistant() {
-    console.log('Pushing latest data to the assistant service...');
+    console.log('🚀 开始推送数据到AI助手服务...');
+
     try {
-      const dataToPush = {
-        inventory: unifiedDataService.getInventoryData(),
-        inspection: unifiedDataService.getLabData(),
-        production: unifiedDataService.getOnlineData()
-      };
-
-      // 添加详细日志
-      console.log(`准备推送数据到助手服务: 库存 ${dataToPush.inventory.length} 条, 检验 ${dataToPush.inspection.length} 条, 生产 ${dataToPush.production.length} 条`);
-
-      // 计算数据大小
-      const dataSize = JSON.stringify(dataToPush).length;
-      console.log(`数据大小: ${(dataSize / 1024 / 1024).toFixed(2)} MB`);
-
-      // 如果数据过大，使用分批推送或直接后端API
-      if (dataSize > 10 * 1024 * 1024) { // 超过10MB
-        console.log('数据过大，尝试直接连接后端API...');
-        return await this.pushDataDirectly(dataToPush);
+      // 1. 数据准备和验证
+      const dataToPush = await this.prepareDataForSync();
+      if (!dataToPush) {
+        throw new Error('数据准备失败，无有效数据可同步');
       }
 
-      // 过滤掉不必要的大字段或循环引用
-      const sanitizedData = JSON.parse(JSON.stringify(dataToPush));
-
-      console.log('正在调用 /api/assistant/update-data 接口...');
-
-      // 直接使用fetch绕过可能的API拦截器
-      const response = await fetch('/api/assistant/update-data', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(sanitizedData)
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      // 2. 数据完整性检查
+      const integrityCheck = this.validateDataIntegrity(dataToPush);
+      if (!integrityCheck.valid) {
+        console.warn('⚠️ 数据完整性检查失败:', integrityCheck.errors);
+        // 继续推送，但记录警告
       }
 
-      const result = await response.json();
+      // 3. 推送数据并验证
+      const syncResult = await this.performDataSync(dataToPush);
 
-      console.log('接口返回结果:', result);
+      // 4. 后端数据验证
+      const verificationResult = await this.verifyBackendData(dataToPush);
 
-      if (result.success) {
-        console.log('Successfully pushed data to assistant service.');
-        ElMessage.success('问答助手数据已同步！');
+      if (syncResult.success && verificationResult.verified) {
+        console.log('✅ 数据同步成功并验证通过');
+        ElMessage.success(`问答助手数据已同步！(库存:${dataToPush.inventory.length}, 检验:${dataToPush.inspection.length}, 生产:${dataToPush.production.length})`);
+        return { success: true, verified: true };
       } else {
-        throw new Error(result.error || 'Unknown error from assistant API');
+        throw new Error(`数据同步验证失败: ${verificationResult.message || '未知错误'}`);
       }
+
     } catch (error) {
-      console.error('Failed to push data to assistant service:', error);
-
-      // 如果是413错误（请求体过大），尝试直接推送
-      if (error.response && error.response.status === 413) {
-        console.log('检测到413错误，尝试直接后端推送...');
-        try {
-          const dataToPush = {
-            inventory: unifiedDataService.getInventoryData(),
-            inspection: unifiedDataService.getLabData(),
-            production: unifiedDataService.getOnlineData()
-          };
-          await this.pushDataDirectly(dataToPush);
-          return;
-        } catch (directError) {
-          console.error('直接推送也失败:', directError);
-        }
-      }
-
-      ElMessage.error('问答助手数据同步失败，请检查后端服务。');
+      console.error('❌ 数据同步失败:', error);
+      ElMessage.error(`问答助手数据同步失败: ${error.message}`);
+      return { success: false, error: error.message };
     }
   }
 
   /**
-   * 直接推送到后端API（绕过前端代理）
+   * 准备同步数据
    */
-  async pushDataDirectly(dataToPush) {
+  async prepareDataForSync() {
+    const inventory = unifiedDataService.getInventoryData();
+    const inspection = unifiedDataService.getLabData();
+    const production = unifiedDataService.getOnlineData();
+
+    // 数据清理和标准化
+    const cleanedData = {
+      inventory: this.cleanInventoryData(inventory),
+      inspection: this.cleanInspectionData(inspection),
+      production: this.cleanProductionData(production)
+    };
+
+    console.log(`📊 准备同步数据: 库存 ${cleanedData.inventory.length} 条, 检验 ${cleanedData.inspection.length} 条, 生产 ${cleanedData.production.length} 条`);
+
+    return cleanedData;
+  }
+
+  /**
+   * 清理库存数据
+   */
+  cleanInventoryData(data) {
+    if (!Array.isArray(data)) return [];
+
+    return data.map(item => ({
+      id: item.id,
+      materialName: item.materialName,
+      materialCode: item.materialCode,
+      batchNo: item.batchNo,
+      supplier: item.supplier,
+      quantity: item.quantity,
+      status: item.status,
+      warehouse: item.warehouse,
+      factory: item.factory,
+      projectId: item.projectId,
+      baselineId: item.baselineId,
+      inboundTime: item.inboundTime,
+      lastUpdateTime: item.lastUpdateTime
+    }));
+  }
+
+  /**
+   * 清理检验数据
+   */
+  cleanInspectionData(data) {
+    if (!Array.isArray(data)) return [];
+
+    return data.map(item => ({
+      id: item.id,
+      materialName: item.materialName || item.material_name,
+      batchNo: item.batchNo || item.batch_no,
+      supplier: item.supplier,
+      testResult: item.testResult || item.test_result,
+      testDate: item.testDate || item.test_date,
+      projectId: item.projectId || item.project_id,
+      defectDescription: item.defectDescription || item.defect_description
+    }));
+  }
+
+  /**
+   * 清理生产数据
+   */
+  cleanProductionData(data) {
+    if (!Array.isArray(data)) return [];
+
+    return data.map(item => ({
+      id: item.id,
+      materialName: item.materialName,
+      materialCode: item.materialCode,
+      batchNo: item.batchNo,
+      supplier: item.supplier,
+      factory: item.factory,
+      onlineTime: item.onlineTime || item.useTime,
+      defectRate: item.defectRate || item.defect_rate,
+      defect: item.defect,
+      projectId: item.projectId || item.project_id,
+      baselineId: item.baselineId || item.baseline_id
+    }));
+  }
+
+  /**
+   * 验证数据完整性
+   */
+  validateDataIntegrity(data) {
+    const errors = [];
+
+    // 检查数据结构
+    if (!data || typeof data !== 'object') {
+      errors.push('数据不是有效对象');
+      return { valid: false, errors };
+    }
+
+    // 检查必要字段
+    const requiredFields = ['inventory', 'inspection', 'production'];
+    for (const field of requiredFields) {
+      if (!Array.isArray(data[field])) {
+        errors.push(`${field} 不是有效数组`);
+      }
+    }
+
+    // 检查数据内容
+    if (data.inventory && data.inventory.length > 0) {
+      const sample = data.inventory[0];
+      const requiredInventoryFields = ['materialName', 'batchNo', 'supplier'];
+      for (const field of requiredInventoryFields) {
+        if (!sample[field]) {
+          errors.push(`库存数据缺少必要字段: ${field}`);
+        }
+      }
+    }
+
+    return { valid: errors.length === 0, errors };
+  }
+
+  /**
+   * 执行数据同步
+   */
+  async performDataSync(dataToPush) {
+    console.log('📤 执行数据同步...');
+
+    // 计算数据大小
+    const dataSize = JSON.stringify(dataToPush).length;
+    console.log(`📊 数据大小: ${(dataSize / 1024 / 1024).toFixed(2)} MB`);
+
+    // 如果数据过大，使用分批推送
+    if (dataSize > 10 * 1024 * 1024) { // 超过10MB
+      console.log('📦 数据过大，使用分批推送...');
+      return await this.performBatchSync(dataToPush);
+    }
+
+    // 标准同步
     try {
-      console.log('使用直接后端API推送数据...');
+      const response = await fetch('/api/assistant/update-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Sync-Timestamp': new Date().toISOString(),
+          'X-Data-Version': this.generateDataVersion(dataToPush)
+        },
+        body: JSON.stringify(dataToPush)
+      });
+
+      if (!response.ok) {
+        // 如果前端代理失败，尝试直接连接后端
+        if (response.status >= 500) {
+          console.log('🔄 前端代理失败，尝试直接连接后端...');
+          return await this.performDirectSync(dataToPush);
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ 标准同步成功:', result);
+
+      return result;
+    } catch (error) {
+      console.log('⚠️ 标准同步失败，尝试直接连接:', error.message);
+      return await this.performDirectSync(dataToPush);
+    }
+  }
+
+  /**
+   * 直接连接后端同步
+   */
+  async performDirectSync(dataToPush) {
+    try {
+      console.log('🔗 使用直接后端连接...');
 
       const response = await fetch('http://localhost:3001/api/assistant/update-data', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-Sync-Timestamp': new Date().toISOString(),
+          'X-Data-Version': this.generateDataVersion(dataToPush)
         },
         body: JSON.stringify(dataToPush)
       });
@@ -258,13 +388,149 @@ class SystemDataUpdater {
       }
 
       const result = await response.json();
-      console.log('直接推送成功:', result);
-      ElMessage.success('问答助手数据已同步！（直接连接）');
+      console.log('✅ 直接同步成功:', result);
+      return result;
 
     } catch (error) {
-      console.error('直接推送失败:', error);
+      console.error('❌ 直接同步失败:', error);
       throw error;
     }
+  }
+
+  /**
+   * 分批同步大数据
+   */
+  async performBatchSync(dataToPush) {
+    console.log('📦 开始分批同步...');
+
+    const batchSize = 100; // 每批100条记录
+    const results = [];
+
+    // 分批同步库存数据
+    if (dataToPush.inventory.length > 0) {
+      const inventoryBatches = this.chunkArray(dataToPush.inventory, batchSize);
+      for (let i = 0; i < inventoryBatches.length; i++) {
+        const batch = inventoryBatches[i];
+        console.log(`📦 同步库存批次 ${i + 1}/${inventoryBatches.length}: ${batch.length} 条记录`);
+
+        const response = await fetch('/api/assistant/update-data-batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'inventory', data: batch })
+        });
+
+        if (response.ok) {
+          results.push(await response.json());
+        }
+      }
+    }
+
+    // 分批同步检验数据
+    if (dataToPush.inspection.length > 0) {
+      const inspectionBatches = this.chunkArray(dataToPush.inspection, batchSize);
+      for (let i = 0; i < inspectionBatches.length; i++) {
+        const batch = inspectionBatches[i];
+        console.log(`📦 同步检验批次 ${i + 1}/${inspectionBatches.length}: ${batch.length} 条记录`);
+
+        const response = await fetch('/api/assistant/update-data-batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'inspection', data: batch })
+        });
+
+        if (response.ok) {
+          results.push(await response.json());
+        }
+      }
+    }
+
+    // 分批同步生产数据
+    if (dataToPush.production.length > 0) {
+      const productionBatches = this.chunkArray(dataToPush.production, batchSize);
+      for (let i = 0; i < productionBatches.length; i++) {
+        const batch = productionBatches[i];
+        console.log(`📦 同步生产批次 ${i + 1}/${productionBatches.length}: ${batch.length} 条记录`);
+
+        const response = await fetch('/api/assistant/update-data-batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'production', data: batch })
+        });
+
+        if (response.ok) {
+          results.push(await response.json());
+        }
+      }
+    }
+
+    console.log('✅ 分批同步完成');
+    return { success: true, batchResults: results };
+  }
+
+  /**
+   * 验证后端数据
+   */
+  async verifyBackendData(expectedData) {
+    try {
+      console.log('🔍 验证后端数据...');
+
+      const response = await fetch('/api/assistant/verify-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          expectedCounts: {
+            inventory: expectedData.inventory.length,
+            inspection: expectedData.inspection.length,
+            production: expectedData.production.length
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`验证请求失败: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('🔍 后端数据验证结果:', result);
+
+      return result;
+    } catch (error) {
+      console.error('❌ 后端数据验证失败:', error);
+      return { verified: false, message: error.message };
+    }
+  }
+
+  /**
+   * 生成数据版本号
+   */
+  generateDataVersion(data) {
+    const timestamp = Date.now();
+    const dataHash = this.simpleHash(JSON.stringify(data));
+    return `${timestamp}-${dataHash}`;
+  }
+
+  /**
+   * 简单哈希函数
+   */
+  simpleHash(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // 转换为32位整数
+    }
+    return Math.abs(hash).toString(16);
+  }
+
+  /**
+   * 数组分块工具函数
+   */
+  chunkArray(array, chunkSize) {
+    const chunks = [];
+    for (let i = 0; i < array.length; i += chunkSize) {
+      chunks.push(array.slice(i, i + chunkSize));
+    }
+    return chunks;
   }
 
   /**
@@ -317,8 +583,8 @@ class SystemDataUpdater {
       // 获取测试数据，以获取项目-基线关系
       const labData = unifiedDataService.getLabData();
       if (!labData || labData.length === 0) {
-        console.warn('没有找到测试数据，先生成测试数据');
-        await this.generateLabData(405, false);
+        console.warn('没有找到测试数据，将使用默认项目-基线关系');
+        // 不自动生成测试数据，使用默认配置继续
       }
       
       // 从测试数据中提取批次-项目映射关系
@@ -765,13 +1031,8 @@ class SystemDataUpdater {
       // 获取当前的库存数据，以复用批次
       const inventoryData = unifiedDataService.getInventoryData();
       if (!inventoryData || inventoryData.length === 0) {
-        console.warn('没有找到库存数据，先生成库存数据');
-        await this.generateInventoryData(135, false);
-        // 再次获取库存数据
-        const newInventoryData = unifiedDataService.getInventoryData();
-        if (!newInventoryData || newInventoryData.length === 0) {
-          throw new Error('无法获取库存数据，无法生成测试数据');
-        }
+        console.warn('没有找到库存数据，无法生成测试数据');
+        throw new Error('缺少库存数据，请先在"管理工具"中生成库存数据');
       }
       
       // 使用最新的库存数据
@@ -905,8 +1166,8 @@ class SystemDataUpdater {
       // 获取测试数据，以获取项目-基线关系
       const labData = unifiedDataService.getLabData();
       if (!labData || labData.length === 0) {
-        console.warn('没有找到测试数据，先生成测试数据');
-        await this.generateLabData(405, false);
+        console.warn('没有找到测试数据，将使用默认项目-基线关系');
+        // 不自动生成测试数据，使用默认配置继续
       }
       
       // 从测试数据中提取批次-项目映射关系
@@ -1070,8 +1331,8 @@ class SystemDataUpdater {
       // 创建物料-供应商组合
       const materialSupplierPairs = [];
       
-      // 限制使用15种物料
-      const materialsToUse = allMaterials.slice(0, 15);
+      // 确保使用足够的物料来生成132条记录
+      const materialsToUse = allMaterials.slice(0, Math.min(15, allMaterials.length));
       
       // 为每种物料分配供应商
       for (const material of materialsToUse) {

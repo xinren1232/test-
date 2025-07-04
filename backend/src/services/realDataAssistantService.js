@@ -54,70 +54,88 @@ function detectOptimizedIntent(queryText) {
   const query = queryText.toLowerCase();
   console.log(`🔍 检测优化规则意图: "${queryText}"`);
 
-  // 库存查询规则检测
-  if (query.includes('工厂') && query.includes('库存')) {
+  // 1. 质量分析规则检测（优先级最高）
+  if (query.includes('质量') && (query.includes('分析') || query.includes('评估') || query.includes('状态'))) {
+    console.log('✅ 匹配规则: quality_analysis');
+    return 'quality_analysis';
+  }
+  if (query.includes('供应商') && (query.includes('质量') || query.includes('评估') || query.includes('表现'))) {
+    console.log('✅ 匹配规则: supplier_quality_assessment');
+    return 'supplier_quality_assessment';
+  }
+  if (query.includes('风险') && (query.includes('分析') || query.includes('等级') || query.includes('评估')) && !query.includes('库存')) {
+    console.log('✅ 匹配规则: risk_analysis');
+    return 'risk_analysis';
+  }
+  if (query.includes('改进') && (query.includes('建议') || query.includes('优化') || query.includes('提升'))) {
+    console.log('✅ 匹配规则: improvement_suggestions');
+    return 'improvement_suggestions';
+  }
+
+  // 2. 生产管理规则检测
+  if (query.includes('生产') && (query.includes('状态') || query.includes('查询')) && !query.includes('库存')) {
+    console.log('✅ 匹配规则: production_status_query');
+    return 'production_status_query';
+  }
+  if (query.includes('不良率') && (query.includes('分析') || query.includes('统计'))) {
+    console.log('✅ 匹配规则: defect_rate_analysis');
+    return 'defect_rate_analysis';
+  }
+  if (query.includes('效率') && (query.includes('查询') || query.includes('对比') || query.includes('分析'))) {
+    console.log('✅ 匹配规则: efficiency_analysis');
+    return 'efficiency_analysis';
+  }
+  if (query.includes('在线跟踪') || query.includes('跟踪记录')) {
+    console.log('✅ 匹配规则: online_tracking_query');
+    return 'online_tracking_query';
+  }
+  if (query.includes('异常') && (query.includes('记录') || query.includes('查询'))) {
+    console.log('✅ 匹配规则: exception_records_query');
+    return 'exception_records_query';
+  }
+
+  // 3. 库存查询规则检测（优先级较低）
+  if (query.includes('工厂') && query.includes('库存') && !query.includes('质量') && !query.includes('生产')) {
     console.log('✅ 匹配规则: query_inventory_by_factory');
     return 'query_inventory_by_factory';
   }
-  if ((query.includes('boe') || query.includes('供应商')) && query.includes('物料')) {
+  if ((query.includes('供应商') && query.includes('物料')) && !query.includes('质量') && !query.includes('分析')) {
     console.log('✅ 匹配规则: query_inventory_by_supplier');
     return 'query_inventory_by_supplier';
   }
-  if (query.includes('风险') && query.includes('库存')) {
+  if (query.includes('物料') && query.includes('库存') && !query.includes('质量')) {
+    console.log('✅ 匹配规则: query_inventory_by_material');
+    return 'query_inventory_by_material';
+  }
+  if (query.includes('状态') && query.includes('库存')) {
     console.log('✅ 匹配规则: query_inventory_by_status');
     return 'query_inventory_by_status';
   }
-  if (query.includes('电池') && query.includes('库存')) {
-    return 'query_inventory_by_material';
-  }
-  if (query.includes('所有库存') || query.includes('库存总览')) {
-    return 'query_all_inventory';
-  }
-  if (query.includes('多少家供应商') || query.includes('涉及') && query.includes('供应商')) {
-    return 'count_inventory_suppliers';
-  }
 
-  // 测试记录查询规则检测
-  if (query.includes('测试ng') || query.includes('测试不合格')) {
+  // 4. 测试记录查询规则检测
+  if (query.includes('测试') && (query.includes('ng') || query.includes('不合格'))) {
+    console.log('✅ 匹配规则: query_test_ng_records');
     return 'query_test_ng_records';
   }
-  if (query.includes('电池盖') && query.includes('测试')) {
-    return 'query_material_test_records';
-  }
-  if (query.includes('boe') && query.includes('测试')) {
-    return 'query_supplier_test_records';
+  if (query.includes('测试') && !query.includes('库存') && !query.includes('生产')) {
+    console.log('✅ 匹配规则: query_test_records');
+    return 'query_test_records';
   }
 
-  // 生产查询规则检测
-  if (query.includes('工厂') && query.includes('生产')) {
-    return 'query_production_by_factory';
-  }
-  if (query.includes('电池盖') && query.includes('生产')) {
-    return 'query_production_by_material';
-  }
-  if (query.includes('boe') && query.includes('生产')) {
-    return 'query_production_by_supplier';
-  }
-  if (query.includes('s662') && query.includes('项目')) {
-    return 'query_production_by_project';
-  }
-
-  // 综合查询规则检测
-  if (query.includes('多少种物料') || query.includes('几种物料')) {
-    return 'count_material_types';
-  }
-  if (query.includes('几个批次') || query.includes('多少批次')) {
-    return 'count_material_batches';
-  }
-  if (query.includes('几个项目') || query.includes('多少项目')) {
-    return 'count_projects';
-  }
-  if (query.includes('几个基线') || query.includes('多少基线')) {
-    return 'count_baselines';
-  }
-  if (query.includes('几家供应商') || query.includes('多少供应商')) {
-    console.log('✅ 匹配规则: count_suppliers');
-    return 'count_suppliers';
+  // 5. 统计查询规则检测
+  if (query.includes('多少') || query.includes('几个') || query.includes('几种') || query.includes('统计')) {
+    if (query.includes('供应商')) {
+      console.log('✅ 匹配规则: count_suppliers');
+      return 'count_suppliers';
+    }
+    if (query.includes('物料')) {
+      console.log('✅ 匹配规则: count_material_types');
+      return 'count_material_types';
+    }
+    if (query.includes('批次')) {
+      console.log('✅ 匹配规则: count_material_batches');
+      return 'count_material_batches';
+    }
   }
 
   console.log('❌ 未匹配到任何优化规则');
@@ -143,14 +161,43 @@ export async function processRealQuery(queryText) {
 
   console.log(`📊 当前数据统计: 库存${realInMemoryData.inventory.length}条, 检验${realInMemoryData.inspection.length}条, 生产${realInMemoryData.production.length}条`);
 
-  // 首先尝试使用优化的规则处理器
+  // 首先尝试使用智能意图识别服务
+  try {
+    console.log('🧠 尝试智能意图识别服务...');
+    const { intelligentIntentService } = await import('./intelligentIntentService.js');
+
+    if (intelligentIntentService) {
+      const intentResult = await intelligentIntentService.processQuery(queryText);
+
+      if (intentResult && intentResult.success) {
+        console.log('✅ 智能意图识别成功处理查询');
+        return intentResult.data;
+      } else if (intentResult && !intentResult.success) {
+        console.log('⚠️ 智能意图识别返回失败结果:', intentResult.data);
+        // 继续使用备用处理方式
+      }
+    }
+  } catch (error) {
+    console.error('❌ 智能意图识别服务调用失败:', error);
+  }
+
+  // 备用：使用优化的规则处理器
   const optimizedIntents = [
+    // 质量分析规则
+    'quality_analysis', 'supplier_quality_assessment', 'risk_analysis', 'improvement_suggestions',
+    // 生产管理规则
+    'production_status_query', 'defect_rate_analysis', 'efficiency_analysis',
+    'online_tracking_query', 'exception_records_query',
+    // 库存查询规则
     'query_inventory_by_factory', 'query_inventory_by_supplier', 'query_inventory_by_status',
     'query_inventory_by_material', 'query_all_inventory', 'count_inventory_suppliers',
-    'query_test_ng_records', 'query_material_test_records', 'query_supplier_test_records',
+    // 测试记录规则
+    'query_test_ng_records', 'query_test_records', 'query_material_test_records', 'query_supplier_test_records',
+    // 生产查询规则
     'query_production_by_factory', 'query_production_by_material', 'query_production_by_supplier',
-    'query_production_by_project', 'count_material_types', 'count_material_batches',
-    'count_projects', 'count_baselines', 'count_suppliers'
+    'query_production_by_project',
+    // 统计查询规则
+    'count_material_types', 'count_material_batches', 'count_projects', 'count_baselines', 'count_suppliers'
   ];
 
   // 检测是否匹配优化规则

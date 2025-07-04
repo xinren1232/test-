@@ -3,11 +3,12 @@
  * 用于生成符合业务场景的模拟数据，包括库存、质检结果和生产线数据
  */
 
-import materialSupplierMapping, { 
-  getAllMaterials, 
+// ⚠️ 修复：使用正确的数据源 MaterialSupplierMap.js
+import {
+  getAllMaterials,
   getRandomSupplierForMaterial,
-  getMaterialInfo
-} from './material_supplier_mapping.js';
+  getSuppliersForMaterial
+} from './MaterialSupplierMap.js';
 
 // 工厂列表 - 更新为与数据规则文档一致
 const FACTORIES = ['重庆工厂', '深圳工厂', '南昌工厂', '宜宾工厂'];

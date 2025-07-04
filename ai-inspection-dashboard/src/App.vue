@@ -10,8 +10,20 @@
         <div class="sidebar" :class="{ 'collapsed': isCollapsed }">
           <!-- 系统LOGO -->
           <div class="logo-container">
-            <h3 class="logo-text" v-if="!isCollapsed">QMS智能管理系统</h3>
-            <h3 class="logo-mini" v-else>QMS</h3>
+            <div class="logo-icon-section">
+              <el-icon size="28"><DataAnalysis /></el-icon>
+            </div>
+            <div v-if="!isCollapsed" class="logo-text-section">
+              <h3 class="logo-text">QMS智能管理系统</h3>
+              <span class="logo-subtitle">Quality Management System</span>
+            </div>
+            <el-button
+              :icon="isCollapsed ? Expand : Fold"
+              @click="toggleSidebar"
+              class="collapse-btn-header"
+              text
+              size="small"
+            />
           </div>
           
           <!-- 导航菜单 -->
@@ -25,82 +37,106 @@
             router
             unique-opened
           >
-            <el-menu-item index="/">
-              <el-icon><HomeFilled /></el-icon>
-              <template #title>首页</template>
-            </el-menu-item>
-            
-            <el-menu-item index="/dashboard">
-              <el-icon><DataBoard /></el-icon>
-              <template #title>监控仪表板</template>
-            </el-menu-item>
-            
-            <el-menu-item index="/inventory">
-              <el-icon><Goods /></el-icon>
-              <template #title>物料库存管理</template>
-            </el-menu-item>
-            
-            <el-menu-item index="/factory">
-              <el-icon><OfficeBuilding /></el-icon>
-              <template #title>物料上线跟踪</template>
-            </el-menu-item>
-            
-            <el-menu-item index="/lab">
-              <el-icon><Stopwatch /></el-icon>
-              <template #title>物料测试跟踪</template>
-            </el-menu-item>
-            
-            <el-menu-item index="/batch">
-              <el-icon><Document /></el-icon>
-              <template #title>批次管理</template>
-            </el-menu-item>
-            
-            <el-menu-item index="/quality">
-              <el-icon><Operation /></el-icon>
-              <template #title>质量管理</template>
-            </el-menu-item>
-            
-            <el-menu-item index="/analysis">
-              <el-icon><DataAnalysis /></el-icon>
-              <template #title>数据分析</template>
-            </el-menu-item>
-            
-            <el-menu-item index="/rule-library">
-              <el-icon><Document /></el-icon>
-              <template #title>规则库管理</template>
-            </el-menu-item>
-            
-            <el-sub-menu index="/admin-menu">
+            <!-- 首页 -->
+            <el-menu-item index="/" class="menu-item-enhanced">
+              <el-icon class="menu-icon"><HomeFilled /></el-icon>
               <template #title>
-                <el-icon><Setting /></el-icon>
-                <span>数据管理</span>
+                <span class="menu-title">首页</span>
               </template>
-              <el-menu-item index="/admin/data">数据生成工具</el-menu-item>
-              <el-menu-item index="/admin/data/rules">数据规则文档</el-menu-item>
-              <el-menu-item index="/admin/data/rules/match">数据匹配规则</el-menu-item>
-              <el-menu-item index="/admin/data/historical">历史数据管控</el-menu-item>
+            </el-menu-item>
+
+            <!-- 阶段一：模拟场景搭建 -->
+            <el-sub-menu index="/stage1-menu" class="submenu-enhanced">
+              <template #title>
+                <el-icon class="menu-icon"><Goods /></el-icon>
+                <span class="menu-title">阶段一：模拟场景搭建</span>
+              </template>
+              <el-menu-item index="/inventory" class="submenu-item">
+                <el-icon class="submenu-icon"><Goods /></el-icon>
+                <span class="submenu-title">物料库存管理</span>
+              </el-menu-item>
+              <el-menu-item index="/factory" class="submenu-item">
+                <el-icon class="submenu-icon"><OfficeBuilding /></el-icon>
+                <span class="submenu-title">物料上线跟踪</span>
+              </el-menu-item>
+              <el-menu-item index="/lab" class="submenu-item">
+                <el-icon class="submenu-icon"><Stopwatch /></el-icon>
+                <span class="submenu-title">物料测试跟踪</span>
+              </el-menu-item>
+              <el-menu-item index="/batch" class="submenu-item">
+                <el-icon class="submenu-icon"><Document /></el-icon>
+                <span class="submenu-title">批次管理</span>
+              </el-menu-item>
             </el-sub-menu>
-            
+
+            <!-- 阶段二：数据功能搭建 -->
+            <el-sub-menu index="/stage2-menu" class="submenu-enhanced">
+              <template #title>
+                <el-icon class="menu-icon"><DataAnalysis /></el-icon>
+                <span class="menu-title">阶段二：数据功能搭建</span>
+              </template>
+
+              <!-- 数据管理子菜单 -->
+              <el-sub-menu index="/data-management-submenu" class="nested-submenu">
+                <template #title>
+                  <el-icon class="submenu-icon"><Setting /></el-icon>
+                  <span class="submenu-title">数据管理</span>
+                </template>
+                <el-menu-item index="/admin/data" class="nested-item">
+                  <span class="nested-title">数据生成工具</span>
+                </el-menu-item>
+                <el-menu-item index="/admin/data/rules/definition" class="nested-item">
+                  <span class="nested-title">数据规则定义</span>
+                </el-menu-item>
+                <el-menu-item index="/rule-library" class="nested-item">
+                  <span class="nested-title">规则库管理</span>
+                </el-menu-item>
+              </el-sub-menu>
+
+              <!-- 智能AI开发子菜单 -->
+              <el-sub-menu index="/ai-development-submenu">
+                <template #title>
+                  <el-icon><MagicStick /></el-icon>
+                  <span>智能AI开发</span>
+                </template>
+                <el-menu-item index="/assistant">智能问答</el-menu-item>
+                <el-menu-item index="/ai-scenario-management">AI场景管理</el-menu-item>
+              </el-sub-menu>
+            </el-sub-menu>
+
+            <!-- 阶段三：AI建设规划 -->
+            <el-sub-menu index="/stage3-menu">
+              <template #title>
+                <el-icon><TrendCharts /></el-icon>
+                <span>阶段三：AI建设规划</span>
+              </template>
+              <el-menu-item index="/ai-planning">
+                <el-icon><Document /></el-icon>
+                <span>AI规划文档</span>
+              </el-menu-item>
+              <el-menu-item index="/ai-roadmap">
+                <el-icon><Connection /></el-icon>
+                <span>技术路线图</span>
+              </el-menu-item>
+              <el-menu-item index="/ai-architecture">
+                <el-icon><Operation /></el-icon>
+                <span>架构设计</span>
+              </el-menu-item>
+            </el-sub-menu>
+
+            <!-- QMS AI智能助手 - 主页面 -->
+            <el-menu-item index="/assistant-ai-three-column" class="main-menu-item">
+              <el-icon class="menu-icon"><MagicStick /></el-icon>
+              <span class="menu-title">QMS AI智能助手</span>
+            </el-menu-item>
+
+            <!-- 系统管理 -->
             <el-menu-item index="/admin">
               <el-icon><Setting /></el-icon>
               <template #title>系统管理</template>
             </el-menu-item>
-            
-            <el-sub-menu index="/ai-assistant-menu">
-              <template #title>
-                <el-icon><MagicStick /></el-icon>
-                <span>智能工具</span>
-              </template>
-              <el-menu-item index="/assistant">智能问答</el-menu-item>
-              <el-menu-item index="/assistant-ai-three-column">IQE AI 智能助手</el-menu-item>
-              <el-menu-item index="/three-column-test">三栏布局测试</el-menu-item>
-              <el-menu-item index="/ai-scenario-management">AI场景管理</el-menu-item>
-            </el-sub-menu>
 
-            <el-menu-item index="/rules-inspection">
-              <el-icon><Document /></el-icon>
-              <template #title>规则检查</template>
-            </el-menu-item>
+
           </el-menu>
           
           <!-- 折叠按钮 -->
@@ -161,7 +197,7 @@ import systemDataUpdater from './services/SystemDataUpdater';
 import {
   HomeFilled, DataBoard, Goods, OfficeBuilding,
   Document, Operation, Stopwatch, Fold, Expand,
-  DataAnalysis, ChatLineRound, ChatDotRound, CaretBottom, User, Setting, Tools, MagicStick, Connection
+  DataAnalysis, ChatLineRound, ChatDotRound, CaretBottom, User, Setting, Tools, MagicStick, Connection, TrendCharts, View, Download
 } from '@element-plus/icons-vue';
 
 export default {
@@ -170,7 +206,7 @@ export default {
     ElConfigProvider,
     HomeFilled, DataBoard, Goods, OfficeBuilding,
     Document, Operation, Stopwatch, Fold, Expand,
-    DataAnalysis, ChatLineRound, ChatDotRound, CaretBottom, User, Setting, Tools, MagicStick, Connection
+    DataAnalysis, ChatLineRound, ChatDotRound, CaretBottom, User, Setting, Tools, MagicStick, Connection, TrendCharts, View, Download
   },
   setup() {
     const route = useRoute();
@@ -345,6 +381,7 @@ html, body {
   height: 100vh;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 /* 主布局样式 */
@@ -352,19 +389,24 @@ html, body {
   display: flex;
   height: 100vh;
   width: 100%;
+  position: relative;
 }
 
 /* 侧边栏样式 */
 .sidebar {
   width: 260px;
-  background-color: #304156;
-  transition: width 0.3s;
+  background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+  transition: width 0.3s ease;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  position: relative;
-  z-index: 10;
-  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.15);
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
 }
 
 .sidebar.collapsed {
@@ -372,43 +414,242 @@ html, body {
 }
 
 .logo-container {
-  height: 60px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: white;
+  background: transparent;
+  position: relative;
+  flex-shrink: 0;
+  padding: 12px 16px;
+}
+
+.logo-icon-section {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+  margin-right: 12px;
+}
+
+.logo-text-section {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
 }
 
 .logo-text {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  line-height: 1.2;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.logo-subtitle {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 2px;
+  letter-spacing: 0.5px;
 }
 
 .logo-mini {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.collapse-btn-header {
+  color: rgba(255, 255, 255, 0.8) !important;
+  padding: 4px !important;
+  min-height: auto !important;
+  height: auto !important;
+}
+
+.collapse-btn-header:hover {
+  color: white !important;
+  background: rgba(255, 255, 255, 0.1) !important;
 }
 
 .sidebar-menu {
   border-right: none;
-  flex-grow: 1;
+  flex: 1;
+  background: transparent;
+  padding: 8px 0 6px 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
+/* 优化菜单项样式 */
+.sidebar-menu .el-menu-item,
+.sidebar-menu .el-sub-menu > .el-sub-menu__title {
+  height: 40px !important;
+  line-height: 40px !important;
+  padding: 0 16px !important;
+  margin: 1px 6px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  color: rgba(255, 255, 255, 0.9) !important;
+  border-bottom: none !important;
+  position: relative;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+}
+
+/* 解决文字和展开图标重合问题 */
+.sidebar-menu .el-sub-menu > .el-sub-menu__title {
+  padding-right: 40px !important;
+}
+
+.sidebar-menu .el-sub-menu > .el-sub-menu__title .el-sub-menu__icon-arrow {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  transition: transform 0.3s ease;
+}
+
+.sidebar-menu .el-menu-item:hover,
+.sidebar-menu .el-sub-menu > .el-sub-menu__title:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+  transform: translateX(2px);
+}
+
+.sidebar-menu .el-menu-item.is-active {
+  background: linear-gradient(135deg, #409eff 0%, #36a3f7 100%) !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);
+}
+
+.sidebar-menu .el-sub-menu.is-active > .el-sub-menu__title {
+  color: #409eff !important;
+}
+
+/* 子菜单样式优化 */
+.sidebar-menu .el-sub-menu .el-menu {
+  background: rgba(0, 0, 0, 0.15) !important;
+  margin: 2px 6px;
+  border-radius: 6px;
+  padding: 2px 0;
+}
+
+.sidebar-menu .el-sub-menu .el-menu-item {
+  height: 36px !important;
+  line-height: 36px !important;
+  padding: 0 12px 0 36px !important;
+  margin: 1px 3px;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+  border-radius: 4px;
+}
+
+.sidebar-menu .el-sub-menu .el-menu-item:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.sidebar-menu .el-sub-menu .el-menu-item.is-active {
+  background: rgba(64, 158, 255, 0.2) !important;
+  color: #409eff !important;
+  border-left: 3px solid #409eff;
+  padding-left: 33px !important;
+  font-weight: 600 !important;
+}
+
+/* 图标样式优化 */
+.sidebar-menu .el-icon {
+  width: 18px !important;
+  margin-right: 10px !important;
+  font-size: 16px !important;
+  opacity: 0.9;
+}
+
+.sidebar-menu .el-menu-item:hover .el-icon,
+.sidebar-menu .el-sub-menu > .el-sub-menu__title:hover .el-icon {
+  opacity: 1;
+}
+
+/* 折叠按钮优化 */
 .collapse-btn {
   height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: rgba(255, 255, 255, 0.8);
   cursor: pointer;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  margin: 4px 6px 6px 6px;
+  border-radius: 6px;
+  flex-shrink: 0;
 }
 
 .collapse-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  transform: scale(1.05);
+}
+
+/* 折叠状态下的样式优化 */
+.sidebar.collapsed .sidebar-menu .el-menu-item,
+.sidebar.collapsed .sidebar-menu .el-sub-menu > .el-sub-menu__title {
+  padding: 0 18px !important;
+  margin: 2px 4px;
+  justify-content: center;
+}
+
+.sidebar.collapsed .sidebar-menu .el-menu-item span,
+.sidebar.collapsed .sidebar-menu .el-sub-menu > .el-sub-menu__title span {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-menu .el-icon {
+  margin-right: 0 !important;
+}
+
+/* 子菜单展开动画 */
+.sidebar-menu .el-sub-menu .el-menu {
+  transition: all 0.3s ease;
+}
+
+/* 菜单分组样式 */
+.sidebar-menu .el-menu-item-group {
+  margin: 8px 0;
+}
+
+.sidebar-menu .el-menu-item-group .el-menu-item-group__title {
+  padding: 8px 20px 4px 20px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+
+/* 滚动条样式 */
+.sidebar-menu::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-menu::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.sidebar-menu::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+}
+
+.sidebar-menu::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
 }
 
 /* 内容区样式 */
@@ -417,11 +658,13 @@ html, body {
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
-  transition: margin-left 0.3s;
+  transition: margin-left 0.3s ease;
+  margin-left: 260px;
+  min-height: 100vh;
 }
 
 .main-content.expanded {
-  margin-left: -196px;
+  margin-left: 64px;
 }
 
 .header {

@@ -61,7 +61,7 @@ class AIService {
    */
   async sendAIQuery(query, onMessage) {
     try {
-      const response = await fetch(`${this.baseUrl}/ai-query`, {
+      const response = await fetch(`${this.baseUrl}/query`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -73,40 +73,23 @@ class AIService {
         throw new Error(`AI查询失败: ${response.status}`);
       }
 
-      // 处理流式响应
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
+      // 处理JSON响应（非流式）
+      const result = await response.json();
 
-      while (true) {
-        const { done, value } = await reader.read();
-        
-        if (done) break;
-        
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
-        
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6).trim();
-            
-            if (data === '[DONE]') {
-              if (onMessage) {
-                onMessage({ type: 'done' });
-              }
-              return;
-            }
-            
-            try {
-              const parsed = JSON.parse(data);
-              if (onMessage) {
-                onMessage(parsed);
-              }
-            } catch (e) {
-              console.warn('解析流式数据失败:', e.message);
-            }
-          }
-        }
+      if (onMessage) {
+        // 模拟流式响应的格式
+        onMessage({
+          type: 'message',
+          content: result.reply || result.message || '查询完成',
+          source: result.source || 'database-service',
+          timestamp: result.timestamp
+        });
+
+        // 发送完成信号
+        onMessage({ type: 'done' });
       }
+
+      return result;
     } catch (error) {
       console.error('AI查询失败:', error);
       if (onMessage) {

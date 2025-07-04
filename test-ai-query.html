@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI查询测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .loading {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        .quick-tests {
+            margin-top: 20px;
+        }
+        .quick-test-btn {
+            margin: 5px;
+            padding: 8px 15px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .quick-test-btn:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AI查询功能测试</h1>
+        
+        <div class="input-group">
+            <label for="queryInput">输入查询内容：</label>
+            <input type="text" id="queryInput" placeholder="例如：查询库存情况、查询测试结果等" />
+        </div>
+        
+        <button onclick="sendQuery()" id="sendBtn">发送查询</button>
+        
+        <div class="quick-tests">
+            <h3>快速测试：</h3>
+            <button class="quick-test-btn" onclick="quickTest('查询库存情况')">查询库存情况</button>
+            <button class="quick-test-btn" onclick="quickTest('查询物料信息')">查询物料信息</button>
+            <button class="quick-test-btn" onclick="quickTest('查询测试结果')">查询测试结果</button>
+            <button class="quick-test-btn" onclick="quickTest('查询检验记录')">查询检验记录</button>
+            <button class="quick-test-btn" onclick="quickTest('系统状态')">系统状态</button>
+        </div>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function sendQuery() {
+            const queryInput = document.getElementById('queryInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const resultDiv = document.getElementById('result');
+            
+            const query = queryInput.value.trim();
+            if (!query) {
+                alert('请输入查询内容');
+                return;
+            }
+            
+            // 显示加载状态
+            sendBtn.disabled = true;
+            sendBtn.textContent = '查询中...';
+            resultDiv.innerHTML = '<div class="result loading">🔍 正在查询，请稍候...</div>';
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/assistant/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query: query })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                // 显示成功结果
+                resultDiv.innerHTML = `
+                    <div class="result success">
+                        <h4>✅ 查询成功</h4>
+                        <p><strong>查询内容：</strong>${query}</p>
+                        <p><strong>响应时间：</strong>${data.timestamp || '未知'}</p>
+                        <p><strong>数据源：</strong>${data.source || '未知'}</p>
+                        <hr>
+                        <h4>📋 查询结果：</h4>
+                        <div>${data.reply || '无响应内容'}</div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                // 显示错误结果
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <h4>❌ 查询失败</h4>
+                        <p><strong>错误信息：</strong>${error.message}</p>
+                        <p><strong>查询内容：</strong>${query}</p>
+                        <p><strong>建议：</strong>请检查后端服务是否正常运行</p>
+                    </div>
+                `;
+            } finally {
+                // 恢复按钮状态
+                sendBtn.disabled = false;
+                sendBtn.textContent = '发送查询';
+            }
+        }
+        
+        function quickTest(query) {
+            document.getElementById('queryInput').value = query;
+            sendQuery();
+        }
+        
+        // 支持回车键发送
+        document.getElementById('queryInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendQuery();
+            }
+        });
+        
+        // 页面加载时测试连接
+        window.onload = function() {
+            fetch('http://localhost:3001/api/health')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('✅ 后端服务连接正常:', data);
+                })
+                .catch(error => {
+                    console.error('❌ 后端服务连接失败:', error);
+                    document.getElementById('result').innerHTML = `
+                        <div class="result error">
+                            <h4>⚠️ 后端服务连接失败</h4>
+                            <p>无法连接到 http://localhost:3001</p>
+                            <p>请确保后端服务正在运行</p>
+                        </div>
+                    `;
+                });
+        };
+    </script>
+</body>
+</html>

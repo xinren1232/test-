@@ -502,7 +502,7 @@ const sendSuggestedQuery = (query) => {
 
 const toggleAI = async (enabled) => {
   try {
-    const response = await fetch('http://localhost:3002/api/assistant/ai-toggle', {
+    const response = await fetch('http://localhost:3001/api/assistant/ai-toggle', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -567,7 +567,7 @@ const sendMessage = async () => {
 const handleAIStreamingResponse = async (userInput, messageIndex) => {
   try {
     console.log('🤖 发送AI查询:', userInput);
-    const response = await fetch('http://localhost:3002/api/assistant/ai-query', {
+    const response = await fetch('http://localhost:3001/api/assistant/ai-query', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -652,7 +652,7 @@ const handleAIStreamingResponse = async (userInput, messageIndex) => {
 
 const handleBasicResponse = async (userInput, messageIndex) => {
   try {
-    const response = await fetch('http://localhost:3002/api/assistant/query', {
+    const response = await fetch('http://localhost:3001/api/assistant/query', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
