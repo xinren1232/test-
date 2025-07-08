@@ -91,22 +91,34 @@ app.use(errorHandler);
 
 // Initialize Database
 // -----------------------------------------------------------------------------
-try {
-  const db = await initializeDatabase();
-  logger.info('Database connection has been established successfully.');
+async function startServer() {
+  try {
+    console.log('🔄 正在初始化数据库...');
+    const db = await initializeDatabase();
+    console.log('✅ 数据库初始化成功');
+    logger.info('Database connection has been established successfully.');
 
-  // Load NLP rules after database is ready
-  await loadIntentRules();
+    console.log('🔄 正在加载NLP规则...');
+    await loadIntentRules();
+    console.log('✅ NLP规则加载成功');
 
-  // 3. 启动Express服务器
-  app.listen(PORT, () => {
-    logger.info(`IQE统一助手API服务已启动，端口: ${PORT}`);
-  logger.info(`API文档: http://localhost:${PORT}/api-docs`);
-  });
-} catch (error) {
-  logger.error('服务启动失败:', error);
-  process.exit(1);
+    // 3. 启动Express服务器
+    console.log(`🔄 正在启动服务器，端口: ${PORT}...`);
+    app.listen(PORT, () => {
+      console.log(`✅ IQE统一助手API服务已启动，端口: ${PORT}`);
+      console.log(`📚 API文档: http://localhost:${PORT}/api-docs`);
+      logger.info(`IQE统一助手API服务已启动，端口: ${PORT}`);
+      logger.info(`API文档: http://localhost:${PORT}/api-docs`);
+    });
+  } catch (error) {
+    console.error('❌ 服务启动失败:', error);
+    logger.error('服务启动失败:', error);
+    process.exit(1);
+  }
 }
+
+// 启动服务器
+startServer();
 
 export default app;
  

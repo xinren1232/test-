@@ -235,8 +235,8 @@ class FrontendDataService {
           INSERT INTO online_tracking (
             id, batch_code, material_code, material_name, supplier_name,
             online_date, use_time, factory, workshop, line, project,
-            defect_rate, exception_count, operator, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            defect_rate, exception_count, operator, inspection_date, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         `, [
           item.id,
           item.batchNo,
@@ -251,7 +251,8 @@ class FrontendDataService {
           item.projectId,
           item.defectRate / 100, // 转换为小数
           item.defectRate > 1 ? Math.ceil(item.defectRate) : 0,
-          '操作员'
+          '操作员',
+          item.inspectionDate || item.useTime // 使用检验日期或上线时间
         ]);
       }
       

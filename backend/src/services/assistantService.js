@@ -245,6 +245,7 @@ export async function loadIntentRules() {
     const NlpIntentRule = db.NlpIntentRule;
     const rules = await NlpIntentRule.findAll({
       where: { status: 'active' },
+      order: [['sort_order', 'ASC'], ['id', 'ASC']],
       raw: true,
     });
 

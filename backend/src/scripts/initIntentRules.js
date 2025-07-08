@@ -138,28 +138,39 @@ const INTENT_RULES = [
     status: 'active'
   },
   {
-    intent_name: 'test_result_query',
-    description: '测试结果查询',
+    intent_name: '测试结果基础查询',
+    description: '查询测试结果的基础信息，正确显示项目代码和基线代码',
     action_type: 'SQL_QUERY',
-    action_target: `SELECT material_name, test_result, COUNT(*) as count
-                   FROM lab_test WHERE 1=1
-                   {% if material %} AND material_name LIKE '%{{ material }}%' {% endif %}
-                   {% if test_result %} AND test_result = '{{ test_result }}' {% endif %}
-                   {% if supplier %} AND supplier LIKE '%{{ supplier }}%' {% endif %}
-                   GROUP BY material_name, test_result
-                   ORDER BY count DESC`,
+    action_target: `SELECT
+  test_id as 测试编号,
+  DATE_FORMAT(test_date, '%Y-%m-%d') as 日期,
+  COALESCE(project_id, material_code, '未知') as 项目,
+  COALESCE(baseline_id, batch_code, '未知') as 基线,
+  material_code as 物料编号,
+  batch_code as 批次,
+  material_name as 物料名称,
+  supplier_name as 供应商,
+  test_result as 测试结果,
+  COALESCE(defect_desc, '') as 不良描述
+FROM lab_tests
+WHERE 1=1
+{% if material %} AND material_name LIKE '%{{ material }}%' {% endif %}
+{% if test_result %} AND test_result = '{{ test_result }}' {% endif %}
+{% if supplier %} AND supplier_name LIKE '%{{ supplier }}%' {% endif %}
+ORDER BY test_date DESC
+LIMIT 10`,
     parameters: [
       {
         name: 'material',
         type: 'string',
         required: false,
-        extract_pattern: '(电池盖|中框|手机卡托|侧键|装饰件|LCD显示屏|OLED显示屏|摄像头模组|电池|充电器|扬声器|听筒|保护套|标签|包装盒)'
+        extract_pattern: '(电池盖|中框|手机卡托|侧键|装饰件|LCD显示屏|OLED显示屏|摄像头|电池|充电器|喇叭|听筒|保护套|标签|包装盒)'
       },
-      { 
-        name: 'test_result', 
-        type: 'string', 
-        required: false, 
-        extract_pattern: '(PASS|FAIL|通过|失败)'
+      {
+        name: 'test_result',
+        type: 'string',
+        required: false,
+        extract_pattern: '(PASS|FAIL|通过|失败|OK|NG|合格|不合格)'
       },
       {
         name: 'supplier',
@@ -168,14 +179,14 @@ const INTENT_RULES = [
         extract_pattern: '(聚龙|欣冠|广正|帝晶|天马|BOE|华星|盛泰|天实|深奥|百俊达|奥海|辰阳|锂威|风华|维科|东声|豪声|歌尔|丽德宝|裕同|富群)'
       }
     ],
-    trigger_words: ['测试', '检测', '结果'],
+    trigger_words: ['测试', '检测', '结果', '测试结果', '检测结果'],
     synonyms: {
       '测试': ['检测', '检验', '试验'],
-      '通过': ['PASS', '合格'],
+      '通过': ['PASS', '合格', 'OK'],
       '失败': ['FAIL', '不合格', 'NG']
     },
-    example_query: '电池盖测试结果',
-    priority: 3,
+    example_query: '查询测试结果',
+    priority: 10,
     status: 'active'
   }
 ];

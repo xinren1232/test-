@@ -349,6 +349,84 @@ app.post('/api/assistant/query', async (req, res) => {
   }
 });
 
+// 数据验证端点
+app.post('/api/assistant/verify-data', async (req, res) => {
+  console.log('🔍 收到数据验证请求');
+
+  let dbConnection;
+  try {
+    // 创建数据库连接
+    dbConnection = await mysql.createConnection(dbConfig);
+
+    const { expectedCounts } = req.body;
+    console.log('📊 期望的数据计数:', expectedCounts);
+
+    // 查询实际数据库中的记录数
+    const [inventoryCount] = await dbConnection.execute('SELECT COUNT(*) as count FROM inventory');
+    const [labTestsCount] = await dbConnection.execute('SELECT COUNT(*) as count FROM lab_tests');
+    const [onlineTrackingCount] = await dbConnection.execute('SELECT COUNT(*) as count FROM online_tracking');
+
+    const actualCounts = {
+      inventory: inventoryCount[0].count,
+      inspection: labTestsCount[0].count,
+      production: onlineTrackingCount[0].count
+    };
+
+    console.log('📊 实际数据库计数:', actualCounts);
+
+    // 验证数据计数是否匹配
+    const verification = {
+      verified: true,
+      expectedCounts,
+      actualCounts,
+      checks: {
+        inventory: {
+          expected: expectedCounts.inventory,
+          actual: actualCounts.inventory,
+          match: expectedCounts.inventory === actualCounts.inventory
+        },
+        inspection: {
+          expected: expectedCounts.inspection,
+          actual: actualCounts.inspection,
+          match: expectedCounts.inspection === actualCounts.inspection
+        },
+        production: {
+          expected: expectedCounts.production,
+          actual: actualCounts.production,
+          match: expectedCounts.production === actualCounts.production
+        }
+      },
+      timestamp: new Date().toISOString()
+    };
+
+    // 总体验证结果
+    verification.verified = verification.checks.inventory.match &&
+                           verification.checks.inspection.match &&
+                           verification.checks.production.match;
+
+    verification.message = verification.verified ?
+      '✅ 数据验证成功，所有数据计数匹配' :
+      '❌ 数据验证失败，存在数据计数不匹配';
+
+    console.log('🔍 数据验证结果:', verification);
+
+    res.json(verification);
+  } catch (error) {
+    console.error('❌ 数据验证失败:', error);
+    res.status(500).json({
+      verified: false,
+      error: error.message,
+      message: '数据验证过程中发生错误',
+      timestamp: new Date().toISOString()
+    });
+  } finally {
+    // 关闭数据库连接
+    if (dbConnection) {
+      await dbConnection.end();
+    }
+  }
+});
+
 // 智能查询处理函数
 async function processSimpleQuery(query, connection) {
   try {
@@ -616,8 +694,7 @@ async function handleInventoryQuery(query, queryInfo, connection) {
       supplier_name as 供应商,
       quantity as 数量,
       storage_location as 工厂,
-      status as 状态,
-      risk_level as 风险等级
+      status as 状态
     FROM inventory
     ${whereClause}
     ORDER BY inbound_time DESC
@@ -635,7 +712,7 @@ async function handleInventoryQuery(query, queryInfo, connection) {
       result += `${index + 1}. ${row.物料名称} (${row.物料编码})\n`;
       result += `   批次: ${row.批次号} | 供应商: ${row.供应商}\n`;
       result += `   数量: ${row.数量} | 工厂: ${row.工厂}\n`;
-      result += `   状态: ${row.状态} | 风险: ${row.风险等级}\n\n`;
+      result += `   状态: ${row.状态}\n\n`;
     });
     return result;
   } else {
@@ -738,7 +815,7 @@ async function handleGeneralQuery(query, connection) {
          `📊 数据库连接：成功\n` +
          `🔍 查询处理：完成\n\n` +
          `💡 提示：您可以询问关于库存、物料、测试、检验等相关问题。\n` +
-         `💡 例如："查询泰科电子的物料"、"查询高风险库存"、"查询测试不合格的记录"`;
+         `💡 例如："查询泰科电子的物料"、"查询正常状态库存"、"查询测试不合格的记录"`;
 }
 
 // 启动服务器
@@ -748,4 +825,6 @@ app.listen(PORT, () => {
   console.log(`🔄 数据同步: http://localhost:${PORT}/api/assistant/update-data`);
   console.log(`🤖 AI查询: http://localhost:${PORT}/api/assistant/query`);
   console.log(`⏰ 启动时间: ${new Date().toISOString()}`);
+}).on('error', (err) => {
+  console.error('❌ 服务器启动失败:', err);
 });

@@ -183,12 +183,16 @@ const handleQuery = async (req, res) => {
         });
 
         res.json({
-          reply: intentResult.data,
+          success: intentResult.success,
+          data: intentResult.data,
+          reply: intentResult.reply || intentResult.data,
           source: 'intelligent-intent',
           aiEnhanced: false,
           matchedRule: intentResult.intent || 'auto-detected',
           scenario: scenario,
           analysisMode: 'intelligent-intent',
+          sql: intentResult.sql,
+          params: intentResult.params,
           intentResult: intentResult
         });
         return;

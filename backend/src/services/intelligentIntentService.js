@@ -8,6 +8,7 @@ import { getActiveIntentRules } from '../scripts/initIntentRules.js';
 import { templateEngine } from './templateEngine.js';
 import { getRealInMemoryData } from './realDataAssistantService.js';
 import EnhancedResponseFormatter from './EnhancedResponseFormatter.js';
+import initializeDatabase from '../models/index.js';
 
 // 内置意图规则配置（作为备用）
 const FALLBACK_INTENT_RULES = [
@@ -32,20 +33,35 @@ const FALLBACK_INTENT_RULES = [
   {
     intent_name: 'factory_inventory_query',
     description: '工厂库存查询',
-    action_type: 'DATA_QUERY',
-    action_target: 'queryInventoryByFactory',
+    action_type: 'SQL_QUERY',
+    action_target: `
+      SELECT
+        material_name as 物料名称,
+        supplier_name as 供应商,
+        batch_code as 批次号,
+        quantity as 库存数量,
+        storage_location as 存储位置,
+        status as 状态,
+        risk_level as 风险等级,
+        inbound_time as 入库时间
+      FROM inventory
+      WHERE storage_location LIKE CONCAT('%', ?, '%')
+      ORDER BY inbound_time DESC
+      LIMIT 20
+    `,
     status: 'active',
     parameters: [
       { name: 'factory', type: 'string', required: true, extract_pattern: /(深圳|重庆|南昌|宜宾)工厂?/i },
       { name: 'status', type: 'string', required: false, extract_pattern: /(正常|风险|冻结)/i }
     ],
-    trigger_words: ['工厂', '库存'],
+    trigger_words: ['工厂', '库存', '查询'],
     synonyms: {
       '工厂': ['厂区', '生产基地', '制造厂'],
-      '库存': ['存货', '仓储', '储备']
+      '库存': ['存货', '仓储', '储备'],
+      '查询': ['查看', '检查', '获取']
     },
     example_query: '查询深圳工厂库存',
-    priority: 10
+    priority: 25
   },
   {
     intent_name: 'supplier_material_query',
@@ -236,7 +252,14 @@ class IntelligentIntentService {
 
       // 4. 执行动作
       const result = await this.executeAction(matchedIntent, extractedParams, context);
-      
+
+      // 5. 确保返回结果包含意图信息
+      if (result && typeof result === 'object') {
+        result.intent = matchedIntent.intent_name;
+        result.matchedRule = matchedIntent.intent_name;
+        result.priority = matchedIntent.priority;
+      }
+
       this.logger.info(`✅ 智能意图处理完成`);
       return result;
 
@@ -555,7 +578,25 @@ class IntelligentIntentService {
       const sql = templateEngine.render(sqlTemplate, params);
       this.logger.info(`🗃️ 执行SQL查询: ${sql}`);
 
-      // 优先使用内存中的真实数据
+      // 首先尝试真实数据库查询
+      try {
+        const results = await this.executeRealDatabaseQuery(sql, params);
+        this.logger.info(`✅ 数据库查询成功，返回 ${results.length} 条记录`);
+
+        return {
+          success: true,
+          data: results, // 返回原始数据数组
+          reply: this.formatSQLResults(results, params), // 格式化的回复
+          source: 'database',
+          sql: sql,
+          params: params,
+          results: results
+        };
+      } catch (dbError) {
+        this.logger.warn(`⚠️ 数据库查询失败: ${dbError.message}，尝试内存数据`);
+      }
+
+      // 备选：使用内存中的真实数据
       const realData = getRealInMemoryData();
       const hasRealData = realData.inventory.length > 0 ||
                          realData.inspection.length > 0 ||
@@ -572,7 +613,8 @@ class IntelligentIntentService {
 
       return {
         success: true,
-        data: this.formatSQLResults(results, params),
+        data: results, // 返回原始数据数组
+        reply: this.formatSQLResults(results, params), // 格式化的回复
         source: hasRealData ? 'memory_data' : 'mock_data',
         sql: sql,
         params: params,
@@ -588,6 +630,101 @@ class IntelligentIntentService {
         error: error.message
       };
     }
+  }
+
+  /**
+   * 执行真实数据库查询
+   * @param {string} sql - SQL查询语句
+   * @param {object} params - 查询参数
+   * @returns {Array} 查询结果
+   */
+  async executeRealDatabaseQuery(sql, params) {
+    try {
+      this.logger.info(`🗄️ 执行数据库查询: ${sql}`);
+      this.logger.info(`📋 查询参数:`, params);
+
+      // 获取数据库实例
+      const db = await initializeDatabase();
+      const sequelize = db.sequelize;
+
+      // 处理SQL中的参数替换问题
+      let processedSql = sql;
+      const paramValues = [];
+
+      // 如果有参数，按顺序处理占位符
+      if (Object.keys(params).length > 0) {
+        // 获取参数值数组，按照常见的参数顺序
+        const orderedParams = this.getOrderedParameterValues(params);
+
+        // 逐个替换占位符
+        let paramIndex = 0;
+
+        // 替换 CONCAT('%', ?, '%') 模式
+        processedSql = processedSql.replace(/CONCAT\s*\(\s*['"]%['"],\s*\?\s*,\s*['"]%['"]\s*\)/gi, () => {
+          if (paramIndex < orderedParams.length) {
+            const value = orderedParams[paramIndex++];
+            return `'%${value}%'`;
+          }
+          return "''"; // 如果没有对应参数，返回空字符串
+        });
+
+        // 替换剩余的单独 ? 占位符
+        processedSql = processedSql.replace(/\?/g, () => {
+          if (paramIndex < orderedParams.length) {
+            const value = orderedParams[paramIndex++];
+            return `'${value}'`;
+          }
+          return "''"; // 如果没有对应参数，返回空字符串
+        });
+
+      } else {
+        // 如果没有参数，移除WHERE条件中的参数部分
+        processedSql = processedSql.replace(/WHERE\s+\w+\s+LIKE\s+CONCAT\s*\([^)]+\)/gi, '');
+        processedSql = processedSql.replace(/AND\s+\(\w+\s+LIKE\s+CONCAT\s*\([^)]+\)\s+OR\s+\?\s*=\s*''\)/gi, '');
+      }
+
+      this.logger.info(`🔧 处理后的SQL: ${processedSql}`);
+
+      // 使用Sequelize执行原始SQL查询
+      const results = await sequelize.query(processedSql, {
+        type: sequelize.QueryTypes.SELECT
+      });
+
+      this.logger.info(`✅ 数据库查询成功，返回 ${results.length} 条记录`);
+      return results;
+
+    } catch (error) {
+      this.logger.error(`❌ 数据库查询失败: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取有序的参数值数组
+   * @param {object} params - 参数对象
+   * @returns {array} 有序的参数值数组
+   */
+  getOrderedParameterValues(params) {
+    const orderedValues = [];
+
+    // 按照常见的参数优先级顺序添加参数值
+    const paramOrder = ['factory', 'supplier', 'material', 'status', 'batchNo', 'testResult'];
+
+    for (const paramName of paramOrder) {
+      if (params[paramName] !== undefined && params[paramName] !== null && params[paramName] !== '') {
+        orderedValues.push(params[paramName]);
+      }
+    }
+
+    // 添加其他未在优先级列表中的参数
+    for (const [key, value] of Object.entries(params)) {
+      if (!paramOrder.includes(key) && value !== undefined && value !== null && value !== '') {
+        orderedValues.push(value);
+      }
+    }
+
+    this.logger.info(`🎯 有序参数值: [${orderedValues.join(', ')}]`);
+    return orderedValues;
   }
 
   /**
@@ -907,8 +1044,12 @@ class IntelligentIntentService {
     const { factory, status } = params;
 
     let results = inventory.filter(item => {
-      const factoryMatch = item.factory && item.factory.includes(factory);
-      const statusMatch = !status || (item.status && item.status.includes(status));
+      // 修复字段映射：使用 storage_location 或 存储位置 字段
+      const factoryMatch = (item.storage_location && item.storage_location.includes(factory)) ||
+                          (item.存储位置 && item.存储位置.includes(factory)) ||
+                          (item.factory && item.factory.includes(factory));
+      const statusMatch = !status || (item.status && item.status.includes(status)) ||
+                         (item.状态 && item.状态.includes(status));
       return factoryMatch && statusMatch;
     });
 
