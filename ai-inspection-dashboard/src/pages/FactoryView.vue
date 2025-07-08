@@ -362,7 +362,7 @@ const avgMaterialYield = ref(0);
 const materialYieldTrend = ref(0);
 
 // 方法
-function refreshData() {
+async function refreshData() {
   console.log('🔄 开始刷新上线数据...');
 
   // 不再自动生成数据，只刷新现有数据的显示
@@ -370,7 +370,7 @@ function refreshData() {
   ElMessage.info('数据已刷新');
 
   // 重新读取数据
-  materials.value = extractMaterialData();
+  materials.value = await extractMaterialData();
   updateStatistics();
 
   // 重新渲染图表
@@ -1057,16 +1057,12 @@ watch(exceptionDialogVisible, (newVal) => {
 });
 
 // 从产线数据中提取物料数据
-function extractMaterialData() {
+async function extractMaterialData() {
   try {
-    // 调试：检查localStorage中的数据
-    console.log('🔍 调试localStorage数据:');
-    console.log('unified_factory_data:', localStorage.getItem('unified_factory_data'));
-    console.log('factory_data:', localStorage.getItem('factory_data'));
-    console.log('online_data:', localStorage.getItem('online_data'));
+    console.log('🔍 开始获取工厂上线数据...');
 
-    // 使用统一数据服务获取上线数据
-    const factoryData = unifiedDataService.getFactoryData();
+    // 使用统一数据服务获取上线数据（现在是异步的）
+    const factoryData = await unifiedDataService.getFactoryData();
     console.log('🔍 unifiedDataService.getFactoryData() 返回:', factoryData);
 
     if (!factoryData || factoryData.length === 0) {
@@ -1291,7 +1287,7 @@ onMounted(async () => {
     }
 
     // 提取物料数据
-    materials.value = extractMaterialData();
+    materials.value = await extractMaterialData();
 
     // 检查材料数据状态，但不自动生成
     if (!materials.value || materials.value.length === 0) {
@@ -1472,9 +1468,9 @@ function getDefectRateTextClass(defectRate) {
 }
 
 // 数据更新后的刷新方法
-function handleDataUpdate() {
+async function handleDataUpdate() {
   // 重新加载工厂数据
-  materials.value = extractMaterialData();
+  materials.value = await extractMaterialData();
   updateStatistics();
   
   // 重新渲染图表

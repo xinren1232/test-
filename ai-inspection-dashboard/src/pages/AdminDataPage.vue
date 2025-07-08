@@ -708,7 +708,7 @@ function loadDataSummary() {
     // 使用统一数据服务获取数据
     const inventoryData = unifiedDataService.getInventoryData();
     const labData = unifiedDataService.getLabData();
-    const onlineData = unifiedDataService.getFactoryData();
+    const onlineData = unifiedDataService.getOnlineData(); // 使用同步版本
     
     // 更新数据概览
     dataSummary.materialsCount = inventoryData.length;
@@ -949,7 +949,7 @@ function backupData() {
       baseline: JSON.parse(localStorage.getItem('baseline_data') || '[]'), // 基线数据暂时仍从localStorage获取
       inventory: unifiedDataService.getInventoryData(),
       lab: unifiedDataService.getLabData(),
-      online: unifiedDataService.getFactoryData()
+      online: unifiedDataService.getOnlineData() // 使用同步版本
     };
     
     // 使用备份服务

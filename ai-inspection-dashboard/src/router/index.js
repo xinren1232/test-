@@ -7,6 +7,9 @@ import FactoryView from '../pages/FactoryView.vue';
 import AdminDataPage from '../pages/AdminDataPage.vue';
 import DataImportExport from '../components/admin/DataImportExport.vue';
 import RuleLibraryView from '../pages/RuleLibraryView.vue';
+import RuleLibraryViewSimple from '../pages/RuleLibraryViewSimple.vue';
+import ApiTestPage from '../pages/ApiTestPage.vue';
+import TestApiPage from '../pages/TestApiPage.vue';
 
 import MaterialExceptionPage from '../pages/MaterialExceptionPage.vue';
 import BatchManagement from '../pages/BatchManagement.vue';
@@ -137,6 +140,24 @@ const routes = [
     meta: {
       title: '后端连接测试',
       icon: 'Cpu',
+    }
+  },
+  {
+    path: '/api-test',
+    name: 'ApiTest',
+    component: ApiTestPage,
+    meta: {
+      title: 'API连接测试',
+      icon: 'Connection'
+    }
+  },
+  {
+    path: '/rule-library-simple',
+    name: 'RuleLibrarySimple',
+    component: RuleLibraryViewSimple,
+    meta: {
+      title: '规则库管理(简化版)',
+      icon: 'Document'
     }
   },
 

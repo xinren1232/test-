@@ -26,7 +26,7 @@ import {
   isCodeMapInitialized
 } from '../data/MaterialCodeMap.js';
 import batchManager from './BatchManager.js';
-import ApiClient from '../api/ApiClient.js';
+import api from '../api/ApiClient.js';
 
 // 项目-基线映射关系（遵循规则文档中的要求）
 // 兼容性保留，实际使用时应通过ProjectBaselineService获取
@@ -337,28 +337,15 @@ class SystemDataUpdater {
 
     // 标准同步
     try {
-      const response = await fetch('/api/assistant/update-data', {
-        method: 'POST',
+      const result = await api.post('/assistant/update-data', dataToPush, {
         headers: {
-          'Content-Type': 'application/json',
           'X-Sync-Timestamp': new Date().toISOString(),
           'X-Data-Version': this.generateDataVersion(dataToPush)
         },
-        body: JSON.stringify(dataToPush)
+        timeout: 60000 // 60秒超时
       });
 
-      if (!response.ok) {
-        // 如果前端代理失败，尝试直接连接后端
-        if (response.status >= 500) {
-          console.log('🔄 前端代理失败，尝试直接连接后端...');
-          return await this.performDirectSync(dataToPush);
-        }
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const result = await response.json();
       console.log('✅ 标准同步成功:', result);
-
       return result;
     } catch (error) {
       console.log('⚠️ 标准同步失败，尝试直接连接:', error.message);
@@ -373,6 +360,10 @@ class SystemDataUpdater {
     try {
       console.log('🔗 使用直接后端连接...');
 
+      // 使用AbortController来处理超时
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60秒超时
+
       const response = await fetch('http://localhost:3001/api/assistant/update-data', {
         method: 'POST',
         headers: {
@@ -380,8 +371,11 @@ class SystemDataUpdater {
           'X-Sync-Timestamp': new Date().toISOString(),
           'X-Data-Version': this.generateDataVersion(dataToPush)
         },
-        body: JSON.stringify(dataToPush)
+        body: JSON.stringify(dataToPush),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -389,9 +383,13 @@ class SystemDataUpdater {
 
       const result = await response.json();
       console.log('✅ 直接同步成功:', result);
-      return result;
+      return { success: true, ...result };
 
     } catch (error) {
+      if (error.name === 'AbortError') {
+        console.error('❌ 直接同步超时');
+        throw new Error('请求超时，请检查网络连接或后端服务状态');
+      }
       console.error('❌ 直接同步失败:', error);
       throw error;
     }
@@ -473,10 +471,18 @@ class SystemDataUpdater {
   async verifyBackendData(expectedData) {
     try {
       console.log('🔍 验证后端数据...');
+      console.log('📊 期望数据量:', {
+        inventory: expectedData.inventory.length,
+        inspection: expectedData.inspection.length,
+        production: expectedData.production.length
+      });
 
-      const response = await fetch('/api/assistant/verify-data', {
+      // 直接调用数据库验证端点，而不是内存验证
+      const response = await fetch('http://localhost:3001/api/assistant/verify-data', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
           expectedCounts: {
             inventory: expectedData.inventory.length,
@@ -487,11 +493,16 @@ class SystemDataUpdater {
       });
 
       if (!response.ok) {
-        throw new Error(`验证请求失败: ${response.status}`);
+        throw new Error(`验证请求失败: ${response.status} ${response.statusText}`);
       }
 
       const result = await response.json();
       console.log('🔍 后端数据验证结果:', result);
+
+      // 如果验证失败，提供详细信息
+      if (!result.verified) {
+        console.error('❌ 数据验证详情:', result.checks);
+      }
 
       return result;
     } catch (error) {

@@ -295,13 +295,13 @@ onUnmounted(() => {
 // 加载数据
 async function loadData() {
   try {
-    // 获取上线数据
-    const data = unifiedDataService.getFactoryData() || [];
+    // 获取上线数据 - 修复：使用await调用异步方法
+    const data = await unifiedDataService.getFactoryData() || [];
     factoryData.value = data;
-    
+
     // 更新统计信息
     updateStats();
-    
+
     // 更新图表
     updateCharts();
   } catch (error) {

@@ -18,27 +18,18 @@
     <!-- 搜索和过滤部分 -->
     <div class="filter-section">
         <el-row :gutter="20">
-          <el-col :span="8">
+          <el-col :span="12">
             <el-select v-model="filters.supplier" placeholder="供应商" clearable>
             <el-option label="全部" value="" />
-              <el-option 
-                v-for="supplier in suppliers" 
-                :key="supplier.id" 
-                :label="supplier.name" 
-                :value="supplier.id" 
+              <el-option
+                v-for="supplier in suppliers"
+                :key="supplier.id"
+                :label="supplier.name"
+                :value="supplier.id"
               />
             </el-select>
           </el-col>
-          <el-col :span="8">
-            <el-select v-model="filters.status" placeholder="批次状态" clearable>
-            <el-option label="全部" value="" />
-              <el-option label="待检验" value="pending" />
-            <el-option label="合格" value="passed" />
-            <el-option label="不合格" value="rejected" />
-              <el-option label="已使用" value="used" />
-            </el-select>
-          </el-col>
-          <el-col :span="8">
+          <el-col :span="12">
           <div class="date-filter">
             <el-date-picker
               v-model="filters.dateRange"
@@ -149,13 +140,7 @@
           <span v-else>无</span>
           </template>
         </el-table-column>
-      <el-table-column label="批次状态" width="120">
-          <template #default="scope">
-          <el-tag :type="getStatusTagType(scope.row.status)" size="small">
-              {{ getStatusText(scope.row.status) }}
-            </el-tag>
-          </template>
-        </el-table-column>
+
       <el-table-column label="操作" width="220" fixed="right">
           <template #default="scope">
             <div class="table-actions">
@@ -866,7 +851,6 @@ const detailDefectTrendChartRef = ref(null)
 // 过滤条件
 const filters = ref({
   supplier: '',
-  status: '',
   dateRange: [],
   keyword: '',
   sortBy: 'createdDesc'
@@ -941,10 +925,7 @@ const filteredBatchList = computed(() => {
     data = data.filter(item => item.supplier_id === filters.value.supplier)
   }
   
-  // 应用状态过滤
-  if (filters.value.status) {
-    data = data.filter(item => item.status === filters.value.status)
-  }
+
   
   // 应用日期范围过滤
   if (filters.value.dateRange && filters.value.dateRange.length === 2) {
@@ -1014,7 +995,6 @@ function resetFilters() {
   filters.value = {
     category: '',
     supplier: '',
-    status: '',
     dateRange: [],
     keyword: '',
     sortBy: 'createdDesc'
@@ -1745,11 +1725,15 @@ const fetchBatchData = async () => {
       return; // 直接返回，不继续处理
     }
 
-    const factoryData = unifiedDataService.getFactoryData();
+    const factoryData = await unifiedDataService.getFactoryData();
     const labData = unifiedDataService.getLabData();
 
+    // 确保数据是数组格式
+    const safeFactoryData = Array.isArray(factoryData) ? factoryData : [];
+    const safeLabData = Array.isArray(labData) ? labData : [];
+
     // 在这里整合数据
-    const aggregatedData = aggregateBatchData(inventoryData, factoryData, labData);
+    const aggregatedData = aggregateBatchData(inventoryData, safeFactoryData, safeLabData);
     batchList.value = aggregatedData;
 
   } catch (error) {

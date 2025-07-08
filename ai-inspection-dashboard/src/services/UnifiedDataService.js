@@ -138,17 +138,20 @@ const UnifiedDataService = {
   
   /**
    * 获取工厂上线数据
-   * @returns {Array} 工厂上线数据数组
+   * @returns {Promise<Array>} 工厂上线数据数组
    */
-  getFactoryData() {
+  async getFactoryData() {
     try {
       console.log('开始获取工厂上线数据...');
-      
-      // V2: 只从主存储键获取数据，避免旧数据污染
+
+      // 暂时禁用API调用，直接使用localStorage数据
+      console.log('跳过API调用，直接使用localStorage数据');
+
+      // 回退到localStorage数据
       const unifiedData = localStorage.getItem(STORAGE_KEYS.FACTORY) || '[]';
       const mergedData = JSON.parse(unifiedData);
-      
-      console.log(`合并后的工厂上线数据总数: ${mergedData.length}条`);
+
+      console.log(`从localStorage获取工厂上线数据总数: ${mergedData.length}条`);
       return mergedData;
     } catch (error) {
       console.error('获取工厂上线数据失败:', error);
@@ -161,7 +164,16 @@ const UnifiedDataService = {
    * @returns {Array} 上线数据数组
    */
   getOnlineData() {
-    return this.getFactoryData();
+    // 同步版本，直接从localStorage获取
+    try {
+      const unifiedData = localStorage.getItem(STORAGE_KEYS.FACTORY) || '[]';
+      const mergedData = JSON.parse(unifiedData);
+      console.log(`从localStorage获取工厂上线数据总数: ${mergedData.length}条`);
+      return mergedData;
+    } catch (error) {
+      console.error('获取工厂上线数据失败:', error);
+      return [];
+    }
   },
   
   /**
@@ -294,10 +306,10 @@ const UnifiedDataService = {
       
       let finalData = processedData;
       if (!clearExisting) {
-        // 合并现有数据并去重
-        const existingData = this.getFactoryData();
+        // 合并现有数据并去重 - 使用同步版本获取现有数据
+        const existingData = this.getOnlineData(); // 使用同步版本
         const combinedData = [...existingData, ...processedData];
-        
+
         // 使用mergeAndDeduplicate函数去重
         finalData = mergeAndDeduplicate([combinedData]);
       }
@@ -508,7 +520,7 @@ const UnifiedDataService = {
       }
       
       // 清理工厂数据
-      const factoryData = this.getFactoryData();
+      const factoryData = this.getOnlineData(); // 使用同步版本
       if (factoryData.length > keepCount) {
         // 按时间排序，保留最新的数据
         const sortedData = factoryData.sort((a, b) => {
@@ -587,7 +599,7 @@ const UnifiedDataService = {
     try {
       const inventoryCount = this.getInventoryData().length;
       const labCount = this.getLabData().length;
-      const factoryCount = this.getFactoryData().length;
+      const factoryCount = this.getOnlineData().length; // 使用同步版本
       
       // 获取时间戳
       const inventoryTimestamp = localStorage.getItem('inventory_data_timestamp') || null;

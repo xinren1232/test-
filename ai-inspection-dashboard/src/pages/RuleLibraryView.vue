@@ -107,15 +107,19 @@
             <!-- 工具栏 -->
             <div class="toolbar">
               <div class="toolbar-left">
-                <el-button type="primary" @click="openAddRuleDialog('nlp')">
+                <el-button type="primary">
                   <el-icon><Plus /></el-icon>
                   添加意图规则
                 </el-button>
-                <el-button @click="exportRules('nlp')">
+                <el-button>
                   <el-icon><Download /></el-icon>
                   导出规则
                 </el-button>
-                <el-button type="success" @click="testAllNlpRules" :loading="batchTesting">
+                <el-button
+                  type="success"
+                  :loading="batchTesting"
+                  @click="testAllNlpRules"
+                >
                   <el-icon><Operation /></el-icon>
                   批量测试
                 </el-button>
@@ -126,570 +130,305 @@
                   placeholder="搜索意图规则..."
                   style="width: 300px;"
                   clearable
-                  @input="handleSearch"
                 >
                   <template #prefix><el-icon><Search /></el-icon></template>
                 </el-input>
               </div>
             </div>
 
-            <!-- 规则列表 - 卡片式展示 -->
-            <div class="rules-grid" v-loading="loading.nlp">
-              <div 
-                v-for="(rule, index) in paginatedNlpRules" 
-                :key="rule.id"
-                class="rule-card"
-                :class="{ 
-                  'tested': rule.tested, 
-                  'working': rule.working, 
-                  'error': rule.error,
-                  'inactive': rule.status !== 'active'
-                }"
+            <!-- 规则列表 - 表格式展示 -->
+            <div v-loading="loading.nlp">
+              <!-- 规则表格 -->
+              <el-table
+                :data="nlpRules.slice((currentPageNlp - 1) * pageSize, currentPageNlp * pageSize)"
+                style="width: 100%"
               >
-                <!-- 规则卡片头部 -->
-                <div class="rule-card-header">
-                  <div class="rule-title-section">
-                    <span class="rule-number">{{ (currentPageNlp - 1) * pageSize + index + 1 }}</span>
-                    <h3 class="rule-name">{{ rule.intent_name }}</h3>
-                    <el-tag 
-                      :type="rule.status === 'active' ? 'success' : 'danger'" 
-                      size="small"
-                      class="status-tag"
-                    >
-                      {{ rule.status === 'active' ? '启用' : '禁用' }}
-                    </el-tag>
-                  </div>
-                  <div class="rule-actions">
-                    <el-button 
-                      size="small" 
-                      @click="testSingleRule(rule, index)"
-                      :loading="rule.testing"
-                      type="primary"
-                      plain
-                    >
-                      <el-icon><Operation /></el-icon>
-                      {{ rule.testing ? '测试中' : '测试' }}
-                    </el-button>
-                    <el-button 
-                      size="small" 
-                      @click="openEditRuleDialog('nlp', rule)"
-                    >
-                      <el-icon><Edit /></el-icon>
-                      编辑
-                    </el-button>
-                    <el-button 
-                      size="small" 
-                      type="danger"
-                      @click="deleteNlpRule(rule)"
-                    >
-                      <el-icon><Delete /></el-icon>
-                      删除
-                    </el-button>
-                  </div>
-                </div>
-
-                <!-- 规则卡片内容 -->
-                <div class="rule-card-content">
-                  <div class="rule-description">
-                    <strong>描述：</strong>
-                    <span>{{ rule.description || '无描述' }}</span>
-                  </div>
-                  
-                  <div class="rule-details">
-                    <el-row :gutter="16">
-                      <el-col :span="12">
-                        <div class="detail-item">
-                          <strong>动作类型：</strong>
-                          <el-tag size="small" :type="getActionTypeColor(rule.action_type)">
-                            {{ rule.action_type }}
-                          </el-tag>
-                        </div>
-                      </el-col>
-                      <el-col :span="12">
-                        <div class="detail-item">
-                          <strong>示例查询：</strong>
-                          <span class="example-query">{{ rule.example_query || '无示例' }}</span>
-                        </div>
-                      </el-col>
-                    </el-row>
-                  </div>
-
-                  <!-- SQL模板展示 -->
-                  <div class="sql-template" v-if="rule.action_target">
-                    <strong>SQL模板：</strong>
-                    <div class="sql-content">
-                      <pre>{{ rule.action_target }}</pre>
-                    </div>
-                  </div>
-
-                  <!-- 参数定义 -->
-                  <div class="parameters-section" v-if="rule.parameters">
-                    <strong>参数定义：</strong>
-                    <div class="parameters-content">
-                      <pre>{{ formatParameters(rule.parameters) }}</pre>
-                    </div>
-                  </div>
-
-                  <!-- 测试结果展示 -->
-                  <div v-if="rule.tested" class="test-result-section">
-                    <div class="result-header">
-                      <strong>测试结果：</strong>
-                      <el-tag 
-                        :type="rule.working ? 'success' : 'danger'" 
-                        size="small"
-                        class="result-tag"
-                      >
-                        {{ rule.working ? '✅ 正常' : '❌ 异常' }}
+                <el-table-column label="规则信息" min-width="200">
+                  <template #default="{ row }">
+                    <div class="rule-info">
+                      <el-tag :type="getCategoryTagType(row.category)" size="small" class="complexity-tag">
+                        {{ getCategoryLabel(row.category) }}
                       </el-tag>
-                      <span class="test-time" v-if="rule.testTime">
-                        {{ formatTestTime(rule.testTime) }}
+                      <span class="rule-name">{{ row.intent_name }}</span>
+                    </div>
+                  </template>
+                </el-table-column>
+                
+                <el-table-column label="描述" prop="description" min-width="250" show-overflow-tooltip />
+                
+                <el-table-column label="状态" width="100" align="center">
+                  <template #default="{ row }">
+                    <el-tag :type="row.status === 'active' ? 'success' : 'danger'" size="small">
+                      {{ row.status === 'active' ? '活跃' : '禁用' }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+
+                <el-table-column label="测试状态" width="120" align="center">
+                  <template #default="{ row }">
+                    <div class="test-status">
+                      <span v-if="row.testing" class="status-text">测试中...</span>
+                      <span v-else-if="!row.tested" class="status-text">未测试</span>
+                      <span v-else-if="row.working" class="status-text">
+                        <el-icon class="status-icon success"><SuccessFilled /></el-icon>
+                        正常
+                      </span>
+                      <span v-else class="status-text">
+                        <el-icon class="status-icon error"><CircleCloseFilled /></el-icon>
+                        异常
                       </span>
                     </div>
-                    
-                    <div v-if="rule.testOutput" class="result-output">
-                      <el-collapse>
-                        <el-collapse-item title="查看测试输出" name="output">
-                          <pre class="output-content">{{ rule.testOutput }}</pre>
-                        </el-collapse-item>
-                      </el-collapse>
+                  </template>
+                </el-table-column>
+                
+                <el-table-column label="操作" width="200" align="center">
+                  <template #default="{ row }">
+                    <div class="action-buttons">
+                      <el-button
+                        size="small"
+                        :loading="row.testing"
+                        @click="testSingleRule(row)"
+                      >
+                        <el-icon><Operation /></el-icon>
+                        测试
+                      </el-button>
+                      <el-button
+                        size="small"
+                        type="primary"
+                        @click="viewRuleDetails(row)"
+                      >
+                        <el-icon><View /></el-icon>
+                        详情
+                      </el-button>
                     </div>
-                    
-                    <div v-if="rule.error" class="error-section">
-                      <strong>错误信息：</strong>
-                      <div class="error-content">
-                        <pre>{{ rule.error }}</pre>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+                  </template>
+                </el-table-column>
+              </el-table>
 
-            <!-- 分页 -->
-            <div class="pagination-wrapper">
-              <el-pagination
-                background
-                layout="total, sizes, prev, pager, next, jumper"
-                :total="filteredNlpRules.length"
-                :page-sizes="[6, 12, 24, 48]"
-                v-model:page-size="pageSize"
-                v-model:current-page="currentPageNlp"
-                @size-change="handleSizeChange"
-                @current-change="handleCurrentChange"
-              />
-            </div>
-
-            <!-- 空状态 -->
-            <div v-if="filteredNlpRules.length === 0 && !loading.nlp" class="empty-state">
-              <div class="empty-icon">📝</div>
-              <h3>暂无NLP意图规则</h3>
-              <p>系统中还没有配置任何NLP意图规则</p>
-              <el-button type="primary" @click="openAddRuleDialog('nlp')">
-                <el-icon><Plus /></el-icon>
-                创建第一个规则
-              </el-button>
-            </div>
-          </div>
-        </el-tab-pane>
-
-        <!-- 规则执行历史 -->
-        <el-tab-pane name="history">
-          <template #label>
-            <span class="tab-label">
-              <el-icon><Histogram /></el-icon>
-              规则执行历史 ({{ ruleExecutionHistory.length }})
-            </span>
-          </template>
-
-          <div class="tab-content">
-            <!-- 执行历史工具栏 -->
-            <div class="toolbar">
-              <div class="toolbar-left">
-                <el-button @click="refreshExecutionHistory" :loading="loading.history">
-                  <el-icon><Refresh /></el-icon>
-                  刷新历史
-                </el-button>
-                <el-button @click="clearExecutionHistory" type="danger">
-                  <el-icon><Delete /></el-icon>
-                  清空历史
-                </el-button>
-                <el-button @click="exportExecutionHistory">
-                  <el-icon><Download /></el-icon>
-                  导出历史
-                </el-button>
-              </div>
-              <div class="toolbar-right">
-                <el-date-picker
-                  v-model="historyDateRange"
-                  type="datetimerange"
-                  range-separator="至"
-                  start-placeholder="开始时间"
-                  end-placeholder="结束时间"
-                  @change="filterHistoryByDate"
-                  style="margin-right: 12px;"
+              <!-- 分页 -->
+              <div class="pagination-container">
+                <el-pagination
+                  v-model:current-page="currentPageNlp"
+                  v-model:page-size="pageSize"
+                  :page-sizes="[10, 20, 50, 100]"
+                  :total="nlpRules.length"
+                  layout="total, sizes, prev, pager, next, jumper"
                 />
-                <el-input
-                  v-model="historySearchQuery"
-                  placeholder="搜索执行记录..."
-                  style="width: 300px;"
-                  clearable
-                >
-                  <template #prefix><el-icon><Search /></el-icon></template>
-                </el-input>
               </div>
-            </div>
-
-            <!-- 执行历史表格 -->
-            <el-table
-              :data="paginatedExecutionHistory"
-              v-loading="loading.history"
-              border
-              stripe
-              class="history-table"
-              @row-click="viewExecutionDetails"
-            >
-              <el-table-column prop="timestamp" label="执行时间" width="180" sortable>
-                <template #default="scope">
-                  {{ formatDateTime(scope.row.timestamp) }}
-                </template>
-              </el-table-column>
-              <el-table-column prop="ruleType" label="规则类型" width="120">
-                <template #default="scope">
-                  <el-tag :type="getRuleTypeColor(scope.row.ruleType)" size="small">
-                    {{ getRuleTypeName(scope.row.ruleType) }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="ruleName" label="规则名称" width="200" show-overflow-tooltip />
-              <el-table-column prop="queryInput" label="查询输入" show-overflow-tooltip />
-              <el-table-column prop="result" label="执行结果" width="120">
-                <template #default="scope">
-                  <el-tag :type="scope.row.success ? 'success' : 'danger'" size="small">
-                    {{ scope.row.success ? '✅ 成功' : '❌ 失败' }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="responseTime" label="响应时间" width="120">
-                <template #default="scope">
-                  <span :class="getResponseTimeClass(scope.row.responseTime)">
-                    {{ scope.row.responseTime }}ms
-                  </span>
-                </template>
-              </el-table-column>
-              <el-table-column label="操作" width="120" fixed="right">
-                <template #default="scope">
-                  <el-button size="small" @click.stop="viewExecutionDetails(scope.row)">
-                    <el-icon><View /></el-icon>
-                    详情
-                  </el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-
-            <!-- 分页 -->
-            <div class="pagination-wrapper">
-              <el-pagination
-                background
-                layout="total, sizes, prev, pager, next, jumper"
-                :total="filteredExecutionHistory.length"
-                :page-sizes="[10, 20, 50, 100]"
-                v-model:page-size="historyPageSize"
-                v-model:current-page="currentPageHistory"
-              />
-            </div>
-
-            <!-- 空状态 -->
-            <div v-if="filteredExecutionHistory.length === 0 && !loading.history" class="empty-state">
-              <div class="empty-icon">📊</div>
-              <h3>暂无执行历史</h3>
-              <p>还没有规则执行记录</p>
             </div>
           </div>
         </el-tab-pane>
       </el-tabs>
     </el-card>
+
+    <!-- 测试结果对话框 -->
+    <el-dialog
+      v-model="testResultDialogVisible"
+      title="规则测试结果"
+      width="80%"
+      :close-on-click-modal="false"
+    >
+      <div v-if="currentTestRule" class="test-result-content">
+        <div class="rule-header">
+          <h3>{{ currentTestRule.intent_name }}</h3>
+          <el-tag :type="currentTestRule.working ? 'success' : 'danger'" size="large">
+            {{ currentTestRule.working ? '测试通过' : '测试失败' }}
+          </el-tag>
+        </div>
+
+        <el-divider />
+
+        <div class="test-details">
+          <h4>🔍 测试查询</h4>
+          <el-input
+            v-model="currentTestQuery"
+            type="textarea"
+            :rows="2"
+            readonly
+            class="query-input"
+          />
+
+          <h4>📊 查询结果</h4>
+          <div v-if="currentTestRule.testResult && currentTestRule.testResult.data && currentTestRule.testResult.data.length > 0">
+            <el-table
+              :data="currentTestRule.testResult.data.slice(0, 10)"
+              max-height="300"
+              border
+            >
+              <el-table-column
+                v-for="(_, key) in currentTestRule.testResult.data[0]"
+                :key="key"
+                :prop="key"
+                :label="key"
+                show-overflow-tooltip
+                min-width="120"
+              />
+            </el-table>
+            <div class="result-summary">
+              <el-text type="info">
+                显示前10条记录，共 {{ currentTestRule.testResult.data.length }} 条数据
+              </el-text>
+            </div>
+          </div>
+          <div v-else-if="currentTestRule.testResult && currentTestRule.testResult.reply">
+            <el-card>
+              <h5>AI回复内容：</h5>
+              <p>{{ currentTestRule.testResult.reply }}</p>
+            </el-card>
+          </div>
+          <div v-else>
+            <el-empty description="无测试数据" />
+          </div>
+
+          <h4>🔧 技术信息</h4>
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="测试时间">
+              {{ currentTestRule.testResult?.timestamp || '未知' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="匹配规则">
+              {{ currentTestRule.testResult?.matchedRule || '未知' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="SQL查询" span="2">
+              <el-input
+                :value="currentTestRule.testResult?.sql || '无'"
+                type="textarea"
+                :rows="3"
+                readonly
+              />
+            </el-descriptions-item>
+          </el-descriptions>
+        </div>
+      </div>
+
+      <template #footer>
+        <el-button @click="testResultDialogVisible = false">关闭</el-button>
+        <el-button type="primary" @click="retestCurrentRule" :loading="currentTestRule?.testing">
+          重新测试
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
-import { ElMessage, ElMessageBox, ElCollapse, ElCollapseItem } from 'element-plus';
+import { ref, computed, onMounted } from 'vue';
+import { ElMessage } from 'element-plus';
 import {
   Plus,
-  Edit,
-  Delete,
   Search,
   Download,
-  Upload,
-  Connection,
-  ChatLineRound,
-  Notebook,
-  Histogram,
   View,
-  Setting,
-  Refresh,
   Operation,
+  Refresh,
+  Document,
   CircleCheck,
   SuccessFilled,
+  CircleCloseFilled,
   Warning,
   TrendCharts,
-  Document
+  ChatLineRound
 } from '@element-plus/icons-vue';
 
 // 响应式数据
 const activeTab = ref('nlp');
+const activeRuleCategory = ref('all');
 const globalLoading = ref(false);
 const globalTesting = ref(false);
 const batchTesting = ref(false);
+const nlpSearchQuery = ref('');
+const currentPageNlp = ref(1);
+const pageSize = ref(20);
 
-const loading = reactive({
-  nlp: false,
-  history: false
+// 规则数据
+const nlpRules = ref([]);
+
+// 加载状态
+const loading = ref({
+  nlp: false
 });
 
-// NLP规则相关
-const nlpRules = ref([]);
-const nlpSearchQuery = ref('');
-const pageSize = ref(6);
-const currentPageNlp = ref(1);
+// 测试结果弹窗相关
+const testResultDialogVisible = ref(false);
+const currentTestRule = ref(null);
+const currentTestQuery = ref('');
 
-// 规则执行历史相关
-const ruleExecutionHistory = ref([]);
-const historySearchQuery = ref('');
-const historyDateRange = ref([]);
-const historyPageSize = ref(10);
-const currentPageHistory = ref(1);
-
-// 计算属性 - 统计数据
+// 计算属性
 const totalRules = computed(() => nlpRules.value.length);
-const activeRulesCount = computed(() => nlpRules.value.filter(r => r.status === 'active').length);
-const testedRulesCount = computed(() => nlpRules.value.filter(r => r.tested).length);
-const workingRulesCount = computed(() => nlpRules.value.filter(r => r.working).length);
-const errorRulesCount = computed(() => nlpRules.value.filter(r => r.error).length);
+const activeRulesCount = computed(() => nlpRules.value.filter(rule => rule.status === 'active').length);
+const testedRulesCount = computed(() => nlpRules.value.filter(rule => rule.tested).length);
+const workingRulesCount = computed(() => nlpRules.value.filter(rule => rule.working).length);
+const errorRulesCount = computed(() => nlpRules.value.filter(rule => rule.error).length);
 const successRate = computed(() => {
   const tested = testedRulesCount.value;
-  if (tested === 0) return 0;
-  return Math.round((workingRulesCount.value / tested) * 100);
+  const working = workingRulesCount.value;
+  return tested > 0 ? Math.round((working / tested) * 100) : 0;
 });
 
-// 过滤后的NLP规则
+// 过滤后的规则列表
 const filteredNlpRules = computed(() => {
-  if (!nlpSearchQuery.value) return nlpRules.value;
-
-  const searchLower = nlpSearchQuery.value.toLowerCase();
-  return nlpRules.value.filter(rule =>
-    rule.intent_name.toLowerCase().includes(searchLower) ||
-    (rule.description && rule.description.toLowerCase().includes(searchLower)) ||
-    (rule.example_query && rule.example_query.toLowerCase().includes(searchLower))
-  );
-});
-
-// 分页后的NLP规则
-const paginatedNlpRules = computed(() => {
-  const start = (currentPageNlp.value - 1) * pageSize.value;
-  const end = start + pageSize.value;
-  return filteredNlpRules.value.slice(start, end);
-});
-
-// 过滤后的执行历史
-const filteredExecutionHistory = computed(() => {
-  let filtered = ruleExecutionHistory.value;
+  let filtered = nlpRules.value;
 
   // 按搜索关键词过滤
-  if (historySearchQuery.value) {
-    const searchLower = historySearchQuery.value.toLowerCase();
-    filtered = filtered.filter(history =>
-      (history.ruleName && history.ruleName.toLowerCase().includes(searchLower)) ||
-      (history.queryInput && history.queryInput.toLowerCase().includes(searchLower))
+  if (nlpSearchQuery.value) {
+    const query = nlpSearchQuery.value.toLowerCase();
+    filtered = filtered.filter(rule =>
+      rule.intent_name.toLowerCase().includes(query) ||
+      rule.description.toLowerCase().includes(query)
     );
-  }
-
-  // 按日期范围过滤
-  if (historyDateRange.value && historyDateRange.value.length === 2) {
-    const [startDate, endDate] = historyDateRange.value;
-    filtered = filtered.filter(history => {
-      const historyDate = new Date(history.timestamp);
-      return historyDate >= startDate && historyDate <= endDate;
-    });
   }
 
   return filtered;
 });
 
-// 分页后的执行历史
-const paginatedExecutionHistory = computed(() => {
-  const start = (currentPageHistory.value - 1) * historyPageSize.value;
-  const end = start + historyPageSize.value;
-  return filteredExecutionHistory.value.slice(start, end);
-});
-
-// 数据获取方法
-const fetchNlpRules = () => {
-  loading.nlp = true;
-  setTimeout(() => {
-    nlpRules.value = [
-      {
-        id: 1,
-        intent_name: '查询物料库存',
-        description: '根据物料编码查询库存数量与状态',
-        action_type: 'SQL_QUERY',
-        action_target: 'SELECT material_code, material_name, quantity, status FROM inventory WHERE material_code = ?',
-        parameters: JSON.stringify([{"name": "material_code", "type": "string"}]),
-        example_query: '这批M12345的库存状态是什么？',
-        status: 'active',
-        tested: false,
-        working: false,
-        error: false
-      },
-      {
-        id: 2,
-        intent_name: '查询批次测试结果',
-        description: '根据批次号查询实验室测试记录',
-        action_type: 'SQL_QUERY',
-        action_target: 'SELECT test_id, result, defect_desc FROM lab_tests WHERE batch_no = ?',
-        parameters: JSON.stringify([{"name": "batch_no", "type": "string"}]),
-        example_query: '批次789101有没有测试不合格的?',
-        status: 'active',
-        tested: false,
-        working: false,
-        error: false
-      },
-      {
-        id: 3,
-        intent_name: '查询物料上线不良率',
-        description: '查询物料上线的平均不良率与异常数量',
-        action_type: 'SQL_QUERY',
-        action_target: 'SELECT AVG(defect_rate) as avg_defect_rate, SUM(exception_count) as exception_count FROM online_tracking WHERE material_code = ?',
-        parameters: JSON.stringify([{"name": "material_code", "type": "string"}]),
-        example_query: '物料M5678901上线不良率怎么样？',
-        status: 'active',
-        tested: false,
-        working: false,
-        error: false
-      },
-      {
-        id: 4,
-        intent_name: '获取高风险库存列表',
-        description: '查询风险等级为high的库存记录',
-        action_type: 'SQL_QUERY',
-        action_target: 'SELECT material_code, material_name, supplier_name, quantity FROM inventory WHERE risk_level = "high"',
-        parameters: JSON.stringify([]),
-        example_query: '有哪些物料当前是高风险？',
-        status: 'active',
-        tested: false,
-        working: false,
-        error: false
-      },
-      {
-        id: 5,
-        intent_name: '按供应商查询不良记录',
-        description: '根据供应商名查询有不良记录的测试',
-        action_type: 'SQL_QUERY',
-        action_target: 'SELECT test_id, material_code, defect_desc FROM lab_tests WHERE supplier_name = ? AND result = "NG"',
-        parameters: JSON.stringify([{"name": "supplier_name", "type": "string"}]),
-        example_query: '欣旺达这批料有没有测试不合格的记录？',
-        status: 'active',
-        tested: false,
-        working: false,
-        error: false
-      },
-      {
-        id: 6,
-        intent_name: '物料近期使用项目统计',
-        description: '统计物料近近30天内在哪些项目上线使用',
-        action_type: 'SQL_QUERY',
-        action_target: 'SELECT DISTINCT project FROM online_tracking WHERE material_code = ? AND online_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)',
-        parameters: JSON.stringify([{"name": "material_code", "type": "string"}]),
-        example_query: 'M12345最近在哪些项目上线过?',
-        status: 'active',
-        tested: false,
-        working: false,
-        error: false
-      },
-      {
-        id: 7,
-        intent_name: '获取物料对应的测试合格率',
-        description: '根据物料编码统计测试合格率',
-        action_type: 'SQL_QUERY',
-        action_target: 'SELECT COUNT(*) as total_tests, SUM(CASE WHEN result = "OK" THEN 1 ELSE 0 END) as pass_count FROM lab_tests WHERE material_code = ?',
-        parameters: JSON.stringify([{"name": "material_code", "type": "string"}]),
-        example_query: '这批M12345的合格率是多少?',
-        status: 'active',
-        tested: false,
-        working: false,
-        error: false
-      },
-      {
-        id: 8,
-        intent_name: '查询批次的综合风险',
-        description: '从批次汇总表查中获取批次的风险等级',
-        action_type: 'SQL_QUERY',
-        action_target: 'SELECT risk_level FROM batches_summary WHERE batch_no = ?',
-        parameters: JSON.stringify([{"name": "batch_no", "type": "string"}]),
-        example_query: '批次12345的综合风险等级是多少?',
-        status: 'active',
-        tested: false,
-        working: false,
-        error: false
-      }
-    ];
-    loading.nlp = false;
-  }, 500);
+// 规则分类功能
+const getBasicRules = () => {
+  return nlpRules.value.filter(rule =>
+    rule.action_type === 'SQL_QUERY' &&
+    (!rule.sql_template || rule.sql_template.split('JOIN').length <= 2)
+  );
 };
 
-const fetchExecutionHistory = () => {
-  loading.history = true;
-  setTimeout(() => {
-    ruleExecutionHistory.value = [
-      {
-        id: 1,
-        timestamp: new Date(Date.now() - 1000 * 60 * 30),
-        ruleType: 'nlp',
-        ruleName: '查询物料库存',
-        queryInput: '这批M12345的库存状态是什么？',
-        success: true,
-        responseTime: 245,
-        result: '查询成功',
-        output: '物料M12345库存数量：1500，状态：正常'
-      },
-      {
-        id: 2,
-        timestamp: new Date(Date.now() - 1000 * 60 * 45),
-        ruleType: 'nlp',
-        ruleName: '查询批次测试结果',
-        queryInput: '批次789101有没有测试不合格的?',
-        success: false,
-        responseTime: 1200,
-        result: '查询失败',
-        error: '数据库连接超时'
-      },
-      {
-        id: 3,
-        timestamp: new Date(Date.now() - 1000 * 60 * 60),
-        ruleType: 'nlp',
-        ruleName: '查询物料上线不良率',
-        queryInput: '物料M5678901上线不良率怎么样？',
-        success: true,
-        responseTime: 320,
-        result: '查询成功',
-        output: '平均不良率：2.3%，异常数量：5'
-      }
-    ];
-    loading.history = false;
-  }, 300);
+const getAnalysisRules = () => {
+  return nlpRules.value.filter(rule =>
+    rule.action_type === 'SQL_QUERY' &&
+    (rule.sql_template?.includes('COUNT') ||
+     rule.sql_template?.includes('SUM') ||
+     rule.sql_template?.includes('AVG') ||
+     rule.sql_template?.includes('GROUP BY'))
+  );
 };
 
-// 核心功能方法
+const getComplexRules = () => {
+  return nlpRules.value.filter(rule =>
+    rule.action_type === 'SQL_QUERY' &&
+    rule.sql_template &&
+    (rule.sql_template.split('JOIN').length > 2 ||
+     rule.sql_template.includes('SUBQUERY') ||
+     rule.sql_template.includes('WITH'))
+  );
+};
+
+const getCurrentCategoryRules = () => {
+  switch (activeRuleCategory.value) {
+    case 'basic':
+      return getBasicRules();
+    case 'analysis':
+      return getAnalysisRules();
+    case 'complex':
+      return getComplexRules();
+    default:
+      return filteredNlpRules.value;
+  }
+};
+
+// 事件处理方法
 const refreshAllRules = async () => {
   globalLoading.value = true;
   try {
-    await Promise.all([
-      fetchNlpRules(),
-      fetchExecutionHistory()
-    ]);
-    ElMessage.success('所有规则已刷新');
+    await loadNlpRules();
+    ElMessage.success('规则库刷新成功');
   } catch (error) {
-    ElMessage.error('刷新失败：' + error.message);
+    ElMessage.error('刷新失败: ' + error.message);
   } finally {
     globalLoading.value = false;
   }
@@ -698,32 +437,99 @@ const refreshAllRules = async () => {
 const testAllRules = async () => {
   globalTesting.value = true;
   try {
-    let successCount = 0;
-    let totalCount = nlpRules.value.length;
+    const { default: RulesService } = await import('../services/RulesService.js');
+    const result = await RulesService.testAllRules();
 
-    for (let rule of nlpRules.value) {
-      const result = await testSingleRule(rule);
-      if (result) successCount++;
+    if (result.success) {
+      const { totalTested, successCount } = result.data;
+      ElMessage.success(`批量测试完成: ${successCount}/${totalTested} 条规则测试成功`);
+    } else {
+      throw new Error(result.message || '批量测试失败');
     }
-
-    ElMessage.success(`批量测试完成：${successCount}/${totalCount} 规则测试成功`);
   } catch (error) {
-    ElMessage.error('批量测试失败：' + error.message);
+    ElMessage.error('批量测试失败: ' + error.message);
   } finally {
     globalTesting.value = false;
   }
 };
 
-const testSingleRule = async (rule, index) => {
-  rule.testing = true;
-  rule.tested = false;
-  rule.working = false;
-  rule.error = false;
-
+const exportAllRules = async () => {
   try {
-    const testQuery = rule.example_query || `测试${rule.intent_name}`;
+    const { default: RulesService } = await import('../services/RulesService.js');
+    RulesService.exportRules(nlpRules.value);
+    ElMessage.success('规则库导出成功');
+  } catch (error) {
+    ElMessage.error('导出失败: ' + error.message);
+  }
+};
 
-    const response = await fetch('http://localhost:3001/api/assistant/query', {
+// 加载NLP规则数据
+const loadNlpRules = async () => {
+  loading.value.nlp = true;
+  try {
+    console.log('开始加载规则...');
+
+    // 使用新的RulesService
+    const { default: RulesService } = await import('../services/RulesService.js');
+    const result = await RulesService.getAllRules();
+
+    console.log('API响应数据:', result);
+
+    if (result.success && Array.isArray(result.data)) {
+      nlpRules.value = result.data.map(rule => ({
+        ...rule,
+        tested: false,
+        working: false,
+        error: false,
+        testing: false,
+        testResult: null
+      }));
+      console.log(`成功加载 ${nlpRules.value.length} 条规则`);
+      ElMessage.success(`成功加载 ${nlpRules.value.length} 条规则`);
+    } else {
+      throw new Error('返回的数据格式不正确');
+    }
+  } catch (error) {
+    console.error('加载NLP规则失败:', error);
+    ElMessage.error('加载规则失败: ' + error.message);
+
+    // 使用备用数据避免页面崩溃
+    nlpRules.value = [
+      {
+        id: 1,
+        intent_name: '备用测试规则',
+        description: '这是备用规则，API连接失败时显示',
+        action_type: 'SQL_QUERY',
+        status: 'active',
+        priority: 1,
+        tested: false,
+        working: false,
+        error: false,
+        testing: false,
+        testResult: null
+      }
+    ];
+    ElMessage.warning('使用备用规则数据，请检查API连接');
+  } finally {
+    loading.value.nlp = false;
+  }
+};
+
+// 测试单个规则
+const testSingleRule = async (rule) => {
+  rule.testing = true;
+  try {
+    console.log('🧪 测试规则:', rule.intent_name);
+
+    // 必须使用规则的示例查询进行测试
+    const testQuery = rule.example_query;
+    if (!testQuery) {
+      throw new Error('规则缺少示例查询 (example_query)');
+    }
+    console.log('🔍 使用示例查询:', testQuery);
+
+    // 调用后端API进行测试
+    const response = await fetch('/api/assistant/query', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -733,223 +539,217 @@ const testSingleRule = async (rule, index) => {
       })
     });
 
-    const result = await response.json();
+    console.log('📡 API响应状态:', response.status);
 
-    rule.tested = true;
-    rule.testTime = new Date();
+    if (response.ok) {
+      const result = await response.json();
+      console.log('📊 规则测试结果:', result);
 
-    if (response.ok && result.success) {
-      rule.working = true;
-      rule.testOutput = result.data || result.message || '测试成功';
+      // 判断测试是否成功 - 重点检查是否有实际数据返回
+      const hasData = result.data && (Array.isArray(result.data) ? result.data.length > 0 : true);
+      const hasReply = result.reply && result.reply.trim().length > 0;
+      const isSuccess = result.success !== false && (hasData || hasReply);
 
-      // 添加到执行历史
-      ruleExecutionHistory.value.unshift({
-        id: Date.now(),
-        timestamp: new Date(),
-        ruleType: 'nlp',
-        ruleName: rule.intent_name,
-        queryInput: testQuery,
-        success: true,
-        responseTime: Math.floor(Math.random() * 500) + 100,
-        result: '测试成功',
-        output: rule.testOutput
-      });
+      console.log('📊 测试结果分析:');
+      console.log('  - success字段:', result.success);
+      console.log('  - 有数据:', hasData);
+      console.log('  - 有回复:', hasReply);
+      console.log('  - 数据内容:', result.data);
+      console.log('  - 最终判断:', isSuccess);
 
-      ElMessage.success(`规则 "${rule.intent_name}" 测试成功`);
-      return true;
+      // 更新规则状态
+      rule.tested = true;
+      rule.working = isSuccess;
+      rule.error = !isSuccess;
+      rule.testResult = {
+        success: isSuccess,
+        data: result.data || [],
+        reply: result.reply || '',
+        sql: result.sql || '',
+        params: result.params || {},
+        matchedRule: result.matchedRule || '',
+        source: result.source || '',
+        timestamp: new Date().toLocaleString(),
+        query: testQuery,
+        hasData: hasData,
+        hasReply: hasReply,
+        rawResult: result
+      };
+
+      if (isSuccess) {
+        const dataCount = Array.isArray(result.data) ? result.data.length : 0;
+        ElMessage.success(`✅ 规则 "${rule.intent_name}" 测试成功 - 返回 ${dataCount} 条数据`);
+        console.log(`✅ 规则测试成功 - 返回数据: ${dataCount} 条`);
+      } else {
+        ElMessage.warning(`⚠️ 规则 "${rule.intent_name}" 测试失败 - 无有效数据返回`);
+        console.log(`⚠️ 规则测试失败 - 结果:`, result);
+      }
     } else {
-      rule.error = result.error || result.message || '测试失败';
-
-      // 添加到执行历史
-      ruleExecutionHistory.value.unshift({
-        id: Date.now(),
-        timestamp: new Date(),
-        ruleType: 'nlp',
-        ruleName: rule.intent_name,
-        queryInput: testQuery,
-        success: false,
-        responseTime: Math.floor(Math.random() * 1000) + 500,
-        result: '测试失败',
-        error: rule.error
-      });
-
-      ElMessage.error(`规则 "${rule.intent_name}" 测试失败：${rule.error}`);
-      return false;
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
   } catch (error) {
+    console.error('❌ 规则测试失败:', error);
     rule.tested = true;
-    rule.error = error.message;
-
-    // 添加到执行历史
-    ruleExecutionHistory.value.unshift({
-      id: Date.now(),
-      timestamp: new Date(),
-      ruleType: 'nlp',
-      ruleName: rule.intent_name,
-      queryInput: rule.example_query || `测试${rule.intent_name}`,
+    rule.working = false;
+    rule.error = true;
+    rule.testResult = {
       success: false,
-      responseTime: 0,
-      result: '连接失败',
-      error: error.message
-    });
-
-    ElMessage.error(`规则 "${rule.intent_name}" 测试异常：${error.message}`);
-    return false;
+      error: error.message,
+      timestamp: new Date().toLocaleString(),
+      query: rule.example_query || generateTestQuery(rule)
+    };
+    ElMessage.error(`❌ 规则测试失败: ${error.message}`);
   } finally {
     rule.testing = false;
   }
 };
 
+// 生成测试查询
+const generateTestQuery = (rule) => {
+  const queries = {
+    '真实测试结果统计': '查询测试结果统计',
+    '物料库存查询': '查询物料库存信息',
+    '供应商信息查询': '查询供应商信息',
+    '批次信息查询': '查询批次信息',
+    '在线跟踪查询': '查询在线跟踪数据'
+  };
+
+  return queries[rule.intent_name] || `测试规则: ${rule.intent_name}`;
+};
+
+// 获取测试状态文本
+const getTestStatusText = (rule) => {
+  if (!rule.tested) return '未测试';
+  if (rule.testing) return '测试中...';
+  if (rule.working) return '正常';
+  if (rule.error) return '异常';
+  return '未知';
+};
+
+// 批量测试所有NLP规则
 const testAllNlpRules = async () => {
   batchTesting.value = true;
   try {
-    let successCount = 0;
-    const totalCount = nlpRules.value.length;
+    const { default: RulesService } = await import('../services/RulesService.js');
+    const result = await RulesService.testAllRules();
 
-    for (let i = 0; i < nlpRules.value.length; i++) {
-      const rule = nlpRules.value[i];
-      const result = await testSingleRule(rule, i);
-      if (result) successCount++;
+    if (result.success) {
+      const { totalTested, successCount, failureCount, results } = result.data;
 
-      // 添加延迟避免请求过快
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // 更新规则状态
+      results.forEach(testResult => {
+        const rule = nlpRules.value.find(r => r.id === testResult.id);
+        if (rule) {
+          rule.tested = true;
+          rule.working = testResult.success;
+          rule.error = !testResult.success;
+          rule.testResult = testResult;
+        }
+      });
+
+      ElMessage.success(`批量测试完成: ${successCount}/${totalTested} 条规则测试成功`);
+    } else {
+      throw new Error(result.message || '批量测试失败');
     }
-
-    ElMessage.success(`NLP规则批量测试完成：${successCount}/${totalCount} 规则测试成功`);
   } catch (error) {
-    ElMessage.error('批量测试失败：' + error.message);
+    console.error('批量测试失败:', error);
+    ElMessage.error('批量测试失败: ' + error.message);
   } finally {
     batchTesting.value = false;
   }
 };
 
-// 辅助方法
-const deleteNlpRule = (rule) => {
-  ElMessageBox.confirm(`确定要删除意图规则 "${rule.intent_name}" 吗?`, '警告', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning',
-  }).then(() => {
-    nlpRules.value = nlpRules.value.filter(r => r.id !== rule.id);
-    ElMessage.success('规则删除成功');
-  }).catch(() => {
-    // cancelled
-  });
+// 查看规则详情
+const viewRuleDetails = (rule) => {
+  console.log('📋 查看规则详情:', rule.intent_name);
+  currentTestRule.value = rule;
+  currentTestQuery.value = rule.testResult?.query || rule.example_query || generateTestQuery(rule);
+  testResultDialogVisible.value = true;
 };
 
-const openAddRuleDialog = (type) => {
-  ElMessage.info('添加规则功能开发中...');
-};
-
-const openEditRuleDialog = (type, rule) => {
-  ElMessage.info('编辑规则功能开发中...');
-};
-
-const exportRules = (type) => {
-  ElMessage.info('导出规则功能开发中...');
-};
-
-const exportAllRules = () => {
-  ElMessage.info('导出所有规则功能开发中...');
-};
-
-const exportExecutionHistory = () => {
-  ElMessage.info('导出执行历史功能开发中...');
-};
-
-const refreshExecutionHistory = () => {
-  fetchExecutionHistory();
-};
-
-const clearExecutionHistory = () => {
-  ElMessageBox.confirm('确定要清空所有执行历史吗？', '警告', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning',
-  }).then(() => {
-    ruleExecutionHistory.value = [];
-    ElMessage.success('执行历史已清空');
-  }).catch(() => {
-    // cancelled
-  });
-};
-
-const viewExecutionDetails = (record) => {
-  ElMessage.info('查看执行详情功能开发中...');
-};
-
-const filterHistoryByDate = () => {
-  // 日期过滤逻辑已在computed中实现
-};
-
-// 格式化方法
-const formatParameters = (parametersStr) => {
-  try {
-    const params = JSON.parse(parametersStr);
-    return JSON.stringify(params, null, 2);
-  } catch (error) {
-    return parametersStr;
+// 重新测试当前规则
+const retestCurrentRule = async () => {
+  if (currentTestRule.value) {
+    await testSingleRule(currentTestRule.value);
+    currentTestQuery.value = currentTestRule.value.testResult?.query || currentTestRule.value.example_query || generateTestQuery(currentTestRule.value);
   }
 };
 
-const formatTestTime = (testTime) => {
-  if (!testTime) return '';
-  return new Date(testTime).toLocaleString('zh-CN');
+// 编辑规则
+const editRule = (rule) => {
+  ElMessage.info(`编辑规则: ${rule.intent_name}`);
+  // 这里可以打开编辑对话框
 };
 
-const formatDateTime = (timestamp) => {
-  if (!timestamp) return '';
-
-  try {
-    const date = new Date(timestamp);
-    return date.toLocaleString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    });
-  } catch (error) {
-    return '';
+// 分类相关方法
+const getCategoryTagType = (category) => {
+  switch (category) {
+    case '基础查询':
+      return 'success';
+    case '单场景分析':
+      return 'warning';
+    case '多场景分析':
+      return 'danger';
+    default:
+      return 'info';
   }
 };
 
-const getActionTypeColor = (actionType) => {
-  switch (actionType) {
-    case 'SQL_QUERY': return 'primary';
-    case 'API_CALL': return 'success';
-    case 'FUNCTION': return 'warning';
-    default: return 'info';
+const getCategoryLabel = (category) => {
+  switch (category) {
+    case '基础查询':
+      return '基础';
+    case '单场景分析':
+      return '中级';
+    case '多场景分析':
+      return '高级';
+    default:
+      return '未分类';
   }
 };
 
-const getRuleTypeColor = (ruleType) => {
-  switch (ruleType) {
-    case 'nlp': return 'primary';
-    case 'process': return 'success';
-    case 'knowledge': return 'warning';
-    default: return 'info';
-  }
+// 其他辅助功能
+const getRuleComplexityType = (rule) => {
+  if (getComplexRules().includes(rule)) return 'danger';
+  if (getAnalysisRules().includes(rule)) return 'warning';
+  return 'success';
 };
 
-const getRuleTypeName = (ruleType) => {
-  switch (ruleType) {
-    case 'nlp': return 'NLP规则';
-    case 'process': return '流程规则';
-    case 'knowledge': return '知识规则';
-    default: return '未知类型';
-  }
+const getRuleComplexityLabel = (rule) => {
+  if (getComplexRules().includes(rule)) return '复杂';
+  if (getAnalysisRules().includes(rule)) return '分析';
+  return '基础';
 };
 
-const getResponseTimeClass = (responseTime) => {
-  if (responseTime < 300) return 'response-time-good';
-  if (responseTime < 1000) return 'response-time-normal';
-  return 'response-time-slow';
+const hasParameters = (rule) => {
+  return rule.parameters && rule.parameters.length > 0;
 };
 
-// 分页处理
+const getParameterCount = (rule) => {
+  return rule.parameters ? rule.parameters.length : 0;
+};
+
+const getRowClassName = ({ row }) => {
+  if (row.error) return 'error-row';
+  if (row.working) return 'success-row';
+  if (row.tested) return 'tested-row';
+  return '';
+};
+
+const handleRowClick = (row) => {
+  console.log('点击规则行:', row.intent_name);
+};
+
+// 事件处理
+const handleSearch = () => {
+  currentPageNlp.value = 1; // 搜索时重置到第一页
+};
+
+const handleCategoryChange = () => {
+  currentPageNlp.value = 1; // 切换分类时重置到第一页
+};
+
 const handleSizeChange = (newSize) => {
   pageSize.value = newSize;
   currentPageNlp.value = 1;
@@ -959,45 +759,47 @@ const handleCurrentChange = (newPage) => {
   currentPageNlp.value = newPage;
 };
 
-const handleSearch = () => {
-  currentPageNlp.value = 1;
+const openAddRuleDialog = (type) => {
+  ElMessage.info(`添加${type}规则功能开发中...`);
 };
 
-// 生命周期
+const exportRules = (type) => {
+  ElMessage.info(`导出${type}规则功能开发中...`);
+};
+
+// 组件挂载时加载数据
 onMounted(() => {
-  fetchNlpRules();
-  fetchExecutionHistory();
+  loadNlpRules();
 });
 </script>
 
 <style scoped>
 .rule-library-page {
-  padding: 24px;
+  padding: 20px;
   background-color: #f5f7fa;
   min-height: 100vh;
 }
 
-/* 页面头部 */
 .page-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 32px;
+  padding: 30px;
   border-radius: 12px;
-  margin-bottom: 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
 .page-header h1 {
-  margin: 0 0 12px 0;
-  font-size: 32px;
+  margin: 0 0 10px 0;
+  font-size: 28px;
   font-weight: 600;
 }
 
-.page-header .description {
-  margin: 0 0 24px 0;
-  font-size: 16px;
+.description {
+  margin: 0 0 20px 0;
   opacity: 0.9;
-  line-height: 1.6;
+  font-size: 16px;
+  line-height: 1.5;
 }
 
 .header-actions {
@@ -1005,86 +807,42 @@ onMounted(() => {
   gap: 12px;
 }
 
-.header-actions .el-button {
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: white;
-  backdrop-filter: blur(10px);
-}
-
-.header-actions .el-button:hover {
-  background: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.5);
-}
-
-/* 统计概览 */
 .stats-overview {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .stats-card {
-  border: none;
-  border-radius: 12px;
-  overflow: hidden;
+  text-align: center;
   transition: all 0.3s ease;
-  cursor: pointer;
-}
-
-.stats-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-}
-
-.stats-card .el-card__body {
-  padding: 24px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
+  border: none;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
 }
 
 .stats-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  color: white;
+  font-size: 32px;
+  margin-bottom: 10px;
 }
 
-.total-card .stats-icon { background: linear-gradient(135deg, #667eea, #764ba2); }
-.active-card .stats-icon { background: linear-gradient(135deg, #f093fb, #f5576c); }
-.tested-card .stats-icon { background: linear-gradient(135deg, #4facfe, #00f2fe); }
-.working-card .stats-icon { background: linear-gradient(135deg, #43e97b, #38f9d7); }
-.error-card .stats-icon { background: linear-gradient(135deg, #fa709a, #fee140); }
-.success-rate-card .stats-icon { background: linear-gradient(135deg, #a8edea, #fed6e3); }
-
 .stats-info {
-  flex: 1;
+  text-align: center;
 }
 
 .stats-title {
   font-size: 14px;
   color: #666;
-  margin-bottom: 8px;
+  margin-bottom: 5px;
 }
 
 .stats-value {
-  font-size: 28px;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: bold;
   color: #333;
 }
 
-/* 主卡片 */
 .main-card {
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   border: none;
-}
-
-.rule-tabs {
-  border: none;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
 }
 
 .tab-label {
@@ -1094,303 +852,129 @@ onMounted(() => {
   font-weight: 500;
 }
 
-/* 工具栏 */
+.tab-content {
+  padding: 20px 0;
+}
+
 .toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
-  padding: 16px;
-  background: #f8f9fa;
-  border-radius: 8px;
+  margin-bottom: 20px;
+  padding: 0 20px;
 }
 
-.toolbar-left, .toolbar-right {
+.toolbar-left {
+  display: flex;
+  gap: 12px;
+}
+
+.toolbar-right {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-/* 规则网格 */
-.rules-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
-}
-
-.rule-card {
-  border: 1px solid #e4e7ed;
-  border-radius: 12px;
-  background: white;
-  transition: all 0.3s ease;
-  overflow: hidden;
-}
-
-.rule-card:hover {
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  transform: translateY(-2px);
-}
-
-.rule-card.tested {
-  border-left: 4px solid #409eff;
-}
-
-.rule-card.working {
-  border-left: 4px solid #67c23a;
-}
-
-.rule-card.error {
-  border-left: 4px solid #f56c6c;
-}
-
-.rule-card.inactive {
-  opacity: 0.6;
-  background: #f5f7fa;
-}
-
-.rule-card-header {
-  padding: 20px 20px 0 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.rule-title-section {
+.rule-info {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex: 1;
+  gap: 10px;
 }
 
-.rule-number {
-  background: #409eff;
-  color: white;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.complexity-tag {
   font-size: 12px;
-  font-weight: 600;
+  padding: 2px 6px;
 }
 
 .rule-name {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-  flex: 1;
+  font-weight: 500;
+  color: #333;
 }
 
-.status-tag {
-  margin-left: auto;
-}
-
-.rule-actions {
+.action-buttons {
   display: flex;
   gap: 8px;
 }
 
-.rule-card-content {
-  padding: 20px;
-}
-
-.rule-description {
-  margin-bottom: 16px;
-  color: #606266;
-  line-height: 1.6;
-}
-
-.rule-details {
-  margin-bottom: 16px;
-}
-
-.detail-item {
-  margin-bottom: 8px;
-  font-size: 14px;
-}
-
-.example-query {
-  color: #909399;
-  font-style: italic;
-}
-
-.sql-template, .parameters-section {
-  margin-bottom: 16px;
-}
-
-.sql-content, .parameters-content {
-  background: #f5f7fa;
-  border: 1px solid #e4e7ed;
-  border-radius: 6px;
-  padding: 12px;
-  margin-top: 8px;
-}
-
-.sql-content pre, .parameters-content pre {
-  margin: 0;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 12px;
-  color: #606266;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
-/* 测试结果 */
-.test-result-section {
-  border-top: 1px solid #e4e7ed;
-  padding-top: 16px;
-  margin-top: 16px;
-}
-
-.result-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.result-tag {
-  margin-left: auto;
-}
-
-.test-time {
-  font-size: 12px;
-  color: #909399;
-}
-
-.result-output {
-  margin-bottom: 12px;
-}
-
-.output-content {
-  background: #f0f9ff;
-  border: 1px solid #b3d8ff;
-  border-radius: 6px;
-  padding: 12px;
-  margin: 0;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 12px;
-  color: #0066cc;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
-.error-section {
-  background: #fef0f0;
-  border: 1px solid #fbc4c4;
-  border-radius: 6px;
-  padding: 12px;
-}
-
-.error-content pre {
-  margin: 0;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 12px;
-  color: #f56c6c;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
-/* 分页 */
-.pagination-wrapper {
+.pagination-container {
   display: flex;
   justify-content: center;
-  margin-top: 32px;
+  margin-top: 20px;
+  padding: 0 20px;
 }
 
-/* 空状态 */
-.empty-state {
-  text-align: center;
-  padding: 80px 20px;
-  color: #909399;
+.el-table {
+  margin: 0 20px;
 }
 
-.empty-icon {
-  font-size: 64px;
-  margin-bottom: 16px;
+/* 测试结果对话框样式 */
+.test-result-content {
+  padding: 10px;
 }
 
-.empty-state h3 {
-  margin: 0 0 8px 0;
-  font-size: 18px;
+.rule-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.rule-header h3 {
+  margin: 0;
+  color: #303133;
+}
+
+.test-details h4 {
+  margin: 20px 0 10px 0;
   color: #606266;
+  font-size: 16px;
 }
 
-.empty-state p {
-  margin: 0 0 24px 0;
-  color: #909399;
+.query-input {
+  margin-bottom: 20px;
 }
 
-/* 历史表格 */
-.history-table {
-  margin-bottom: 24px;
+.result-summary {
+  margin-top: 10px;
+  text-align: center;
+  padding: 10px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
 }
 
-/* 响应时间样式 */
-.response-time-good {
+/* 行状态样式 */
+.error-row {
+  background-color: #fef0f0;
+}
+
+.success-row {
+  background-color: #f0f9ff;
+}
+
+.tested-row {
+  background-color: #f5f7fa;
+}
+
+/* 测试状态样式 */
+.test-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.status-icon {
+  font-size: 16px;
+}
+
+.status-icon.success {
   color: #67c23a;
-  font-weight: 600;
 }
 
-.response-time-normal {
-  color: #e6a23c;
-  font-weight: 600;
-}
-
-.response-time-slow {
+.status-icon.error {
   color: #f56c6c;
-  font-weight: 600;
 }
 
-/* 响应式设计 */
-@media (max-width: 1200px) {
-  .rules-grid {
-    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-  }
-}
-
-@media (max-width: 768px) {
-  .rule-library-page {
-    padding: 16px;
-  }
-
-  .page-header {
-    padding: 24px;
-  }
-
-  .page-header h1 {
-    font-size: 24px;
-  }
-
-  .stats-overview .el-col {
-    margin-bottom: 16px;
-  }
-
-  .rules-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .toolbar {
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .toolbar-left, .toolbar-right {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .rule-card-header {
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .rule-actions {
-    width: 100%;
-    justify-content: center;
-  }
+.status-text {
+  font-size: 12px;
 }
 </style>
