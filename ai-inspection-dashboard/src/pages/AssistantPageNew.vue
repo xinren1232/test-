@@ -1287,13 +1287,14 @@ const handleSendMessage = async () => {
     // 调用智能问答API
     let result;
     try {
-      const response = await fetch('http://localhost:3002/api/intelligent-qa/ask', {
+      const response = await fetch('/api/assistant/query', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          question: userMessage
+          question: userMessage,
+          scenario: 'basic'
         })
       });
 

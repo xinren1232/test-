@@ -163,16 +163,18 @@ const validateIncomingData = (data) => {
  * @param {object} res - Express响应对象
  */
 const handleQuery = async (req, res) => {
-  const { query, scenario, analysisMode, requireDataAnalysis, forceMode } = req.body;
+  // 兼容前端发送的不同字段名
+  const { query, question, scenario, analysisMode, requireDataAnalysis, forceMode } = req.body;
+  const queryText = query || question;
 
-  console.log('🚀 IQE智能问答收到查询请求:', query);
+  console.log('🚀 IQE智能问答收到查询请求:', queryText);
   console.log('🎯 分析场景:', scenario);
   console.log('📊 分析模式:', analysisMode);
 
-  if (!query) {
+  if (!queryText) {
     return res.status(400).json({
       success: false,
-      error: 'Query text is required.'
+      error: 'Query text is required. Please provide either "query" or "question" field.'
     });
   }
 
@@ -182,7 +184,7 @@ const handleQuery = async (req, res) => {
     await initializeServices();
   }
 
-  logger.info(`Received IQE intelligent query: "${query}"`, {
+  logger.info(`Received IQE intelligent query: "${queryText}"`, {
     scenario,
     analysisMode,
     forceMode,
@@ -191,12 +193,12 @@ const handleQuery = async (req, res) => {
 
   try {
     logger.info(`🚀 开始基于规则模板的智能问答处理`, {
-      query,
+      query: queryText,
       requestId: req.requestId
     });
 
     // 使用新的基于规则模板的智能问答处理
-    const result = await processQuery(query);
+    const result = await processQuery(queryText);
 
     logger.info(`🎯 智能问答处理完成`, {
       hasResult: !!result,
@@ -205,7 +207,7 @@ const handleQuery = async (req, res) => {
     });
 
     if (result && result.success) {
-      logger.info(`Query processed successfully: "${query}"`, {
+      logger.info(`Query processed successfully: "${queryText}"`, {
         intent: result.data?.analysis?.intent,
         template: result.data?.template,
         dataCount: result.data?.tableData ? result.data.tableData.length : 0,
@@ -234,7 +236,7 @@ const handleQuery = async (req, res) => {
 
 
   } catch (error) {
-    logger.error(`❌ OptimizedQueryProcessor失败: "${query}"`, {
+    logger.error(`❌ OptimizedQueryProcessor失败: "${queryText}"`, {
       error: error.message,
       stack: error.stack,
       requestId: req.requestId
@@ -242,8 +244,8 @@ const handleQuery = async (req, res) => {
 
     // 如果优化查询处理器失败，回退到原始服务
     try {
-      logger.info(`🔄 回退到原始服务处理: "${query}"`);
-      const fallbackResponse = await processQuery(query);
+      logger.info(`🔄 回退到原始服务处理: "${queryText}"`);
+      const fallbackResponse = await processQuery(queryText);
 
       const fallbackResult = {
         success: true,
@@ -262,7 +264,7 @@ const handleQuery = async (req, res) => {
 
       res.json(fallbackResult);
     } catch (fallbackError) {
-      logger.error(`Fallback query also failed: "${query}"`, { error: fallbackError.message, requestId: req.requestId });
+      logger.error(`Fallback query also failed: "${queryText}"`, { error: fallbackError.message, requestId: req.requestId });
       res.status(500).json({ error: 'An internal error occurred while processing your request.' });
     }
   }

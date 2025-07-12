@@ -640,7 +640,7 @@ export async function processQuery(queryText) {
   const queryResult = await executeRuleBasedQuery(matchedRule, queryText);
 
   // 3. 格式化响应
-  return formatIntelligentResponse(queryResult, matchedRule, queryText);
+  return await formatIntelligentResponse(queryResult, matchedRule, queryText);
 
     if (hasInMemoryData) {
       console.log(`正在使用内存数据处理风险查询: "${queryText}"`);
@@ -956,7 +956,7 @@ function applyQueryFilters(data, queryText) {
  * @param {string} queryText 原始查询
  * @returns {Object}
  */
-function formatIntelligentResponse(queryResult, rule, queryText) {
+async function formatIntelligentResponse(queryResult, rule, queryText) {
   if (!queryResult.success) {
     return {
       success: false,
@@ -978,11 +978,8 @@ function formatIntelligentResponse(queryResult, rule, queryText) {
   // 生成数据分析结果
   const analysisResult = generateDataAnalysis(data, rule, queryText);
 
-  // 生成关键指标
-  const keyMetrics = generateKeyMetrics(data, rule);
-
   // 生成统计卡片
-  const cards = generateStatisticsCards(data, rule, queryText);
+  const cards = await generateStatisticsCards(data, rule);
 
   // 格式化表格数据
   const tableData = formatTableData(data, rule);
@@ -1000,8 +997,7 @@ function formatIntelligentResponse(queryResult, rule, queryText) {
       },
       template: determineTemplate(rule),
       tableData: tableData,
-      keyMetrics: keyMetrics,
-      cards: cards,
+      cards: cards, // 前端期望的卡片格式
       summary: `基于规则"${rule.intent_name}"查询完成，共找到 ${data.length} 条记录`,
       metadata: {
         dataSource: queryResult.source || 'database',
@@ -1178,248 +1174,280 @@ function generateQuerySuggestions(queryText) {
 }
 
 /**
- * 生成统计卡片数据
+ * 生成统计卡片
  * @param {Array} data 查询数据
- * @param {Object} rule 匹配的规则
- * @param {string} queryText 查询文本
- * @returns {Array} 卡片数据数组
+ * @param {Object} rule 规则对象
+ * @returns {Promise<Array>} 卡片数组
  */
-function generateStatisticsCards(data, rule, queryText) {
-  const cards = [];
-  const ruleName = rule.intent_name.toLowerCase();
-
+async function generateStatisticsCards(data, rule) {
   console.log(`🎯 生成统计卡片 - 规则: ${rule.intent_name}, 数据量: ${data.length}`);
 
-  // 1. 库存查询场景的卡片
-  if (ruleName.includes('库存') || ruleName.includes('供应商物料') || ruleName.includes('物料查询')) {
-    console.log('📦 生成库存场景卡片');
+  const ruleName = rule.intent_name.toLowerCase();
 
-    // 统计物料和批次数量
-    const materialSet = new Set();
-    const batchSet = new Set();
-    const supplierSet = new Set();
-    let riskCount = 0;
-    let frozenCount = 0;
+  // 根据规则类型生成不同的卡片
+  if (ruleName.includes('库存')) {
+    return generateInventoryScenarioCards(data);
+  } else if (ruleName.includes('测试')) {
+    return generateTestingScenarioCards(data);
+  } else if (ruleName.includes('上线') || ruleName.includes('生产')) {
+    return generateOnlineScenarioCards(data);
+  } else {
+    return generateGeneralScenarioCards(data);
+  }
+}
 
-    data.forEach(item => {
-      if (item.material_code || item.物料编码) materialSet.add(item.material_code || item.物料编码);
-      if (item.batch_code || item.批次号) batchSet.add(item.batch_code || item.批次号);
-      if (item.supplier_name || item.供应商) supplierSet.add(item.supplier_name || item.供应商);
+/**
+ * 生成库存场景卡片
+ */
+function generateInventoryScenarioCards(data) {
+  console.log('📦 生成库存场景卡片');
 
-      const status = item.status || item.状态 || '';
-      if (status === '风险' || status.includes('风险')) riskCount++;
-      if (status === '冻结' || status.includes('冻结')) frozenCount++;
-    });
+  if (!data || data.length === 0) {
+    return [];
+  }
 
-    // 第一个卡片：物料/批次（分开显示）
-    cards.push({
+  // 统计数据
+  const materialTypes = new Set();
+  const batchCodes = new Set();
+  const suppliers = new Set();
+  let riskCount = 0;
+  let frozenCount = 0;
+
+  data.forEach(item => {
+    if (item.物料名称 || item.material_name) {
+      materialTypes.add(item.物料名称 || item.material_name);
+    }
+    if (item.批次号 || item.batch_code) {
+      batchCodes.add(item.批次号 || item.batch_code);
+    }
+    if (item.供应商 || item.supplier_name) {
+      suppliers.add(item.供应商 || item.supplier_name);
+    }
+    if ((item.状态 || item.status) === '风险') {
+      riskCount++;
+    }
+    if ((item.状态 || item.status) === '冻结') {
+      frozenCount++;
+    }
+  });
+
+  const cards = [
+    {
       title: '物料/批次',
-      icon: '📦',
+      value: materialTypes.size,
+      subtitle: `${batchCodes.size}个批次`,
       type: 'info',
-      color: '#409EFF',
-      splitData: {
-        material: {
-          label: '物料种类',
-          value: materialSet.size,
-          unit: '种'
-        },
-        batch: {
-          label: '批次数量',
-          value: batchSet.size,
-          unit: '批'
-        }
-      }
-    });
-
-    // 第二个卡片：供应商
-    cards.push({
+      icon: '📦',
+      color: '#409EFF'
+    },
+    {
       title: '供应商',
-      value: supplierSet.size,
-      icon: '🏭',
+      value: suppliers.size,
+      subtitle: '数量统计',
       type: 'success',
-      color: '#67C23A',
-      subtitle: '家供应商'
-    });
-
-    // 第三个卡片：风险库存
-    cards.push({
+      icon: '🏢',
+      color: '#67C23A'
+    },
+    {
       title: '风险库存',
       value: riskCount,
-      icon: '⚠️',
+      subtitle: `${riskCount}条记录`,
       type: 'warning',
-      color: '#E6A23C',
-      subtitle: '条风险记录'
-    });
-
-    // 第四个卡片：冻结库存
-    cards.push({
+      icon: '⚠️',
+      color: '#E6A23C'
+    },
+    {
       title: '冻结库存',
       value: frozenCount,
-      icon: '🧊',
+      subtitle: `${frozenCount}条记录`,
       type: 'danger',
-      color: '#F56C6C',
-      subtitle: '条冻结记录'
-    });
+      icon: '🔒',
+      color: '#F56C6C'
+    }
+  ];
+
+  console.log(`✅ 生成了 ${cards.length} 个统计卡片:`, cards.map(c => c.title));
+  return cards;
+}
+
+/**
+ * 生成测试场景卡片
+ */
+function generateTestingScenarioCards(data) {
+  console.log('🧪 生成测试场景卡片');
+
+  if (!data || data.length === 0) {
+    return [];
   }
 
-  // 2. 生产/上线数据查询场景的卡片
-  else if (ruleName.includes('上线') || ruleName.includes('生产') || ruleName.includes('在线')) {
-    console.log('🏭 生成生产场景卡片');
+  // 统计数据
+  const materialTypes = new Set();
+  const batchCodes = new Set();
+  const suppliers = new Set();
+  const projects = new Set();
+  let okCount = 0;
+  let ngCount = 0;
 
-    const materialSet = new Set();
-    const batchSet = new Set();
-    const projectSet = new Set();
-    const supplierSet = new Set();
-    let highDefectCount = 0; // 不良率>3%的数量
-    let lowDefectCount = 0;  // 不良率<=3%的数量
+  data.forEach(item => {
+    if (item.物料名称 || item.material_name) {
+      materialTypes.add(item.物料名称 || item.material_name);
+    }
+    if (item.批次号 || item.batch_code) {
+      batchCodes.add(item.批次号 || item.batch_code);
+    }
+    if (item.供应商 || item.supplier_name) {
+      suppliers.add(item.供应商 || item.supplier_name);
+    }
+    if (item.项目 || item.project_id) {
+      projects.add(item.项目 || item.project_id);
+    }
+    if ((item.测试结果 || item.test_result) === 'OK') {
+      okCount++;
+    }
+    if ((item.测试结果 || item.test_result) === 'NG') {
+      ngCount++;
+    }
+  });
 
-    data.forEach(item => {
-      if (item.material_code || item.物料编码) materialSet.add(item.material_code || item.物料编码);
-      if (item.batch_code || item.批次号) batchSet.add(item.batch_code || item.批次号);
-      if (item.project_name || item.项目) projectSet.add(item.project_name || item.项目);
-      if (item.supplier_name || item.供应商) supplierSet.add(item.supplier_name || item.供应商);
-
-      const defectRate = parseFloat(item.defect_rate || item.不良率 || 0);
-      if (defectRate > 3) {
-        highDefectCount++;
-      } else {
-        lowDefectCount++;
-      }
-    });
-
-    // 物料/批次卡片
-    cards.push({
+  const cards = [
+    {
       title: '物料/批次',
-      icon: '📦',
+      value: materialTypes.size,
+      subtitle: `${batchCodes.size}个批次`,
       type: 'info',
-      color: '#409EFF',
-      splitData: {
-        material: {
-          label: '物料种类',
-          value: materialSet.size,
-          unit: '种'
-        },
-        batch: {
-          label: '批次数量',
-          value: batchSet.size,
-          unit: '批'
-        }
-      }
-    });
-
-    // 项目种类卡片
-    cards.push({
-      title: '项目种类',
-      value: projectSet.size,
-      icon: '🎯',
-      type: 'success',
-      color: '#67C23A',
-      subtitle: '个项目'
-    });
-
-    // 供应商卡片
-    cards.push({
-      title: '供应商',
-      value: supplierSet.size,
-      icon: '🏭',
-      type: 'primary',
-      color: '#606266',
-      subtitle: '家供应商'
-    });
-
-    // 不良率分析卡片（3%分界）
-    cards.push({
-      title: '不良率分析',
-      icon: '📊',
-      type: highDefectCount > lowDefectCount ? 'danger' : 'success',
-      color: highDefectCount > lowDefectCount ? '#F56C6C' : '#67C23A',
-      splitData: {
-        material: {
-          label: '标准内(≤3%)',
-          value: lowDefectCount,
-          unit: '批'
-        },
-        batch: {
-          label: '标准外(>3%)',
-          value: highDefectCount,
-          unit: '批'
-        }
-      }
-    });
-  }
-
-  // 3. 测试场景数据查询的卡片
-  else if (ruleName.includes('测试') || ruleName.includes('ng') || ruleName.includes('检验')) {
-    console.log('🧪 生成测试场景卡片');
-
-    const materialSet = new Set();
-    const batchSet = new Set();
-    const projectSet = new Set();
-    const supplierSet = new Set();
-    let ngCount = 0;
-
-    data.forEach(item => {
-      if (item.material_code || item.物料编码) materialSet.add(item.material_code || item.物料编码);
-      if (item.batch_code || item.批次号) batchSet.add(item.batch_code || item.批次号);
-      if (item.project_name || item.项目) projectSet.add(item.project_name || item.项目);
-      if (item.supplier_name || item.供应商) supplierSet.add(item.supplier_name || item.供应商);
-
-      const result = item.test_result || item.测试结果 || '';
-      if (result === 'NG' || result.includes('失败') || result.includes('不合格')) {
-        ngCount++;
-      }
-    });
-
-    // 物料/批次卡片
-    cards.push({
-      title: '物料/批次',
       icon: '📦',
-      type: 'info',
-      color: '#409EFF',
-      splitData: {
-        material: {
-          label: '物料种类',
-          value: materialSet.size,
-          unit: '种'
-        },
-        batch: {
-          label: '批次数量',
-          value: batchSet.size,
-          unit: '批'
-        }
-      }
-    });
-
-    // 项目卡片
-    cards.push({
+      color: '#409EFF'
+    },
+    {
       title: '项目',
-      value: projectSet.size,
-      icon: '🎯',
-      type: 'success',
-      color: '#67C23A',
-      subtitle: '个项目'
-    });
-
-    // 供应商卡片
-    cards.push({
-      title: '供应商',
-      value: supplierSet.size,
-      icon: '🏭',
+      value: projects.size,
+      subtitle: '参与项目',
       type: 'primary',
-      color: '#606266',
-      subtitle: '家供应商'
-    });
-
-    // NG批次卡片
-    cards.push({
+      icon: '🎯',
+      color: '#606266'
+    },
+    {
+      title: '供应商',
+      value: suppliers.size,
+      subtitle: '参与测试',
+      type: 'success',
+      icon: '🏢',
+      color: '#67C23A'
+    },
+    {
       title: 'NG批次',
       value: ngCount,
+      subtitle: `${ngCount}次NG`,
+      type: ngCount > 0 ? 'danger' : 'success',
       icon: '❌',
-      type: 'danger',
-      color: '#F56C6C',
-      subtitle: '批次不合格'
-    });
+      color: ngCount > 0 ? '#F56C6C' : '#67C23A'
+    }
+  ];
+
+  console.log(`✅ 生成了 ${cards.length} 个统计卡片:`, cards.map(c => c.title));
+  return cards;
+}
+
+/**
+ * 生成上线场景卡片
+ */
+function generateOnlineScenarioCards(data) {
+  console.log('🚀 生成上线场景卡片');
+
+  if (!data || data.length === 0) {
+    return [];
   }
+
+  // 统计数据
+  const materialTypes = new Set();
+  const batchCodes = new Set();
+  const suppliers = new Set();
+  const projects = new Set();
+  let totalDefectRate = 0;
+  let highDefectCount = 0;
+
+  data.forEach(item => {
+    if (item.物料名称 || item.material_name) {
+      materialTypes.add(item.物料名称 || item.material_name);
+    }
+    if (item.批次号 || item.batch_code) {
+      batchCodes.add(item.批次号 || item.batch_code);
+    }
+    if (item.供应商 || item.supplier_name) {
+      suppliers.add(item.供应商 || item.supplier_name);
+    }
+    if (item.项目 || item.project_id) {
+      projects.add(item.项目 || item.project_id);
+    }
+
+    const defectRate = item.不良率 || item.defect_rate || 0;
+    totalDefectRate += defectRate;
+    if (defectRate > 3) {
+      highDefectCount++;
+    }
+  });
+
+  const avgDefectRate = data.length > 0 ? (totalDefectRate / data.length).toFixed(1) : 0;
+
+  const cards = [
+    {
+      title: '物料/批次',
+      value: materialTypes.size,
+      subtitle: `${batchCodes.size}个批次`,
+      type: 'info',
+      icon: '📦',
+      color: '#409EFF'
+    },
+    {
+      title: '项目',
+      value: projects.size,
+      subtitle: '参与项目',
+      type: 'primary',
+      icon: '🎯',
+      color: '#606266'
+    },
+    {
+      title: '供应商',
+      value: suppliers.size,
+      subtitle: '参与生产',
+      type: 'success',
+      icon: '🏢',
+      color: '#67C23A'
+    },
+    {
+      title: '不良率',
+      value: `${avgDefectRate}%`,
+      subtitle: `${highDefectCount}批次>3%`,
+      type: avgDefectRate > 3 ? 'danger' : 'success',
+      icon: '📊',
+      color: avgDefectRate > 3 ? '#F56C6C' : '#67C23A'
+    }
+  ];
+
+  console.log(`✅ 生成了 ${cards.length} 个统计卡片:`, cards.map(c => c.title));
+  return cards;
+}
+
+/**
+ * 生成通用场景卡片
+ */
+function generateGeneralScenarioCards(data) {
+  console.log('📊 生成通用场景卡片');
+
+  if (!data || data.length === 0) {
+    return [];
+  }
+
+  const cards = [
+    {
+      title: '查询结果',
+      value: data.length,
+      subtitle: '条记录',
+      type: 'info',
+      icon: '📋',
+      color: '#409EFF'
+    }
+  ];
 
   console.log(`✅ 生成了 ${cards.length} 个统计卡片:`, cards.map(c => c.title));
   return cards;
