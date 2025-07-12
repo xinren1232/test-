@@ -120,17 +120,9 @@ const router = createRouter({
     {
       path: '/admin/data/rules',
       name: 'dataRules',
-      component: () => import('./pages/TestDataRulesPage.vue'),
+      component: () => import('./pages/NewDataRulesPage.vue'),
       meta: {
-        title: '数据规则管理',
-      }
-    },
-    {
-      path: '/admin/data/rules/match',
-      name: 'dataRulesMatch',
-      redirect: '/admin/data/rules',
-      meta: {
-        title: '数据匹配规则',
+        title: '数据规则文档',
       }
     },
     {
@@ -173,6 +165,14 @@ const router = createRouter({
       component: () => import('./pages/AssistantPageAIThreeColumn.vue'),
       meta: {
         title: 'AI智能助手'
+      }
+    },
+    {
+      path: '/intelligent-assistant',
+      name: 'intelligent-assistant',
+      component: () => import('./pages/IntelligentAssistantPage.vue'),
+      meta: {
+        title: '智能问答助手'
       }
     },
     {

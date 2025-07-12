@@ -44,6 +44,9 @@ export default (sequelize, DataTypes) => {
     },
     operator: {
       type: DataTypes.STRING(50)
+    },
+    inspection_date: {
+      type: DataTypes.DATE
     }
   }, {
     tableName: 'online_tracking',

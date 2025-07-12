@@ -1,6 +1,6 @@
 // API端点定义
 export const API_ENDPOINTS = {
-  // 规则管理相关
+  // 规则管理相关 - 统一使用 /api/rules
   RULES: {
     LIST: '/api/rules',
     CATEGORIES: '/api/rules/categories',
@@ -20,7 +20,8 @@ export const API_ENDPOINTS = {
   // AI助手相关
   ASSISTANT: {
     QUERY: '/api/assistant/query',
-    CHAT: '/api/assistant/chat'
+    CHAT: '/api/assistant/chat',
+    RULES: '/api/rules'  // 统一规则端点，指向主要的规则API
   }
 };
 

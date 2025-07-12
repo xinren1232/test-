@@ -52,15 +52,21 @@ const loadRules = async () => {
   loading.value = true;
   try {
     console.log('开始加载规则...');
-    const response = await fetch('/api/assistant/rules');
+    // 使用完整URL避免代理问题
+    const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+    const fullURL = `${baseURL}/api/rules`;
+    console.log('请求URL:', fullURL);
+
+    const response = await fetch(fullURL);
     console.log('API响应状态:', response.status);
-    
+
     if (response.ok) {
       const result = await response.json();
       console.log('API响应数据:', result);
-      
-      if (result.success && Array.isArray(result.rules)) {
-        rules.value = result.rules.map(rule => ({
+
+      // 统一处理数据格式：使用 result.data 而不是 result.rules
+      if (result.success && Array.isArray(result.data)) {
+        rules.value = result.data.map(rule => ({
           ...rule,
           testing: false
         }));
@@ -74,7 +80,7 @@ const loadRules = async () => {
   } catch (error) {
     console.error('加载规则失败:', error);
     ElMessage.error('加载规则失败: ' + error.message);
-    
+
     // 使用备用数据
     rules.value = [
       {
@@ -93,7 +99,12 @@ const loadRules = async () => {
 const testApi = async () => {
   try {
     console.log('测试API连接...');
-    const response = await fetch('/api/assistant/rules');
+    // 使用完整URL避免代理问题
+    const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+    const fullURL = `${baseURL}/api/rules`;
+    console.log('测试URL:', fullURL);
+
+    const response = await fetch(fullURL);
     const result = await response.json();
     apiTestResult.value = {
       status: response.status,

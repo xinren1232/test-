@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>简单测试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #409EFF;
+            text-align: center;
+        }
+        .status {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 4px solid #409EFF;
+            background-color: #f0f9ff;
+        }
+        .success {
+            border-left-color: #67C23A;
+            background-color: #f0f9ff;
+            color: #67C23A;
+        }
+        .error {
+            border-left-color: #F56C6C;
+            background-color: #fef0f0;
+            color: #F56C6C;
+        }
+        button {
+            background-color: #409EFF;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #337ecc;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 前端服务测试页面</h1>
+        
+        <div class="status success">
+            ✅ 静态页面加载成功
+        </div>
+        
+        <div class="status">
+            📍 当前访问地址: <span id="currentUrl"></span>
+        </div>
+        
+        <div class="status">
+            🕒 页面加载时间: <span id="loadTime"></span>
+        </div>
+        
+        <button onclick="testAPI()">测试API连接</button>
+        <button onclick="testVueApp()">测试Vue应用</button>
+        <button onclick="window.location.href='/'">返回主应用</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        // 显示当前URL和加载时间
+        document.getElementById('currentUrl').textContent = window.location.href;
+        document.getElementById('loadTime').textContent = new Date().toLocaleString();
+        
+        // 测试API连接
+        async function testAPI() {
+            const result = document.getElementById('result');
+            result.textContent = '正在测试API连接...';
+            
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                result.textContent = `API测试成功:\n${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                result.textContent = `API测试失败:\n${error.message}`;
+            }
+        }
+        
+        // 测试Vue应用
+        function testVueApp() {
+            const result = document.getElementById('result');
+            result.textContent = '正在检查Vue应用...';
+            
+            // 检查Vue是否加载
+            if (window.Vue) {
+                result.textContent = 'Vue已加载，版本: ' + window.Vue.version;
+            } else {
+                result.textContent = 'Vue未加载，可能存在JavaScript错误';
+            }
+        }
+        
+        console.log('测试页面加载完成');
+    </script>
+</body>
+</html>

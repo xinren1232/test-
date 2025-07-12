@@ -141,48 +141,90 @@ const chartConfigGenerators = {
   }),
 
   // 饼图
-  pie: (data) => ({
-    title: {
-      text: props.chartTitle,
-      left: 'center'
-    },
-    tooltip: {
-      trigger: 'item',
-      formatter: '{a} <br/>{b}: {c} ({d}%)'
-    },
-    legend: {
-      orient: 'vertical',
-      left: 'left',
-      top: 'middle'
-    },
-    series: [{
-      name: data.name || '数据分布',
-      type: 'pie',
-      radius: ['40%', '70%'],
-      center: ['60%', '50%'],
-      avoidLabelOverlap: false,
+  pie: (data) => {
+    // 默认颜色方案
+    const defaultColors = [
+      '#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de',
+      '#3ba272', '#fc8452', '#9a60b4', '#ea7ccc', '#ff9f7f'
+    ];
+
+    // 处理数据，确保有颜色
+    const processedData = (data.data || []).map((item, index) => ({
+      ...item,
       itemStyle: {
-        borderRadius: 8,
-        borderColor: '#fff',
-        borderWidth: 2
-      },
-      label: {
-        show: false,
-        position: 'center'
-      },
-      emphasis: {
-        label: {
-          show: true,
-          fontSize: 20,
-          fontWeight: 'bold'
+        color: item.color || defaultColors[index % defaultColors.length]
+      }
+    }));
+
+    return {
+      title: {
+        text: props.chartTitle,
+        left: 'center',
+        textStyle: {
+          fontSize: 16,
+          fontWeight: 'bold',
+          color: '#333'
         }
       },
-      labelLine: {
-        show: false
+      tooltip: {
+        trigger: 'item',
+        formatter: '{a} <br/>{b}: {c} ({d}%)',
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        borderColor: 'transparent',
+        textStyle: {
+          color: '#fff'
+        }
       },
-      data: data.data || []
-    }]
-  }),
+      legend: {
+        orient: 'vertical',
+        left: 'left',
+        top: 'middle',
+        itemGap: 12,
+        textStyle: {
+          fontSize: 12,
+          color: '#666'
+        }
+      },
+      series: [{
+        name: data.name || '数据分布',
+        type: 'pie',
+        radius: ['45%', '75%'],
+        center: ['65%', '50%'],
+        avoidLabelOverlap: false,
+        itemStyle: {
+          borderRadius: 6,
+          borderColor: '#fff',
+          borderWidth: 2
+        },
+        label: {
+          show: true,
+          position: 'outside',
+          formatter: '{b}\n{c} ({d}%)',
+          fontSize: 11,
+          color: '#666'
+        },
+        emphasis: {
+          itemStyle: {
+            shadowBlur: 10,
+            shadowOffsetX: 0,
+            shadowColor: 'rgba(0, 0, 0, 0.5)'
+          },
+          label: {
+            show: true,
+            fontSize: 14,
+            fontWeight: 'bold'
+          }
+        },
+        labelLine: {
+          show: true,
+          length: 15,
+          length2: 10,
+          smooth: true
+        },
+        data: processedData
+      }]
+    };
+  },
 
   // 面积图
   area: (data) => ({

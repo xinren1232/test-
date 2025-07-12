@@ -53,7 +53,13 @@
               <!-- 调试信息 -->
               <div style="background: #f0f0f0; padding: 5px; margin: 5px 0; font-size: 12px; border-radius: 3px;">
                 🔍 调试: 规则数量 {{ qaRules.basic.length }} | 第一个规则: {{ qaRules.basic[0]?.name }}
+                <br>📊 总计: 基础{{ qaRules.basic.length }} + 高级{{ qaRules.advanced.length }} + 图表{{ qaRules.charts.length }}
+                <br>🕒 最后加载: {{ new Date().toLocaleTimeString() }}
+                <br>🌐 当前端口: {{ window.location.port }}
+                <br>
                 <button @click="forceRefreshRules" style="margin-left: 10px; font-size: 10px; padding: 2px 6px;">强制刷新</button>
+                <button @click="testDirectLoad" style="margin-left: 5px; font-size: 10px; padding: 2px 6px;">直接测试</button>
+                <button @click="clearCache" style="margin-left: 5px; font-size: 10px; padding: 2px 6px;">清除缓存</button>
               </div>
               <div
                 v-for="rule in qaRules.basic"
@@ -139,14 +145,58 @@
           <!-- 消息列表 -->
           <div class="messages-container">
             <div class="messages-list" ref="messagesContainer">
-              <!-- 欢迎消息 -->
+              <!-- 欢迎消息和问答指引 -->
               <div v-if="messages.length === 0" class="welcome-message">
                 <div class="welcome-avatar">🤖</div>
                 <div class="welcome-content">
-                  <h3>欢迎使用IQE AI智能助手</h3>
-                  <p>我可以帮助您进行数据分析、质量检测、生产管理等各种任务。</p>
+                  <h3>欢迎使用QMS智能助手</h3>
+                  <p>我是您的质量管理系统智能助手，可以帮助您查询和分析质量检验数据。</p>
+
+                  <!-- 功能指引 -->
+                  <div class="feature-guide">
+                    <h4>📋 功能指引</h4>
+                    <div class="guide-sections">
+                      <div class="guide-section">
+                        <div class="guide-title">🔍 基础查询 (17类)</div>
+                        <div class="guide-desc">库存查询、测试情况、上线跟踪、不良分析等</div>
+                      </div>
+                      <div class="guide-section">
+                        <div class="guide-title">📊 高级分析 (15类)</div>
+                        <div class="guide-desc">专项分析、对比分析、综合查询、进阶统计等</div>
+                      </div>
+                      <div class="guide-section">
+                        <div class="guide-title">📈 图表工具 (14类)</div>
+                        <div class="guide-desc">趋势图、对比图、分布图、质量分析图等</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 数据范围说明 -->
+                  <div class="data-scope">
+                    <h4>📊 数据范围</h4>
+                    <div class="scope-items">
+                      <div class="scope-item">
+                        <span class="scope-icon">📦</span>
+                        <span class="scope-text">132条库存记录，涵盖5大物料类别</span>
+                      </div>
+                      <div class="scope-item">
+                        <span class="scope-icon">🏭</span>
+                        <span class="scope-text">4个工厂，3个仓库，5个供应商</span>
+                      </div>
+                      <div class="scope-item">
+                        <span class="scope-icon">🧪</span>
+                        <span class="scope-text">1056条测试记录，包含生产和测试数据</span>
+                      </div>
+                      <div class="scope-item">
+                        <span class="scope-icon">📋</span>
+                        <span class="scope-text">3个项目基线，多个批次追踪</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 快速开始 -->
                   <div class="welcome-suggestions">
-                    <div class="suggestion-title">您可以尝试问我：</div>
+                    <div class="suggestion-title">🚀 快速开始 - 点击下方问题试试：</div>
                     <div class="suggestion-list">
                       <div
                         v-for="suggestion in quickSuggestions"
@@ -157,6 +207,17 @@
                         {{ suggestion }}
                       </div>
                     </div>
+                  </div>
+
+                  <!-- 使用提示 -->
+                  <div class="usage-tips">
+                    <h4>💡 使用提示</h4>
+                    <ul class="tips-list">
+                      <li>左侧面板提供46个预设规则，点击即可快速查询</li>
+                      <li>支持自然语言提问，如"查询聚龙供应商的电池库存"</li>
+                      <li>可以要求生成图表，如"生成LCD显示屏缺陷趋势图"</li>
+                      <li>支持对比分析，如"对比BOE和天马的质量表现"</li>
+                    </ul>
                   </div>
                 </div>
               </div>
@@ -183,7 +244,68 @@
                   />
                   <!-- 普通消息显示 -->
                   <div v-else>
+                    <!-- 显示卡片（如果有） -->
+                    <div v-if="message.cards && message.cards.length > 0" class="message-cards">
+                      <div class="cards-grid">
+                        <div
+                          v-for="(card, cardIndex) in message.cards"
+                          :key="cardIndex"
+                          class="stat-card"
+                          :class="card.type"
+                        >
+                          <div class="card-icon">{{ card.icon }}</div>
+                          <div class="card-content">
+                            <div v-if="card.splitData" class="split-data-content">
+                              <div class="card-title">{{ card.title }}</div>
+                              <div class="split-data-grid">
+                                <div class="split-item">
+                                  <div class="split-label">{{ card.splitData.material.label }}</div>
+                                  <div class="split-value">{{ card.splitData.material.value }}{{ card.splitData.material.unit }}</div>
+                                </div>
+                                <div class="split-item">
+                                  <div class="split-label">{{ card.splitData.batch.label }}</div>
+                                  <div class="split-value">{{ card.splitData.batch.value }}{{ card.splitData.batch.unit }}</div>
+                                </div>
+                              </div>
+                            </div>
+                            <div v-else class="normal-card-content">
+                              <div class="card-title">{{ card.title }}</div>
+                              <div class="card-value">{{ card.value }}</div>
+                              <div v-if="card.subtitle" class="card-subtitle">{{ card.subtitle }}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- 消息文本 -->
                     <div class="message-text" v-html="formatMessageContent(message.content)"></div>
+
+                    <!-- 显示表格数据（如果有） -->
+                    <div v-if="message.tableData && message.tableData.length > 0" class="message-table">
+                      <h5>📊 详细数据</h5>
+                      <el-table
+                        :data="message.tableData.slice(0, 50)"
+                        max-height="300"
+                        border
+                        size="small"
+                      >
+                        <el-table-column
+                          v-for="(_, key) in message.tableData[0]"
+                          :key="key"
+                          :prop="key"
+                          :label="key"
+                          show-overflow-tooltip
+                          min-width="120"
+                        />
+                      </el-table>
+                      <div v-if="message.tableData.length > 50" class="table-summary">
+                        <el-text type="info">
+                          显示前50条记录，共 {{ message.tableData.length }} 条数据
+                        </el-text>
+                      </div>
+                    </div>
+
                     <div class="message-time">{{ formatTime(message.timestamp) }}</div>
                     <!-- 添加消息操作按钮 -->
                     <div v-if="message.type === 'assistant'" class="message-actions">
@@ -303,6 +425,98 @@ import { ref, computed, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import OptimizedQAResponse from '../components/OptimizedQAResponse.vue'
 import AnalysisProcessPanel from '../components/AnalysisProcessPanel.vue'
+import ResponseHandler from '../utils/ResponseHandler.js'
+// 根据处理结果创建消息
+const createMessageFromResult = (processedResult, originalQuery) => {
+  const baseMessage = {
+    type: 'assistant',
+    timestamp: new Date(),
+    originalQuery,
+    resultType: processedResult.type,
+    source: processedResult.source
+  }
+
+  switch (processedResult.type) {
+    case 'data':
+      return {
+        ...baseMessage,
+        content: formatDataMessage(processedResult),
+        data: processedResult.data,
+        dataInfo: processedResult.dataInfo,
+        aiEnhanced: processedResult.aiEnhanced,
+        cards: processedResult.cards,
+        tableData: processedResult.tableData,
+        scenarioType: processedResult.scenarioType,
+        dataCount: processedResult.dataCount
+      }
+
+    case 'chart':
+      return {
+        ...baseMessage,
+        content: '📊 已生成图表数据',
+        chartData: processedResult.data,
+        chartType: processedResult.chartType,
+        visualization: true
+      }
+
+    case 'ai_analysis':
+      return {
+        ...baseMessage,
+        content: processedResult.reply,
+        analysisType: processedResult.analysisType,
+        confidence: processedResult.confidence,
+        aiEnhanced: true
+      }
+
+    case 'hybrid':
+      return {
+        ...baseMessage,
+        content: processedResult.reply,
+        data: processedResult.data,
+        dataInfo: processedResult.dataInfo,
+        analysisType: processedResult.analysisType,
+        aiEnhanced: true,
+        hybrid: true,
+        cards: processedResult.cards,
+        tableData: processedResult.tableData,
+        scenarioType: processedResult.scenarioType,
+        dataCount: processedResult.dataCount
+      }
+
+    case 'error':
+      return {
+        ...baseMessage,
+        content: `❌ ${processedResult.message}`,
+        error: true
+      }
+
+    default:
+      return {
+        ...baseMessage,
+        content: processedResult.reply || processedResult.data || '查询完成',
+        aiEnhanced: processedResult.aiEnhanced || false,
+        cards: processedResult.cards,
+        tableData: processedResult.tableData,
+        scenarioType: processedResult.scenarioType,
+        dataCount: processedResult.dataCount,
+        data: processedResult.data
+      }
+  }
+}
+
+// 格式化数据消息
+const formatDataMessage = (result) => {
+  if (!result.data) return '查询完成，但未返回数据'
+
+  if (Array.isArray(result.data)) {
+    const count = result.data.length
+    const fields = result.dataInfo?.fields || []
+    return `📊 查询成功，返回 ${count} 条记录，包含字段：${fields.join(', ')}`
+  }
+
+  return '📊 查询成功，返回数据对象'
+}
+
 // 直接在组件中定义简化版增强AI服务
 const simpleEnhancedAIService = {
   webSearchEnabled: true,
@@ -3023,65 +3237,48 @@ const expandedSections = ref({
   charts: false   // 图表工具默认折叠
 })
 
-// 智能问答规则数据 - 基于真实数据结构设计 - 强制更新版本 - 时间戳: ${Date.now()}
+// 智能问答规则数据 - 从数据库同步的52条规则
 const qaRules = ref({
-  // 基础查询规则 - 基于真实数据的查询 - 更新版本
   basic: [
-    // 工厂库存查询 - 基于真实工厂 - 更新
-    { name: '🏭 工厂库存查询 [NEW]', query: '查询深圳工厂的库存情况', icon: '🏭', category: 'factory_query' },
-
-    // 供应商查询 - 基于真实供应商 - 更新
-    { name: '🏢 供应商物料查询 [NEW]', query: '查询聚龙供应商的物料批次', icon: '🏢', category: 'supplier_query' },
-
-    // 物料分类查询 - 基于真实物料 - 更新
-    { name: '🏗️ 结构件类查询 [NEW]', query: '查询电池盖的库存状态', icon: '🏗️', category: 'material_query' },
-
-    // 状态查询 - 基于真实状态 - 更新
-    { name: '⚠️ 风险物料查询 [NEW]', query: '查询风险状态的物料批次', icon: '⚠️', category: 'status_query' },
-
-    // 批次查询 - 基于真实批次 - 更新
-    { name: '📦 批次详情查询 [NEW]', query: '查询批次号的详细信息', icon: '📦', category: 'batch_query' },
-
-    // 仓库查询 - 基于真实仓库 - 更新
-    { name: '🏪 仓库分布查询 [NEW]', query: '查询中央库存的物料分布', icon: '🏪', category: 'warehouse_query' }
+    { name: '物料库存信息查询_优化', query: '查询物料库存信息', icon: '📦', category: '库存场景' },
+    { name: '供应商库存查询_优化', query: '查询深圳电池厂的库存', icon: '🏢', category: '库存场景' },
+    { name: '库存状态查询', query: '查询风险状态的物料', icon: '⚠️', category: '库存场景' },
+    { name: '风险库存查询', query: '查询风险状态的库存', icon: '⚠️', category: '库存场景' },
+    { name: '电池库存查询', query: '查询电池库存', icon: '🔋', category: '库存场景' },
+    { name: '物料上线情况查询', query: '查询LCD上线情况', icon: '🚀', category: '上线场景' },
+    { name: '物料上线跟踪查询_优化', query: '查询物料上线跟踪情况', icon: '🚀', category: '上线场景' },
+    { name: '物料测试情况查询', query: '查询LCD显示屏测试情况', icon: '🧪', category: '测试场景' },
+    { name: '物料测试结果查询_优化', query: '查询物料测试结果', icon: '🧪', category: '测试场景' },
+    { name: 'NG测试结果查询_优化', query: '查询NG测试结果', icon: '❌', category: '测试场景' }
   ],
-
-  // 高级分析规则 - 基于真实数据的深度分析
   advanced: [
-    // 供应商质量分析
-    { name: '供应商质量分析', query: '分析聚龙、欣冠、广正等供应商的质量表现和风险分布', icon: '📊', category: 'supplier_analysis' },
-
-    // 物料分类趋势
-    { name: '物料分类趋势', query: '分析结构件类、光学类、声学类物料的质量趋势', icon: '📈', category: 'category_trend' },
-
-    // 工厂效率对比
-    { name: '工厂效率对比', query: '对比深圳工厂、重庆工厂、南昌工厂、宜宾工厂的生产效率', icon: '🏭', category: 'factory_comparison' },
-
-    // 批次质量追踪
-    { name: '批次质量追踪', query: '追踪特定批次从库存到生产的完整质量链路', icon: '🔍', category: 'batch_tracking' }
+    { name: '批次测试情况查询', query: '查询批次203252的测试情况', icon: '📋', category: '批次场景' },
+    { name: '批次综合信息查询_优化', query: '查询批次综合信息', icon: '📋', category: '批次场景' },
+    { name: '供应商对比分析', query: '对比华为和小米供应商的表现', icon: '🔍', category: '对比场景' },
+    { name: '物料大类别质量对比', query: '查询物料大类别质量对比', icon: '🔍', category: '对比场景' }
   ],
-
-  // 图表工具规则 - 基于真实数据的可视化分析
   charts: [
-    // 物料分类图表
-    { name: '结构件类分布图', query: '生成电池盖、中框、手机卡托等结构件类物料的库存分布图表', icon: '🏗️', category: 'chart' },
-
-    // 供应商对比图表
-    { name: '供应商质量对比', query: '生成聚龙、欣冠、广正等供应商的质量对比图表', icon: '📊', category: 'chart' },
-
-    // 工厂效率图表
-    { name: '工厂库存分布', query: '生成深圳工厂、重庆工厂等各工厂的库存分布图表', icon: '🏭', category: 'chart' },
-
-    // 状态分析图表
-    { name: '物料状态分析', query: '生成正常、风险、冻结状态物料的分布饼图', icon: '📈', category: 'chart' },
-
-    // 趋势分析图表
-    { name: '质量趋势分析', query: '生成物料质量随时间变化的趋势图表', icon: '📉', category: 'chart' },
-
-    // 批次分析图表
-    { name: '批次质量分析', query: '生成不同批次物料的质量分析图表', icon: '📋', category: 'chart' }
+    { name: '本月测试汇总', query: '查询本月测试汇总', icon: '📊', category: '综合场景' }
   ]
 })
+
+// 备用规则数据 - 如果加载失败时使用
+const fallbackRules = {
+  basic: [
+    { name: '物料库存信息查询', query: '查询物料库存信息', icon: '📦', category: '库存场景' },
+    { name: '供应商库存查询', query: '查询深圳电池厂的库存', icon: '🏢', category: '库存场景' },
+    { name: '风险库存查询', query: '查询风险状态的物料', icon: '⚠️', category: '库存场景' },
+    { name: '物料测试情况查询', query: '查询LCD显示屏测试情况', icon: '🧪', category: '测试场景' },
+    { name: '物料上线情况查询', query: '查询LCD上线情况', icon: '🚀', category: '上线场景' }
+  ],
+  advanced: [
+    { name: '供应商对比分析', query: '对比华为和小米供应商的表现', icon: '🔍', category: '对比场景' },
+    { name: '批次综合信息查询', query: '查询批次综合信息', icon: '📋', category: '批次场景' }
+  ],
+  charts: [
+    { name: '本月测试汇总', query: '查询本月测试汇总', icon: '📊', category: '综合场景' }
+  ]
+}
 
 // 工具数据（保持兼容性）
 const dataAnalysisTools = ref([
@@ -3126,12 +3323,39 @@ const chartTools = ref([
   }
 ])
 
-const quickSuggestions = ref([
-  '分析当前库存状态',
-  '查看质量检测报告',
-  '生成生产效率图表',
-  '检查异常数据'
-])
+// 动态快速建议 - 从加载的规则中生成
+const quickSuggestions = computed(() => {
+  const suggestions = []
+
+  // 从基础规则中选择前3个
+  if (qaRules.value.basic.length > 0) {
+    suggestions.push(...qaRules.value.basic.slice(0, 3).map(rule => rule.query || rule.example))
+  }
+
+  // 从高级规则中选择前2个
+  if (qaRules.value.advanced.length > 0) {
+    suggestions.push(...qaRules.value.advanced.slice(0, 2).map(rule => rule.query || rule.example))
+  }
+
+  // 从图表规则中选择1个
+  if (qaRules.value.charts.length > 0) {
+    suggestions.push(qaRules.value.charts[0].query || qaRules.value.charts[0].example)
+  }
+
+  // 如果没有加载到规则，使用备用建议
+  if (suggestions.length === 0) {
+    return [
+      '查询物料库存信息',
+      '查询深圳电池厂的库存',
+      '查询风险状态的物料',
+      '查询LCD显示屏测试情况',
+      '对比华为和小米供应商的表现',
+      '查询本月测试汇总'
+    ]
+  }
+
+  return suggestions.filter(Boolean).slice(0, 6)
+})
 
 // 计算属性
 const thinkingSummary = computed(() => {
@@ -3201,16 +3425,12 @@ const sendMessage = async () => {
     const result = await response.json()
     console.log('✅ 智能查询分析完成:', result)
 
-    // 添加AI回复
-    const messageToAdd = {
-      type: 'assistant',
-      content: result.reply || '抱歉，查询过程中出现问题。',
-      timestamp: new Date(),
-      source: result.source,
-      scenario: result.scenario,
-      analysisMode: result.analysisMode,
-      aiEnhanced: result.aiEnhanced
-    }
+    // 使用ResponseHandler处理响应
+    const processedResult = ResponseHandler.handleResponse(result)
+    console.log('📊 处理后的结果:', processedResult)
+
+    // 根据处理结果类型创建消息
+    const messageToAdd = createMessageFromResult(processedResult, userQuestion)
 
     console.log('📨 准备添加消息:', messageToAdd)
     messages.value.push(messageToAdd)
@@ -5234,26 +5454,29 @@ const syncDataInBatches = async (data) => {
 // 生命周期
 onMounted(async () => {
   console.log('🤖 AI智能助手三栏布局已加载')
+  console.log('🌐 当前URL:', window.location.href)
+  console.log('🌐 当前端口:', window.location.port)
+
+  // 显示初始规则状态
+  console.log('📊 初始规则状态:', {
+    basic: qaRules.value.basic.length,
+    advanced: qaRules.value.advanced.length,
+    charts: qaRules.value.charts.length
+  })
+
+  // 加载规则数据
+  await loadRulesData()
 
   // 调试规则数据
-  console.log('🔍 调试规则数据:', qaRules.value)
-  console.log('📊 基础规则数量:', qaRules.value.basic.length)
-  console.log('📋 基础规则列表:', qaRules.value.basic.map(r => r.name))
+  console.log('🔍 最终规则数据:', qaRules.value)
+  console.log('📊 最终基础规则数量:', qaRules.value.basic.length)
+  console.log('📋 最终基础规则列表:', qaRules.value.basic.map(r => r.name))
 
-  // 强制重新赋值规则数据（解决可能的响应式问题）- 更新版本 - ${Date.now()}
-  qaRules.value = {
-    ...qaRules.value,
-    basic: [
-      { name: '🏭 工厂库存查询 [MOUNTED]', query: '查询深圳工厂的库存情况', icon: '🏭', category: 'factory_query' },
-      { name: '🏢 供应商物料查询 [MOUNTED]', query: '查询聚龙供应商的物料批次', icon: '🏢', category: 'supplier_query' },
-      { name: '🏗️ 结构件类查询 [MOUNTED]', query: '查询电池盖的库存状态', icon: '🏗️', category: 'material_query' },
-      { name: '⚠️ 风险物料查询 [MOUNTED]', query: '查询风险状态的物料批次', icon: '⚠️', category: 'status_query' },
-      { name: '📦 批次详情查询 [MOUNTED]', query: '查询批次号的详细信息', icon: '📦', category: 'batch_query' },
-      { name: '🏪 仓库分布查询 [MOUNTED]', query: '查询中央库存的物料分布', icon: '🏪', category: 'warehouse_query' }
-    ]
+  // 如果规则加载失败，尝试直接测试
+  if (qaRules.value.basic.length <= 3) {
+    console.log('⚠️ 规则数量异常，尝试直接测试加载...')
+    setTimeout(() => testDirectLoad(), 1000)
   }
-
-  console.log('🔄 强制更新后的规则:', qaRules.value.basic.map(r => r.name))
 
   // 初始化用户会话
   initializeUserSession()
@@ -5524,26 +5747,156 @@ const toggleWebSearch = () => {
   console.log('🌐 联网搜索:', webSearchEnabled.value ? '已启用' : '已禁用')
 }
 
-// 强制刷新规则
-const forceRefreshRules = () => {
-  console.log('🔄 强制刷新规则数据...')
+// 加载规则数据
+const loadRulesData = async () => {
+  try {
+    console.log('🔄 开始加载规则数据...')
 
-  // 完全重新创建规则对象
-  qaRules.value = {
-    basic: [
-      { name: '🏭 工厂库存查询 [刷新]', query: '查询深圳工厂的库存情况', icon: '🏭', category: 'factory_query' },
-      { name: '🏢 供应商物料查询 [刷新]', query: '查询聚龙供应商的物料批次', icon: '🏢', category: 'supplier_query' },
-      { name: '🏗️ 结构件类查询 [刷新]', query: '查询电池盖的库存状态', icon: '🏗️', category: 'material_query' },
-      { name: '⚠️ 风险物料查询 [刷新]', query: '查询风险状态的物料批次', icon: '⚠️', category: 'status_query' },
-      { name: '📦 批次详情查询 [刷新]', query: '查询批次号的详细信息', icon: '📦', category: 'batch_query' },
-      { name: '🏪 仓库分布查询 [刷新]', query: '查询中央库存的物料分布', icon: '🏪', category: 'warehouse_query' }
-    ],
-    advanced: qaRules.value.advanced,
-    charts: qaRules.value.charts
+    // 从JSON文件加载规则数据 (添加时间戳防止缓存)
+    const timestamp = new Date().getTime()
+    const url = `/data/rules.json?v=${timestamp}`
+    console.log('📡 请求URL:', url)
+
+    const response = await fetch(url)
+    console.log('📡 响应状态:', response.status, response.statusText)
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    const rulesData = await response.json()
+    console.log('📊 加载的规则数据:', rulesData)
+    console.log('📊 规则总数:', rulesData.totalRules)
+    console.log('📊 分类数量:', rulesData.categories?.length)
+
+    // 图标映射
+    const categoryIcons = {
+      '库存场景': '📦',
+      '上线场景': '🚀',
+      '测试场景': '🧪',
+      '批次场景': '📋',
+      '对比场景': '🔍',
+      '综合场景': '📊'
+    }
+
+    // 将规则按分类组织
+    const organizedRules = {
+      basic: [],
+      advanced: [],
+      charts: []
+    }
+
+    rulesData.categories.forEach(category => {
+      const icon = categoryIcons[category.name] || '📋'
+
+      category.rules.forEach(rule => {
+        const ruleItem = {
+          name: rule.name,
+          query: rule.example || rule.description,
+          icon: icon,
+          category: rule.category,
+          description: rule.description
+        }
+
+        // 根据分类分配到不同组
+        if (category.name === '库存场景' || category.name === '上线场景' || category.name === '测试场景') {
+          organizedRules.basic.push(ruleItem)
+        } else if (category.name === '批次场景' || category.name === '对比场景') {
+          organizedRules.advanced.push(ruleItem)
+        } else {
+          organizedRules.charts.push(ruleItem)
+        }
+      })
+    })
+
+    // 更新规则数据
+    qaRules.value = organizedRules
+
+    console.log('✅ 规则数据从JSON文件加载完成')
+    console.log(`📊 基础规则: ${qaRules.value.basic.length}条`)
+    console.log(`🔍 高级规则: ${qaRules.value.advanced.length}条`)
+    console.log(`📈 图表规则: ${qaRules.value.charts.length}条`)
+    console.log('📋 基础规则列表:', qaRules.value.basic.map(r => r.name))
+
+    ElMessage.success(`成功从JSON文件加载${rulesData.totalRules}条规则`)
+
+  } catch (error) {
+    console.error('❌ 加载规则数据失败:', error)
+    console.error('❌ 错误详情:', {
+      message: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString(),
+      url: `/data/rules.json?v=${new Date().getTime()}`
+    })
+
+    ElMessage.error('加载规则数据失败: ' + error.message + ' - 请检查网络连接或刷新页面')
+
+    // 显示错误状态
+    console.log('⚠️ 使用备用规则数据')
+
+    // 使用备用规则数据
+    console.log('⚠️ 使用备用规则数据，包含基本功能')
+    qaRules.value = {
+      basic: [
+        { name: '❌ 规则加载失败', query: '点击强制刷新重试', icon: '❌', category: 'error' },
+        ...fallbackRules.basic
+      ],
+      advanced: [
+        { name: '🔧 故障排除', query: '规则加载故障排除', icon: '🔧', category: 'troubleshoot' },
+        ...fallbackRules.advanced
+      ],
+      charts: [
+        { name: '📊 错误报告', query: '生成错误报告', icon: '📊', category: 'error_report' },
+        ...fallbackRules.charts
+      ]
+    }
   }
+}
 
-  console.log('✅ 规则刷新完成:', qaRules.value.basic.map(r => r.name))
-  ElMessage.success('规则已强制刷新')
+// 强制刷新规则
+const forceRefreshRules = async () => {
+  console.log('🔄 强制刷新规则数据...')
+  console.log('🔄 当前规则状态:', {
+    basic: qaRules.value.basic.length,
+    advanced: qaRules.value.advanced.length,
+    charts: qaRules.value.charts.length
+  })
+
+  ElMessage.info('正在重新加载规则数据...')
+  await loadRulesData()
+
+  console.log('🔄 刷新后规则状态:', {
+    basic: qaRules.value.basic.length,
+    advanced: qaRules.value.advanced.length,
+    charts: qaRules.value.charts.length
+  })
+}
+
+// 直接测试加载
+const testDirectLoad = async () => {
+  try {
+    console.log('🧪 直接测试规则加载...')
+    const response = await fetch('/data/rules.json?test=' + Date.now())
+    console.log('🧪 响应状态:', response.status)
+    const data = await response.json()
+    console.log('🧪 数据:', data)
+    ElMessage.success(`测试成功: 加载了${data.totalRules}条规则`)
+  } catch (error) {
+    console.error('🧪 测试失败:', error)
+    ElMessage.error('测试失败: ' + error.message)
+  }
+}
+
+// 清除缓存
+const clearCache = () => {
+  if ('caches' in window) {
+    caches.keys().then(names => {
+      names.forEach(name => {
+        caches.delete(name)
+      })
+    })
+  }
+  ElMessage.info('缓存已清除，请刷新页面')
 }
 </script>
 
@@ -6077,6 +6430,117 @@ input:checked + .slider:before {
   background: #e3f2fd;
   border-color: #2196f3;
   color: #1976d2;
+}
+
+/* 功能指引样式 */
+.feature-guide {
+  margin: 16px 0;
+  padding: 16px;
+  background: #f8f9ff;
+  border-radius: 8px;
+  border-left: 4px solid #4f46e5;
+}
+
+.feature-guide h4 {
+  margin: 0 0 12px 0;
+  color: #4f46e5;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.guide-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.guide-section {
+  padding: 8px 12px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+.guide-title {
+  font-weight: 600;
+  color: #374151;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+
+.guide-desc {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* 数据范围样式 */
+.data-scope {
+  margin: 16px 0;
+  padding: 16px;
+  background: #f0f9ff;
+  border-radius: 8px;
+  border-left: 4px solid #0ea5e9;
+}
+
+.data-scope h4 {
+  margin: 0 0 12px 0;
+  color: #0ea5e9;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.scope-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.scope-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.scope-icon {
+  font-size: 14px;
+  width: 20px;
+  text-align: center;
+}
+
+.scope-text {
+  color: #374151;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* 使用提示样式 */
+.usage-tips {
+  margin: 16px 0;
+  padding: 16px;
+  background: #f0fdf4;
+  border-radius: 8px;
+  border-left: 4px solid #22c55e;
+}
+
+.usage-tips h4 {
+  margin: 0 0 12px 0;
+  color: #22c55e;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.tips-list {
+  margin: 0;
+  padding-left: 16px;
+  color: #374151;
+}
+
+.tips-list li {
+  font-size: 12px;
+  line-height: 1.5;
+  margin-bottom: 4px;
 }
 
 /* 对话消息 */
@@ -7184,6 +7648,112 @@ input:checked + .slider:before {
 
 .analysis-depth:before {
   content: "🎯";
+}
+
+/* 消息卡片样式 */
+.message-cards {
+  margin-bottom: 16px;
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.stat-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid #409eff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stat-card.inventory {
+  border-left-color: #67c23a;
+}
+
+.stat-card.production {
+  border-left-color: #e6a23c;
+}
+
+.stat-card.testing {
+  border-left-color: #f56c6c;
+}
+
+.card-icon {
+  font-size: 20px;
+  opacity: 0.8;
+}
+
+.card-content {
+  flex: 1;
+}
+
+.card-title {
+  font-size: 11px;
+  color: #909399;
+  margin-bottom: 3px;
+}
+
+.card-value {
+  font-size: 16px;
+  font-weight: bold;
+  color: #303133;
+}
+
+.card-subtitle {
+  font-size: 10px;
+  color: #c0c4cc;
+  margin-top: 2px;
+}
+
+.split-data-content .card-title {
+  margin-bottom: 6px;
+}
+
+.split-data-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.split-item {
+  text-align: center;
+}
+
+.split-label {
+  font-size: 10px;
+  color: #909399;
+  margin-bottom: 2px;
+}
+
+.split-value {
+  font-size: 14px;
+  font-weight: bold;
+  color: #303133;
+}
+
+.message-table {
+  margin: 12px 0;
+}
+
+.message-table h5 {
+  margin: 0 0 8px 0;
+  color: #606266;
+  font-size: 14px;
+}
+
+.table-summary {
+  margin-top: 8px;
+  text-align: center;
+  padding: 8px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
 }
 
 /* 澄清响应样式 */

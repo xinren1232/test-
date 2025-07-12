@@ -90,32 +90,35 @@ app.directive('mermaid', {
 
 // 初始化项目基线关系
 console.log('初始化项目基线关系...');
-initializeProjectBaselineRelations();
+try {
+  initializeProjectBaselineRelations();
+  console.log('项目基线关系初始化完成');
+} catch (error) {
+  console.error('项目基线关系初始化失败:', error);
+}
 
-// 初始化物料编码映射
-console.log('正在初始化物料编码映射...');
-import { initializeMaterialCodeMap } from './data/MaterialCodeMap.js';
-initializeMaterialCodeMap().then(() => {
-  console.log('物料编码映射初始化完成');
-}).catch(error => {
-  console.error('物料编码映射初始化失败:', error);
-});
+// 异步初始化其他服务（不阻塞应用启动）
+setTimeout(async () => {
+  try {
+    // 初始化物料编码映射
+    console.log('正在初始化物料编码映射...');
+    const { initializeMaterialCodeMap } = await import('./data/MaterialCodeMap.js');
+    await initializeMaterialCodeMap();
+    console.log('物料编码映射初始化完成');
 
-// 初始化系统数据更新服务
-import systemDataUpdater from './services/SystemDataUpdater.js';
-systemDataUpdater.ensureCodeMapInitialized().then(() => {
-  console.log('系统数据服务初始化完成');
-}).catch(error => {
-  console.error('系统数据服务初始化失败:', error);
-});
+    // 初始化系统数据更新服务
+    const systemDataUpdater = (await import('./services/SystemDataUpdater.js')).default;
+    await systemDataUpdater.ensureCodeMapInitialized();
+    console.log('系统数据服务初始化完成');
 
-// 初始化所有服务
-console.log('初始化服务...');
-initializeServices().then(result => {
-  console.log('服务初始化' + (result ? '成功' : '失败'));
-}).catch(error => {
-  console.error('服务初始化错误:', error);
-});
+    // 初始化所有服务
+    console.log('初始化服务...');
+    const result = await initializeServices();
+    console.log('服务初始化' + (result ? '成功' : '失败'));
+  } catch (error) {
+    console.error('服务初始化错误:', error);
+  }
+}, 1000);
 
 console.log('应用初始化中...');
 

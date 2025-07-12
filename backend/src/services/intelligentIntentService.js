@@ -71,7 +71,7 @@ const FALLBACK_INTENT_RULES = [
     status: 'active',
     parameters: [
       { name: 'supplier', type: 'string', required: true, extract_pattern: /(聚龙|欣冠|广正|BOE|天马|华星)/i },
-      { name: 'material', type: 'string', required: false, extract_pattern: /(电池盖|中框|手机卡托|LCD显示屏|OLED显示屏)/i },
+      { name: 'material', type: 'string', required: false, extract_pattern: /(电池盖|电池|中框|手机卡托|LCD显示屏|OLED显示屏)/i },
       { name: 'status', type: 'string', required: false, extract_pattern: /(正常|风险|冻结)/i }
     ],
     trigger_words: ['供应商', '物料'],
@@ -89,7 +89,7 @@ const FALLBACK_INTENT_RULES = [
     action_target: 'queryInventoryByMaterial',
     status: 'active',
     parameters: [
-      { name: 'material', type: 'string', required: true, extract_pattern: /(电池盖|中框|手机卡托|LCD显示屏|OLED显示屏)/i },
+      { name: 'material', type: 'string', required: true, extract_pattern: /(电池盖|电池|中框|手机卡托|LCD显示屏|OLED显示屏)/i },
       { name: 'factory', type: 'string', required: false, extract_pattern: /(深圳|重庆|南昌|宜宾)工厂?/i },
       { name: 'status', type: 'string', required: false, extract_pattern: /(正常|风险|冻结)/i }
     ],
@@ -115,7 +115,7 @@ const FALLBACK_INTENT_RULES = [
     parameters: [
       { name: 'status', type: 'string', required: true, extract_pattern: /(正常|风险|冻结|异常|危险|锁定|合格)/i },
       { name: 'factory', type: 'string', required: false, extract_pattern: /(深圳|重庆|南昌|宜宾)工厂?/i },
-      { name: 'material', type: 'string', required: false, extract_pattern: /(电池盖|中框|手机卡托|LCD显示屏|OLED显示屏)/i }
+      { name: 'material', type: 'string', required: false, extract_pattern: /(电池盖|电池|中框|手机卡托|LCD显示屏|OLED显示屏)/i }
     ],
     trigger_words: ['状态', '风险', '正常', '冻结', '异常'],
     synonyms: {
@@ -142,7 +142,7 @@ const FALLBACK_INTENT_RULES = [
     status: 'active',
     parameters: [
       { name: 'factory', type: 'string', required: false, extract_pattern: /(深圳|重庆|南昌|宜宾)工厂?/i },
-      { name: 'material', type: 'string', required: false, extract_pattern: /(电池盖|中框|手机卡托|LCD显示屏|OLED显示屏)/i },
+      { name: 'material', type: 'string', required: false, extract_pattern: /(电池盖|电池|中框|手机卡托|LCD显示屏|OLED显示屏)/i },
       { name: 'supplier', type: 'string', required: false, extract_pattern: /(聚龙|欣冠|广正|BOE|天马|华星)/i },
       { name: 'status', type: 'string', required: false, extract_pattern: /(正常|风险|冻结)/i }
     ],
@@ -341,8 +341,9 @@ class IntelligentIntentService {
         }
       }
 
-      // 优先级加权
-      score *= (rule.priority || 1);
+      // 优先级加权 (数字越小优先级越高，所以使用倒数)
+      const priorityWeight = rule.priority ? (100 / rule.priority) : 1;
+      score *= priorityWeight;
 
       if (score > bestScore && score >= 2) { // 最低匹配阈值
         bestScore = score;
@@ -387,23 +388,66 @@ class IntelligentIntentService {
       }
     }
 
-    // 供应商参数提取 - 基于您的真实数据
-    const supplierKeywords = ["聚龙", "欣冠", "广正", "BOE", "三星电子"];
-    for (const keyword of supplierKeywords) {
-      if (query.includes(keyword)) {
-        params.supplier = keyword;
-        this.logger.info(`✅ 提取供应商参数: "${keyword}"`);
-        break;
+    // 供应商参数提取 - 基于真实数据库数据
+    const supplierKeywords = [
+      "聚龙", "欣冠", "广正", "丽德宝", "怡同", "富群", "天马", "东声",
+      "瑞声", "歌尔", "BOE", "盛泰", "风华", "理威", "天实", "深奥",
+      "华星", "奥海", "维科", "百佳达", "辉阳"
+    ];
+
+    // 添加供应商别名支持
+    const supplierAliases = {
+      'BOE': ['BOE', '京东方', 'boe'],
+      '聚龙': ['聚龙', 'julong'],
+      '歌尔': ['歌尔', '歌尔股份', 'goer'],
+      '天马': ['天马', 'tianma'],
+      '华星': ['华星', '华星光电']
+    };
+
+    // 首先检查别名
+    for (const [supplier, aliases] of Object.entries(supplierAliases)) {
+      for (const alias of aliases) {
+        if (query.toLowerCase().includes(alias.toLowerCase())) {
+          params.supplier = supplier;
+          this.logger.info(`✅ 提取供应商参数(别名): "${alias}" -> "${supplier}"`);
+          break;
+        }
+      }
+      if (params.supplier) break;
+    }
+
+    // 如果别名没有匹配，检查完整供应商名称
+    if (!params.supplier) {
+      for (const keyword of supplierKeywords) {
+        if (query.includes(keyword)) {
+          params.supplier = keyword;
+          this.logger.info(`✅ 提取供应商参数: "${keyword}"`);
+          break;
+        }
       }
     }
 
-    // 物料参数提取 - 基于您的真实数据
-    const materialKeywords = ["电池盖", "OLED显示屏", "电容器", "电阻器", "芯片"];
-    for (const keyword of materialKeywords) {
-      if (query.includes(keyword)) {
-        params.material = keyword;
-        this.logger.info(`✅ 提取物料参数: "${keyword}"`);
-        break;
+    // 物料参数提取 - 基于您的真实数据（按长度排序，优先匹配长词）
+    const materialKeywords = [
+      "电池盖", "OLED显示屏", "LCD显示屏", "摄像头模组", "手机卡托",
+      "电池", "中框", "侧键", "装饰件", "充电器", "扬声器", "听筒",
+      "保护套", "标签", "包装盒", "电容器", "电阻器", "芯片"
+    ];
+
+    // 特殊处理：精确匹配"电池"（避免与"电池盖"混淆）
+    if (query.match(/(?<!盖)电池(?!盖)/)) {
+      params.material = "电池";
+      this.logger.info(`✅ 精确匹配物料参数: "电池"`);
+    } else {
+      // 按长度排序，优先匹配长词（避免"电池盖"被"电池"匹配）
+      const sortedMaterialKeywords = materialKeywords.sort((a, b) => b.length - a.length);
+
+      for (const keyword of sortedMaterialKeywords) {
+        if (query.includes(keyword)) {
+          params.material = keyword;
+          this.logger.info(`✅ 提取物料参数: "${keyword}"`);
+          break;
+        }
       }
     }
 
@@ -656,25 +700,22 @@ class IntelligentIntentService {
         // 获取参数值数组，按照常见的参数顺序
         const orderedParams = this.getOrderedParameterValues(params);
 
-        // 逐个替换占位符
-        let paramIndex = 0;
+        // 对于单个参数的情况，所有占位符都使用同一个值
+        const primaryParam = orderedParams[0] || '';
 
-        // 替换 CONCAT('%', ?, '%') 模式
-        processedSql = processedSql.replace(/CONCAT\s*\(\s*['"]%['"],\s*\?\s*,\s*['"]%['"]\s*\)/gi, () => {
-          if (paramIndex < orderedParams.length) {
-            const value = orderedParams[paramIndex++];
-            return `'%${value}%'`;
-          }
-          return "''"; // 如果没有对应参数，返回空字符串
+        // 替换 CONCAT(?, '%') 模式
+        processedSql = processedSql.replace(/CONCAT\s*\(\s*\?\s*,\s*['"]%['"]\s*\)/gi, () => {
+          return `'${primaryParam}%'`;
+        });
+
+        // 替换 CONCAT(?, '盖') 等模式
+        processedSql = processedSql.replace(/CONCAT\s*\(\s*\?\s*,\s*['"]([^'"]*)['"]\s*\)/gi, (match, suffix) => {
+          return `'${primaryParam}${suffix}'`;
         });
 
         // 替换剩余的单独 ? 占位符
         processedSql = processedSql.replace(/\?/g, () => {
-          if (paramIndex < orderedParams.length) {
-            const value = orderedParams[paramIndex++];
-            return `'${value}'`;
-          }
-          return "''"; // 如果没有对应参数，返回空字符串
+          return `'${primaryParam}'`;
         });
 
       } else {

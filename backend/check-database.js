@@ -23,6 +23,21 @@ async function checkDatabase() {
     // 检查测试数据
     const [labRows] = await connection.query('SELECT COUNT(*) as count FROM lab_tests');
     console.log(`🧪 测试数据: ${labRows[0].count} 条`);
+
+    // 查看lab_tests表结构
+    console.log('\n📋 lab_tests表字段结构:');
+    const [fields] = await connection.query('DESCRIBE lab_tests');
+    fields.forEach(field => {
+      console.log(`  - ${field.Field}: ${field.Type}`);
+    });
+
+    // 查看lab_tests示例数据
+    console.log('\n📄 lab_tests示例数据:');
+    const [labSample] = await connection.query('SELECT * FROM lab_tests LIMIT 2');
+    if (labSample.length > 0) {
+      console.log('字段列表:', Object.keys(labSample[0]).join(', '));
+      console.log('示例记录:', labSample[0]);
+    }
     
     // 检查生产数据
     const [productionRows] = await connection.query('SELECT COUNT(*) as count FROM online_tracking');

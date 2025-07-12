@@ -8,6 +8,8 @@ import assistantRoutes from './controllers/assistantController.js';
 import dataRoutes from './routes/dataRoutes.js';
 import chartsRoutes from './routes/charts.js';
 import rulesRoutes from './routes/rulesRoutes.js';
+import materialCategoryRoutes from './routes/materialCategoryRoutes.js';
+import intelligentQARoutes from './routes/intelligentQARoutes.js';
 import { swaggerDocs } from './utils/swagger.js';
 
 /**
@@ -28,6 +30,8 @@ export function setupRoutes(app) {
   app.use('/api/data', dataRoutes);
   app.use('/api/charts', chartsRoutes);
   app.use('/api/rules', rulesRoutes);
+  app.use('/api/material-categories', materialCategoryRoutes);
+  app.use('/api/intelligent-qa', intelligentQARoutes);
   
   // API根路径
   app.get('/api', (req, res) => {

@@ -249,14 +249,50 @@
           />
 
           <h4>📊 查询结果</h4>
-          <div v-if="currentTestRule.testResult && currentTestRule.testResult.data && currentTestRule.testResult.data.length > 0">
+          <div v-if="getTestResultTableData(currentTestRule.testResult) && getTestResultTableData(currentTestRule.testResult).length > 0">
+            <!-- 显示卡片（如果有） -->
+            <div v-if="currentTestRule.testResult?.rawResult?.data?.cards && currentTestRule.testResult.rawResult.data.cards.length > 0" class="test-result-cards">
+              <h5>📊 数据统计概览</h5>
+              <div class="cards-grid">
+                <div
+                  v-for="(card, cardIndex) in currentTestRule.testResult.rawResult.data.cards"
+                  :key="cardIndex"
+                  class="stat-card"
+                  :class="card.type"
+                >
+                  <div class="card-icon">{{ card.icon }}</div>
+                  <div class="card-content">
+                    <div v-if="card.splitData" class="split-data-content">
+                      <div class="card-title">{{ card.title }}</div>
+                      <div class="split-data-grid">
+                        <div class="split-item">
+                          <div class="split-label">{{ card.splitData.material.label }}</div>
+                          <div class="split-value">{{ card.splitData.material.value }}{{ card.splitData.material.unit }}</div>
+                        </div>
+                        <div class="split-item">
+                          <div class="split-label">{{ card.splitData.batch.label }}</div>
+                          <div class="split-value">{{ card.splitData.batch.value }}{{ card.splitData.batch.unit }}</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-else class="normal-card-content">
+                      <div class="card-title">{{ card.title }}</div>
+                      <div class="card-value">{{ card.value }}</div>
+                      <div v-if="card.subtitle" class="card-subtitle">{{ card.subtitle }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 数据表格 -->
             <el-table
-              :data="currentTestRule.testResult.data.slice(0, 10)"
+              :data="getTestResultTableData(currentTestRule.testResult).slice(0, 10)"
               max-height="300"
               border
             >
               <el-table-column
-                v-for="(_, key) in currentTestRule.testResult.data[0]"
+                v-for="(_, key) in getTestResultTableData(currentTestRule.testResult)[0]"
                 :key="key"
                 :prop="key"
                 :label="key"
@@ -266,7 +302,7 @@
             </el-table>
             <div class="result-summary">
               <el-text type="info">
-                显示前10条记录，共 {{ currentTestRule.testResult.data.length }} 条数据
+                显示前10条记录，共 {{ getTestResultTableData(currentTestRule.testResult).length }} 条数据
               </el-text>
             </div>
           </div>
@@ -280,23 +316,61 @@
             <el-empty description="无测试数据" />
           </div>
 
-          <h4>🔧 技术信息</h4>
+          <h4>🔧 规则配置信息</h4>
           <el-descriptions :column="2" border>
-            <el-descriptions-item label="测试时间">
-              {{ currentTestRule.testResult?.timestamp || '未知' }}
+            <el-descriptions-item label="规则ID">
+              {{ currentTestRule.id }}
             </el-descriptions-item>
-            <el-descriptions-item label="匹配规则">
-              {{ currentTestRule.testResult?.matchedRule || '未知' }}
+            <el-descriptions-item label="动作类型">
+              <el-tag :type="currentTestRule.action_type === 'SQL_QUERY' ? 'success' : 'warning'">
+                {{ currentTestRule.action_type }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="优先级">
+              {{ currentTestRule.priority || 1 }}
+            </el-descriptions-item>
+            <el-descriptions-item label="状态">
+              <el-tag :type="currentTestRule.status === 'active' ? 'success' : 'info'">
+                {{ currentTestRule.status === 'active' ? '启用' : '禁用' }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="触发词" span="2">
+              <div v-if="currentTestRule.trigger_words && currentTestRule.trigger_words.length > 0">
+                <el-tag
+                  v-for="(word, index) in currentTestRule.trigger_words"
+                  :key="index"
+                  size="small"
+                  class="trigger-word-tag"
+                >
+                  {{ word }}
+                </el-tag>
+              </div>
+              <span v-else class="text-muted">无触发词配置</span>
             </el-descriptions-item>
             <el-descriptions-item label="SQL查询" span="2">
               <el-input
-                :value="currentTestRule.testResult?.sql || '无'"
+                :value="currentTestRule.action_target || '无SQL配置'"
                 type="textarea"
-                :rows="3"
+                :rows="8"
                 readonly
+                placeholder="规则的SQL查询语句"
               />
             </el-descriptions-item>
           </el-descriptions>
+
+          <div v-if="currentTestRule.testResult" style="margin-top: 20px;">
+            <h4>🧪 最近测试信息</h4>
+            <el-descriptions :column="2" border>
+              <el-descriptions-item label="测试时间">
+                {{ currentTestRule.testResult?.timestamp || '未知' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="测试状态">
+                <el-tag :type="currentTestRule.working ? 'success' : currentTestRule.error ? 'danger' : 'info'">
+                  {{ currentTestRule.working ? '正常' : currentTestRule.error ? '异常' : '未测试' }}
+                </el-tag>
+              </el-descriptions-item>
+            </el-descriptions>
+          </div>
         </div>
       </div>
 
@@ -546,14 +620,19 @@ const testSingleRule = async (rule) => {
       console.log('📊 规则测试结果:', result);
 
       // 判断测试是否成功 - 重点检查是否有实际数据返回
-      const hasData = result.data && (Array.isArray(result.data) ? result.data.length > 0 : true);
+      // API返回的数据结构: { success: true, data: { tableData: [...] } }
+      const tableData = result.data?.tableData || [];
+      const hasData = Array.isArray(tableData) && tableData.length > 0;
       const hasReply = result.reply && result.reply.trim().length > 0;
-      const isSuccess = result.success !== false && (hasData || hasReply);
+      const hasAnswer = result.data?.answer && result.data.answer.trim().length > 0;
+      const isSuccess = result.success !== false && (hasData || hasReply || hasAnswer);
 
       console.log('📊 测试结果分析:');
       console.log('  - success字段:', result.success);
       console.log('  - 有数据:', hasData);
+      console.log('  - 数据条数:', tableData.length);
       console.log('  - 有回复:', hasReply);
+      console.log('  - 有答案:', hasAnswer);
       console.log('  - 数据内容:', result.data);
       console.log('  - 最终判断:', isSuccess);
 
@@ -577,7 +656,7 @@ const testSingleRule = async (rule) => {
       };
 
       if (isSuccess) {
-        const dataCount = Array.isArray(result.data) ? result.data.length : 0;
+        const dataCount = tableData.length;
         ElMessage.success(`✅ 规则 "${rule.intent_name}" 测试成功 - 返回 ${dataCount} 条数据`);
         console.log(`✅ 规则测试成功 - 返回数据: ${dataCount} 条`);
       } else {
@@ -616,6 +695,26 @@ const generateTestQuery = (rule) => {
   };
 
   return queries[rule.intent_name] || `测试规则: ${rule.intent_name}`;
+};
+
+// 获取测试结果表格数据
+const getTestResultTableData = (testResult) => {
+  if (!testResult) return [];
+
+  // 检查多种可能的数据结构
+  if (testResult.rawResult?.data?.tableData && Array.isArray(testResult.rawResult.data.tableData)) {
+    return testResult.rawResult.data.tableData;
+  }
+
+  if (testResult.data?.tableData && Array.isArray(testResult.data.tableData)) {
+    return testResult.data.tableData;
+  }
+
+  if (testResult.data && Array.isArray(testResult.data)) {
+    return testResult.data;
+  }
+
+  return [];
 };
 
 // 获取测试状态文本
@@ -687,23 +786,85 @@ const getCategoryTagType = (category) => {
   switch (category) {
     case '基础查询':
       return 'success';
-    case '单场景分析':
-      return 'warning';
-    case '多场景分析':
+    case '进阶查询':
+      return 'primary';
+    case '专项分析':
       return 'danger';
-    default:
+    case '统计报表':
+      return 'warning';
+    case '物料专项':
       return 'info';
+    case '对比分析':
+      return 'primary';
+    case '综合查询':
+      return 'success';
+    // 兼容旧分类名称
+    case '基础查询规则':
+      return 'success';
+    case '进阶分析规则':
+      return 'primary';
+    case '高级统计规则':
+      return 'warning';
+    case '专项分析规则':
+      return 'danger';
+    case '趋势对比规则':
+      return 'info';
+    case '中级规则':
+      return 'success';
+    case '高级规则':
+      return 'warning';
+    case '专项规则':
+      return 'danger';
+    case '排行规则':
+      return 'primary';
+    case '复杂规则':
+      return 'info';
+    case '追溯规则':
+      return 'primary';
+    default:
+      return '';
   }
 };
 
 const getCategoryLabel = (category) => {
   switch (category) {
     case '基础查询':
+      return '基础查询';
+    case '进阶查询':
+      return '进阶查询';
+    case '专项分析':
+      return '专项分析';
+    case '统计报表':
+      return '统计报表';
+    case '物料专项':
+      return '物料专项';
+    case '对比分析':
+      return '对比分析';
+    case '综合查询':
+      return '综合查询';
+    // 兼容旧分类名称
+    case '基础查询规则':
       return '基础';
-    case '单场景分析':
+    case '进阶分析规则':
+      return '进阶';
+    case '高级统计规则':
+      return '统计';
+    case '专项分析规则':
+      return '专项';
+    case '趋势对比规则':
+      return '趋势';
+    case '中级规则':
       return '中级';
-    case '多场景分析':
+    case '高级规则':
       return '高级';
+    case '专项规则':
+      return '专项';
+    case '排行规则':
+      return '排行';
+    case '复杂规则':
+      return '复杂';
+    case '追溯规则':
+      return '追溯';
     default:
       return '未分类';
   }
@@ -976,5 +1137,103 @@ onMounted(() => {
 
 .status-text {
   font-size: 12px;
+}
+
+/* 触发词标签样式 */
+.trigger-word-tag {
+  margin: 2px 4px 2px 0;
+}
+
+.text-muted {
+  color: #909399;
+  font-style: italic;
+}
+
+/* 测试结果卡片样式 */
+.test-result-cards {
+  margin-bottom: 20px;
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.stat-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid #409eff;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stat-card.inventory {
+  border-left-color: #67c23a;
+}
+
+.stat-card.production {
+  border-left-color: #e6a23c;
+}
+
+.stat-card.testing {
+  border-left-color: #f56c6c;
+}
+
+.card-icon {
+  font-size: 24px;
+  opacity: 0.8;
+}
+
+.card-content {
+  flex: 1;
+}
+
+.card-title {
+  font-size: 12px;
+  color: #909399;
+  margin-bottom: 4px;
+}
+
+.card-value {
+  font-size: 20px;
+  font-weight: bold;
+  color: #303133;
+}
+
+.card-subtitle {
+  font-size: 11px;
+  color: #c0c4cc;
+  margin-top: 2px;
+}
+
+.split-data-content .card-title {
+  margin-bottom: 8px;
+}
+
+.split-data-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.split-item {
+  text-align: center;
+}
+
+.split-label {
+  font-size: 11px;
+  color: #909399;
+  margin-bottom: 2px;
+}
+
+.split-value {
+  font-size: 16px;
+  font-weight: bold;
+  color: #303133;
 }
 </style>

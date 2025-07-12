@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import HomeView from '../pages/HomeView.vue';
+// import HomeView from '../pages/MinimalTest.vue';
 import Dashboard from '../pages/Dashboard.vue';
 import InventoryView from '../pages/Inventory.vue';
 import LabView from '../pages/LabView.vue';
@@ -10,11 +11,13 @@ import RuleLibraryView from '../pages/RuleLibraryView.vue';
 import RuleLibraryViewSimple from '../pages/RuleLibraryViewSimple.vue';
 import ApiTestPage from '../pages/ApiTestPage.vue';
 import TestApiPage from '../pages/TestApiPage.vue';
+import TestRulesPage from '../pages/TestRulesPage.vue';
 
 import MaterialExceptionPage from '../pages/MaterialExceptionPage.vue';
 import BatchManagement from '../pages/BatchManagement.vue';
 import DataRulesDefinitionPage from '../pages/DataRulesDefinitionPage.vue';
 import BackendTest from '../pages/BackendTest.vue';
+import QATestPage from '../pages/QATestPage.vue';
 
 // 创建一个简单的 NotFound 组件
 const NotFound = {
@@ -120,6 +123,15 @@ const routes = [
       title: '规则库',
       icon: 'Tickets',
       requiresAuth: true
+    }
+  },
+  {
+    path: '/test-rules',
+    name: 'TestRules',
+    component: TestRulesPage,
+    meta: {
+      title: '规则测试',
+      icon: 'Operation'
     }
   },
   {
@@ -265,6 +277,12 @@ const routes = [
     meta: { title: '正在加载QMS智能助手' }
   },
   {
+    path: '/qa-test',
+    name: 'QATest',
+    component: QATestPage,
+    meta: { title: '🧪 智能问答测试', icon: 'Tools' }
+  },
+  {
     path: '/test-ai-three-column',
     name: 'TestAIThreeColumn',
     component: () => import('../pages/TestAIThreeColumn.vue'),
@@ -349,6 +367,12 @@ const routes = [
     name: 'AIArchitecturePage',
     component: () => import('../pages/AIArchitecturePage.vue'),
     meta: { title: '架构设计', icon: 'Operation' }
+  },
+  {
+    path: '/test-real-data',
+    name: 'TestRealDataDisplay',
+    component: () => import('../pages/TestRealDataDisplay.vue'),
+    meta: { title: '真实数据显示测试', icon: 'DataBoard' }
   },
   {
     path: '/:pathMatch(.*)*',

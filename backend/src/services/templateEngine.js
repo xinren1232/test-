@@ -121,7 +121,17 @@ class TemplateEngine {
     return text
       .replace(/\s+/g, ' ')  // 多个空白字符替换为单个空格
       .replace(/\s*,\s*/g, ', ')  // 逗号前后的空格标准化
-      .replace(/\s*=\s*/g, ' = ')  // 等号前后的空格标准化
+      // 先保护复合操作符，使用占位符
+      .replace(/\s*!=\s*/g, ' __NE__ ')  // 不等号占位符
+      .replace(/\s*<=\s*/g, ' __LE__ ')  // 小于等于占位符
+      .replace(/\s*>=\s*/g, ' __GE__ ')  // 大于等于占位符
+      .replace(/\s*<>\s*/g, ' __NE2__ ')  // 不等号占位符
+      .replace(/\s*=\s*/g, ' = ')   // 等号前后的空格标准化
+      // 恢复复合操作符
+      .replace(/ __NE__ /g, ' != ')
+      .replace(/ __LE__ /g, ' <= ')
+      .replace(/ __GE__ /g, ' >= ')
+      .replace(/ __NE2__ /g, ' <> ')
       .replace(/\s*\(\s*/g, ' (')  // 左括号前后的空格
       .replace(/\s*\)\s*/g, ') ')  // 右括号前后的空格
       .trim();  // 去除首尾空白

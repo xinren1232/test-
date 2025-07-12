@@ -192,8 +192,8 @@ import { ref, computed, provide, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElConfigProvider, ElMessage } from 'element-plus';
 import zhCn from 'element-plus/es/locale/lang/zh-cn';
-import unifiedDataService from './services/UnifiedDataService';
-import systemDataUpdater from './services/SystemDataUpdater';
+// import unifiedDataService from './services/UnifiedDataService';
+// import systemDataUpdater from './services/SystemDataUpdater';
 import {
   HomeFilled, DataBoard, Goods, OfficeBuilding,
   Document, Operation, Stopwatch, Fold, Expand,

@@ -252,14 +252,19 @@ export async function loadIntentRules() {
     console.log(`从数据库加载了 ${rules.length} 条NLP规则`);
 
     intentRules = rules.map(rule => ({
+      intent_name: rule.intent_name,  // 保持原字段名
       intent: rule.intent_name,
       keywords: rule.intent_name.split(',').map(k => k.trim().toLowerCase()), // 支持逗号分隔的关键字
       required_entities: rule.parameters, // 保持字段名一致
       response_format: '查询结果如下：', // 示例格式
       target_page: null, // 示例
       action: rule.action_target, // SQL查询或API端点
+      action_target: rule.action_target, // 保持原字段名
       description: rule.description,
       action_type: rule.action_type,
+      trigger_words: rule.trigger_words, // 保持原字段名
+      priority: rule.priority,
+      status: rule.status
     }));
 
     console.log('NLP intent rules loaded successfully.');
@@ -603,11 +608,13 @@ function formatResults(rule, results) {
 
 
 /**
- * 处理用户查询的核心函数
+ * 处理用户查询的核心函数 - 基于规则模板的智能问答
  * @param {string} queryText
- * @returns {Promise<string>}
+ * @returns {Promise<Object>}
  */
 export async function processQuery(queryText) {
+  console.log(`🤖 开始处理查询: "${queryText}"`);
+
   if (intentRules.length === 0) {
     try {
       await loadIntentRules();
@@ -616,15 +623,24 @@ export async function processQuery(queryText) {
     }
   }
 
-  // 检查是否包含"风险"或"高风险"关键词，如果包含，直接使用内存查询
-  const queryLower = queryText.toLowerCase();
-  if (queryLower.includes('风险') || queryLower.includes('高风险')) {
-    console.log('检测到风险查询关键词，优先使用内存数据处理');
-    
-    // 优先使用内存数据进行查询
-    const hasInMemoryData = inMemoryData.inventory.length > 0 ||
-                          inMemoryData.inspection.length > 0 ||
-                          inMemoryData.production.length > 0;
+  // 1. 智能意图识别 - 匹配最合适的规则模板
+  const matchedRule = await intelligentIntentMatching(queryText);
+
+  if (!matchedRule) {
+    return {
+      success: false,
+      message: '抱歉，我无法理解您的问题。请尝试使用更具体的描述。',
+      suggestions: generateQuerySuggestions(queryText)
+    };
+  }
+
+  console.log(`🎯 匹配到规则: ${matchedRule.intent_name}`);
+
+  // 2. 参数提取和数据查询
+  const queryResult = await executeRuleBasedQuery(matchedRule, queryText);
+
+  // 3. 格式化响应
+  return formatIntelligentResponse(queryResult, matchedRule, queryText);
 
     if (hasInMemoryData) {
       console.log(`正在使用内存数据处理风险查询: "${queryText}"`);
@@ -647,59 +663,146 @@ export async function processQuery(queryText) {
     }
   }
 
-  // 先匹配意图规则，这样内存查询时也可以使用
-  const matchedRule = matchIntent(queryText);
+/**
+ * 智能意图匹配 - 基于语义理解和关键词匹配
+ * @param {string} queryText
+ * @returns {Object|null}
+ */
+async function intelligentIntentMatching(queryText) {
+  const queryLower = queryText.toLowerCase();
+  let bestMatch = null;
+  let maxScore = 0;
 
-  // 优先使用内存数据进行查询
-  const hasInMemoryData = inMemoryData.inventory.length > 0 ||
-                         inMemoryData.inspection.length > 0 ||
-                         inMemoryData.production.length > 0;
+  // 预处理查询文本
+  const cleanQuery = queryLower
+    .replace(/[，。！？；：""''（）【】]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
-  if (hasInMemoryData) {
-    console.log(`正在使用内存数据处理查询: "${queryText}"`);
-    console.log(`内存数据统计: 库存 ${inMemoryData.inventory.length} 条, 检验 ${inMemoryData.inspection.length} 条, 生产 ${inMemoryData.production.length} 条`);
-    try {
-      // 传递matchedRule参数给processInMemoryQuery函数
-      const memoryResult = await processInMemoryQuery(queryText, matchedRule);
-      if (memoryResult) { // 如果内存查询有结果，直接返回
-        return memoryResult;
-      }
-      console.log("内存查询未返回有效结果，将尝试数据库查询。")
-    } catch (error) {
-      console.error('内存查询失败，回退到数据库查询:', error);
+  console.log(`🔍 分析查询: "${cleanQuery}"`);
+
+  for (const rule of intentRules) {
+    let score = 0;
+
+    // 1. 规则名称匹配 (权重最高)
+    if (rule.intent_name && cleanQuery.includes(rule.intent_name.toLowerCase())) {
+      score += 50;
     }
-  } else {
-      console.log("内存数据为空，跳过内存查询。");
-  }
 
-  if (!matchedRule) {
-    return '抱歉，我暂时无法理解您的问题。您可以试试问我："有哪些物料当前是高风险？"';
-  }
+    // 2. 触发词匹配
+    if (rule.trigger_words) {
+      let triggerWords = [];
 
-  // 验证matchedRule是否有效
-  if (!matchedRule.action || typeof matchedRule.action !== 'string' || !matchedRule.action.trim()) {
-    console.error('无效的SQL查询:', matchedRule.action);
-    return '在处理您的请求时遇到了配置错误。';
-  }
-
-  let queryValues = extractParameters(queryText, matchedRule);
-
-  if (queryValues === null) {
-      // 尝试解析参数定义
-      let requiredParams = [];
-      try {
-          if (typeof matchedRule.required_entities === 'string' && matchedRule.required_entities.trim()) {
-            requiredParams = JSON.parse(matchedRule.required_entities);
-          } else if (Array.isArray(matchedRule.required_entities)) {
-            requiredParams = matchedRule.required_entities;
-          }
-      } catch(e) { /* ignore */ }
-      
-      if (requiredParams.length > 0) {
-        const paramNames = requiredParams.map(p => p.name).join(', ');
-        return `我理解您想'${matchedRule.intent}'，但需要您提供以下参数: ${paramNames}。`;
+      // 处理不同格式的触发词
+      if (Array.isArray(rule.trigger_words)) {
+        triggerWords = rule.trigger_words;
+      } else if (typeof rule.trigger_words === 'string') {
+        // 如果是逗号分隔的字符串
+        triggerWords = rule.trigger_words.split(',').map(w => w.trim());
+      } else {
+        try {
+          triggerWords = JSON.parse(rule.trigger_words || '[]');
+        } catch (e) {
+          triggerWords = [];
+        }
       }
+
+      for (const word of triggerWords) {
+        if (cleanQuery.includes(word.toLowerCase())) {
+          score += 20;
+        }
+      }
+    }
+
+    // 3. 场景关键词匹配
+    const sceneKeywords = extractSceneKeywords(cleanQuery);
+    const ruleScene = determineRuleScene(rule);
+    if (sceneKeywords.includes(ruleScene)) {
+      score += 15;
+    }
+
+    // 4. 实体匹配 (供应商、物料、工厂等)
+    const entities = extractEntities(cleanQuery);
+    if (entities.length > 0) {
+      score += entities.length * 5;
+    }
+
+    if (score > maxScore) {
+      maxScore = score;
+      bestMatch = rule;
+    }
   }
+
+  console.log(`🎯 最佳匹配: ${bestMatch?.intent_name} (得分: ${maxScore})`);
+  return maxScore > 10 ? bestMatch : null;
+}
+
+/**
+ * 提取场景关键词
+ */
+function extractSceneKeywords(query) {
+  const scenes = [];
+  if (query.includes('库存') || query.includes('仓库') || query.includes('入库')) scenes.push('inventory');
+  if (query.includes('测试') || query.includes('检验') || query.includes('ng') || query.includes('不合格')) scenes.push('testing');
+  if (query.includes('上线') || query.includes('生产') || query.includes('产线') || query.includes('不良率')) scenes.push('online');
+  if (query.includes('批次') || query.includes('batch')) scenes.push('batch');
+  return scenes;
+}
+
+/**
+ * 确定规则场景
+ */
+function determineRuleScene(rule) {
+  if (!rule || !rule.intent_name) return 'general';
+  const name = rule.intent_name.toLowerCase();
+  if (name.includes('库存')) return 'inventory';
+  if (name.includes('测试') || name.includes('ng')) return 'testing';
+  if (name.includes('上线') || name.includes('生产')) return 'online';
+  if (name.includes('批次')) return 'batch';
+  return 'general';
+}
+
+/**
+ * 提取实体信息
+ */
+function extractEntities(query) {
+  const entities = [];
+
+  // 供应商实体
+  const suppliers = ['聚龙', '欣冠', '广正', '帝晶', '天马', 'boe', '华星', '百俊达', '奥海', '辰阳', '锂威', '风华', '维科', '东声', '瑞声', '歌尔', '丽德宝', '怡同', '富群'];
+  suppliers.forEach(supplier => {
+    if (query.includes(supplier.toLowerCase())) {
+      entities.push({ type: 'supplier', value: supplier });
+    }
+  });
+
+  // 物料实体
+  const materials = ['电池盖', '中框', '手机卡托', '侧键', '装饰件', 'lcd显示屏', 'oled显示屏', '摄像头模组', '电池', '充电器', '喇叭', '听筒', '保护套', '标签', '包装盒'];
+  materials.forEach(material => {
+    if (query.includes(material.toLowerCase())) {
+      entities.push({ type: 'material', value: material });
+    }
+  });
+
+  // 工厂实体
+  const factories = ['深圳工厂', '重庆工厂', '南昌工厂', '宜宾工厂'];
+  factories.forEach(factory => {
+    if (query.includes(factory.toLowerCase())) {
+      entities.push({ type: 'factory', value: factory });
+    }
+  });
+
+  return entities;
+}
+
+/**
+ * 执行基于规则的数据查询
+ * @param {Object} rule 匹配的规则
+ * @param {string} queryText 原始查询文本
+ * @returns {Promise<Object>}
+ */
+async function executeRuleBasedQuery(rule, queryText) {
+  console.log(`📊 执行规则查询: ${rule.intent_name}`);
 
   try {
     // 确保数据库已初始化
@@ -707,27 +810,618 @@ export async function processQuery(queryText) {
       db = await initializeDatabase();
     }
 
-    // 在函数内部访问sequelize实例
-    const { sequelize } = db;
-    
-    // 确保查询值是数组
-    const safeQueryValues = Array.isArray(queryValues) ? queryValues : [];
-    
-    // 执行SQL查询前进行最后的安全检查
-    if (!matchedRule.action.includes('?') && safeQueryValues.length > 0) {
-      console.warn('SQL查询中没有参数占位符，但提供了参数值');
-    }
-    
-    const results = await sequelize.query(matchedRule.action, {
-      replacements: safeQueryValues, // 使用 replacements 来安全地替换 '?'
-      type: QueryTypes.SELECT,
+    // 解析SQL查询模板
+    let sqlQuery = rule.action_target;
+    const parameters = extractQueryParameters(queryText, rule);
+
+    console.log(`🔍 SQL查询: ${sqlQuery}`);
+    console.log(`📋 参数: ${JSON.stringify(parameters)}`);
+
+    // 执行查询
+    const results = await db.sequelize.query(sqlQuery, {
+      replacements: parameters,
+      type: db.sequelize.QueryTypes.SELECT
     });
-    
-    return formatResults(matchedRule, results);
+
+    console.log(`✅ 查询完成，返回 ${results ? results.length : 'undefined'} 条记录`);
+    console.log(`🔍 查询结果类型: ${typeof results}`);
+    console.log(`🔍 查询结果内容: ${JSON.stringify(results).substring(0, 200)}...`);
+
+    return {
+      success: true,
+      data: results,
+      rule: rule,
+      parameters: parameters,
+      query: sqlQuery
+    };
 
   } catch (error) {
-    console.error(`Error executing action for intent "${matchedRule?.intent}":`, error);
-    return '在处理您的请求时遇到了内部错误。';
+    console.error(`❌ 查询执行失败: ${error.message}`);
+
+    // 回退到内存数据查询
+    return await executeInMemoryQuery(rule, queryText);
   }
+}
+
+/**
+ * 提取查询参数
+ */
+function extractQueryParameters(queryText, rule) {
+  const parameters = {};
+  const entities = extractEntities(queryText.toLowerCase());
+
+  // 根据实体类型设置参数
+  entities.forEach(entity => {
+    switch (entity.type) {
+      case 'supplier':
+        parameters.supplier = entity.value;
+        break;
+      case 'material':
+        parameters.material = entity.value;
+        break;
+      case 'factory':
+        parameters.factory = entity.value;
+        break;
+    }
+  });
+
+  // 状态参数
+  if (queryText.includes('风险')) parameters.status = '风险';
+  if (queryText.includes('冻结')) parameters.status = '冻结';
+  if (queryText.includes('正常')) parameters.status = '正常';
+
+  // NG/OK参数
+  if (queryText.includes('ng') || queryText.includes('不合格')) parameters.result = 'NG';
+  if (queryText.includes('ok') || queryText.includes('合格')) parameters.result = 'OK';
+
+  return parameters;
+}
+
+/**
+ * 内存数据查询回退方案
+ */
+async function executeInMemoryQuery(rule, queryText) {
+  console.log(`🔄 使用内存数据查询作为回退方案`);
+
+  const hasInMemoryData = inMemoryData.inventory.length > 0 ||
+                         inMemoryData.inspection.length > 0 ||
+                         inMemoryData.production.length > 0;
+
+  if (!hasInMemoryData) {
+    return {
+      success: false,
+      message: '暂无数据，请先生成数据后再进行查询。'
+    };
+  }
+
+  // 根据规则类型选择数据源
+  let dataSource = [];
+  const ruleName = rule.intent_name.toLowerCase();
+
+  if (ruleName.includes('库存')) {
+    dataSource = inMemoryData.inventory;
+  } else if (ruleName.includes('测试') || ruleName.includes('ng')) {
+    dataSource = inMemoryData.inspection;
+  } else if (ruleName.includes('上线') || ruleName.includes('生产')) {
+    dataSource = inMemoryData.production;
+  } else {
+    // 综合查询，合并所有数据
+    dataSource = [...inMemoryData.inventory, ...inMemoryData.inspection, ...inMemoryData.production];
+  }
+
+  // 应用过滤条件
+  const filteredData = applyQueryFilters(dataSource, queryText);
+
+  return {
+    success: true,
+    data: filteredData.slice(0, 20), // 限制返回数量
+    rule: rule,
+    source: 'memory'
+  };
+}
+
+/**
+ * 应用查询过滤条件
+ */
+function applyQueryFilters(data, queryText) {
+  const queryLower = queryText.toLowerCase();
+
+  return data.filter(item => {
+    // 供应商过滤
+    if (queryLower.includes('聚龙') && !item.supplier_name?.includes('聚龙')) return false;
+    if (queryLower.includes('天马') && !item.supplier_name?.includes('天马')) return false;
+    if (queryLower.includes('boe') && !item.supplier_name?.toLowerCase().includes('boe')) return false;
+
+    // 状态过滤
+    if (queryLower.includes('风险') && item.status !== '风险') return false;
+    if (queryLower.includes('冻结') && item.status !== '冻结') return false;
+    if (queryLower.includes('正常') && item.status !== '正常') return false;
+
+    // 物料过滤
+    if (queryLower.includes('电池') && !item.material_name?.includes('电池')) return false;
+    if (queryLower.includes('lcd') && !item.material_name?.toLowerCase().includes('lcd')) return false;
+
+    // NG/OK过滤
+    if (queryLower.includes('ng') && item.test_result !== 'NG') return false;
+    if (queryLower.includes('ok') && item.test_result !== 'OK') return false;
+
+    return true;
+  });
+}
+
+/**
+ * 格式化智能响应 - 统一的展示格式
+ * @param {Object} queryResult 查询结果
+ * @param {Object} rule 匹配的规则
+ * @param {string} queryText 原始查询
+ * @returns {Object}
+ */
+function formatIntelligentResponse(queryResult, rule, queryText) {
+  if (!queryResult.success) {
+    return {
+      success: false,
+      data: {
+        question: queryText,
+        answer: queryResult.message || '查询失败，请稍后重试。',
+        analysis: {
+          type: 'error',
+          intent: rule.intent_name,
+          confidence: 0.5
+        },
+        template: 'error_response'
+      }
+    };
+  }
+
+  const data = queryResult.data || [];
+
+  // 生成数据分析结果
+  const analysisResult = generateDataAnalysis(data, rule, queryText);
+
+  // 生成关键指标
+  const keyMetrics = generateKeyMetrics(data, rule);
+
+  // 生成统计卡片
+  const cards = generateStatisticsCards(data, rule, queryText);
+
+  // 格式化表格数据
+  const tableData = formatTableData(data, rule);
+
+  return {
+    success: true,
+    data: {
+      question: queryText,
+      answer: analysisResult.summary,
+      analysis: {
+        type: analysisResult.type,
+        intent: rule.intent_name,
+        entities: extractEntities(queryText),
+        confidence: 0.9
+      },
+      template: determineTemplate(rule),
+      tableData: tableData,
+      keyMetrics: keyMetrics,
+      cards: cards,
+      summary: `基于规则"${rule.intent_name}"查询完成，共找到 ${data.length} 条记录`,
+      metadata: {
+        dataSource: queryResult.source || 'database',
+        rule: rule.intent_name,
+        timestamp: new Date().toISOString(),
+        processingTime: Date.now()
+      }
+    }
+  };
+}
+
+/**
+ * 生成数据分析结果
+ */
+function generateDataAnalysis(data, rule, queryText) {
+  const ruleName = rule.intent_name.toLowerCase();
+  let type = 'general';
+  let summary = '';
+
+  if (ruleName.includes('库存')) {
+    type = 'inventory';
+    const totalQuantity = data.reduce((sum, item) => sum + (parseInt(item.数量 || item.quantity || 0)), 0);
+    const normalCount = data.filter(item => (item.状态 || item.status) === '正常').length;
+    const riskCount = data.filter(item => (item.状态 || item.status) === '风险').length;
+
+    summary = `根据您的查询"${queryText}"，找到了 ${data.length} 条库存记录。总库存数量为 ${totalQuantity} 件，其中正常状态 ${normalCount} 条，风险状态 ${riskCount} 条。`;
+  } else if (ruleName.includes('测试') || ruleName.includes('ng')) {
+    type = 'testing';
+    const okCount = data.filter(item => (item.测试结果 || item.test_result) === 'OK').length;
+    const ngCount = data.filter(item => (item.测试结果 || item.test_result) === 'NG').length;
+    const passRate = data.length > 0 ? ((okCount / data.length) * 100).toFixed(1) : 0;
+
+    summary = `根据您的查询"${queryText}"，找到了 ${data.length} 条测试记录。合格 ${okCount} 条，不合格 ${ngCount} 条，合格率为 ${passRate}%。`;
+  } else if (ruleName.includes('上线') || ruleName.includes('生产')) {
+    type = 'online';
+    const avgDefectRate = data.length > 0 ?
+      (data.reduce((sum, item) => sum + parseFloat(item.不良率 || item.defect_rate || 0), 0) / data.length).toFixed(2) : 0;
+
+    summary = `根据您的查询"${queryText}"，找到了 ${data.length} 条上线记录。平均不良率为 ${avgDefectRate}%。`;
+  } else {
+    summary = `根据您的查询"${queryText}"，找到了 ${data.length} 条相关记录。`;
+  }
+
+  return { type, summary };
+}
+
+/**
+ * 生成关键指标
+ */
+function generateKeyMetrics(data, rule) {
+  const metrics = [];
+  const ruleName = rule.intent_name.toLowerCase();
+
+  // 总记录数
+  metrics.push({
+    label: '总记录数',
+    value: data.length,
+    trend: 'stable'
+  });
+
+  if (ruleName.includes('库存')) {
+    const normalCount = data.filter(item => (item.状态 || item.status) === '正常').length;
+    const riskCount = data.filter(item => (item.状态 || item.status) === '风险').length;
+    const frozenCount = data.filter(item => (item.状态 || item.status) === '冻结').length;
+
+    metrics.push(
+      { label: '正常状态', value: normalCount, trend: 'up' },
+      { label: '风险状态', value: riskCount, trend: riskCount > 0 ? 'down' : 'stable' },
+      { label: '冻结状态', value: frozenCount, trend: frozenCount > 0 ? 'down' : 'stable' }
+    );
+  } else if (ruleName.includes('测试')) {
+    const okCount = data.filter(item => (item.测试结果 || item.test_result) === 'OK').length;
+    const ngCount = data.filter(item => (item.测试结果 || item.test_result) === 'NG').length;
+
+    metrics.push(
+      { label: '合格数量', value: okCount, trend: 'up' },
+      { label: '不合格数量', value: ngCount, trend: ngCount > 0 ? 'down' : 'stable' }
+    );
+  } else if (ruleName.includes('上线')) {
+    const avgDefectRate = data.length > 0 ?
+      (data.reduce((sum, item) => sum + parseFloat(item.不良率 || item.defect_rate || 0), 0) / data.length).toFixed(2) : 0;
+
+    metrics.push(
+      { label: '平均不良率', value: `${avgDefectRate}%`, trend: avgDefectRate > 5 ? 'down' : 'up' }
+    );
+  }
+
+  return metrics;
+}
+
+/**
+ * 格式化表格数据
+ */
+function formatTableData(data, rule) {
+  if (!data) return [];
+
+  // 确保data是数组
+  const dataArray = Array.isArray(data) ? data : [data];
+  if (dataArray.length === 0) return [];
+
+  const ruleName = rule.intent_name.toLowerCase();
+
+  // 根据规则类型确定字段映射
+  if (ruleName.includes('库存')) {
+    return dataArray.map(item => ({
+      工厂: item.storage_location || item.工厂 || item.factory || '',
+      仓库: item.storage_location || item.仓库 || item.warehouse || '',
+      物料编码: item.material_code || item.物料编码 || '',
+      物料名称: item.material_name || item.物料名称 || '',
+      供应商: item.supplier_name || item.供应商 || '',
+      数量: item.quantity || item.数量 || 0,
+      状态: item.status || item.状态 || '',
+      入库时间: item.inbound_time || item.入库时间 || '',
+      到期时间: item.expiry_date || item.到期时间 || '',
+      备注: item.notes || item.备注 || ''
+    }));
+  } else if (ruleName.includes('测试')) {
+    return dataArray.map(item => ({
+      测试编号: item.test_id || item.测试编号 || '',
+      日期: item.test_date || item.日期 || '',
+      项目: item.project || item.项目 || '',
+      基线: item.baseline || item.基线 || '',
+      物料编码: item.material_code || item.物料编码 || '',
+      数量: item.quantity || item.数量 || 0,
+      物料名称: item.material_name || item.物料名称 || '',
+      供应商: item.supplier_name || item.供应商 || '',
+      测试结果: item.test_result || item.测试结果 || '',
+      不合格描述: item.defect_description || item.不合格描述 || '',
+      备注: item.notes || item.备注 || ''
+    }));
+  } else if (ruleName.includes('上线')) {
+    return dataArray.map(item => ({
+      工厂: item.factory || item.工厂 || '',
+      基线: item.baseline || item.基线 || '',
+      项目: item.project || item.项目 || '',
+      物料编码: item.material_code || item.物料编码 || '',
+      物料名称: item.material_name || item.物料名称 || '',
+      供应商: item.supplier_name || item.供应商 || '',
+      批次号: item.batch_no || item.批次号 || '',
+      不良率: item.defect_rate || item.不良率 || '',
+      本周异常: item.weekly_anomalies || item.本周异常 || '',
+      检验日期: item.inspection_date || item.检验日期 || '',
+      备注: item.notes || item.备注 || ''
+    }));
+  }
+
+  // 默认格式化
+  return dataArray.slice(0, 10);
+}
+
+/**
+ * 确定模板类型
+ */
+function determineTemplate(rule) {
+  const ruleName = rule.intent_name.toLowerCase();
+  if (ruleName.includes('库存')) return 'inventory_query';
+  if (ruleName.includes('测试')) return 'testing_query';
+  if (ruleName.includes('上线')) return 'online_query';
+  if (ruleName.includes('批次')) return 'batch_query';
+  return 'general_query';
+}
+
+/**
+ * 生成查询建议
+ */
+function generateQuerySuggestions(queryText) {
+  return [
+    '查询物料库存信息',
+    '查询BOE供应商的物料',
+    '查询风险状态的库存',
+    '查询测试失败(NG)的记录',
+    '查询LCD显示屏测试情况'
+  ];
+}
+
+/**
+ * 生成统计卡片数据
+ * @param {Array} data 查询数据
+ * @param {Object} rule 匹配的规则
+ * @param {string} queryText 查询文本
+ * @returns {Array} 卡片数据数组
+ */
+function generateStatisticsCards(data, rule, queryText) {
+  const cards = [];
+  const ruleName = rule.intent_name.toLowerCase();
+
+  console.log(`🎯 生成统计卡片 - 规则: ${rule.intent_name}, 数据量: ${data.length}`);
+
+  // 1. 库存查询场景的卡片
+  if (ruleName.includes('库存') || ruleName.includes('供应商物料') || ruleName.includes('物料查询')) {
+    console.log('📦 生成库存场景卡片');
+
+    // 统计物料和批次数量
+    const materialSet = new Set();
+    const batchSet = new Set();
+    const supplierSet = new Set();
+    let riskCount = 0;
+    let frozenCount = 0;
+
+    data.forEach(item => {
+      if (item.material_code || item.物料编码) materialSet.add(item.material_code || item.物料编码);
+      if (item.batch_code || item.批次号) batchSet.add(item.batch_code || item.批次号);
+      if (item.supplier_name || item.供应商) supplierSet.add(item.supplier_name || item.供应商);
+
+      const status = item.status || item.状态 || '';
+      if (status === '风险' || status.includes('风险')) riskCount++;
+      if (status === '冻结' || status.includes('冻结')) frozenCount++;
+    });
+
+    // 第一个卡片：物料/批次（分开显示）
+    cards.push({
+      title: '物料/批次',
+      icon: '📦',
+      type: 'info',
+      color: '#409EFF',
+      splitData: {
+        material: {
+          label: '物料种类',
+          value: materialSet.size,
+          unit: '种'
+        },
+        batch: {
+          label: '批次数量',
+          value: batchSet.size,
+          unit: '批'
+        }
+      }
+    });
+
+    // 第二个卡片：供应商
+    cards.push({
+      title: '供应商',
+      value: supplierSet.size,
+      icon: '🏭',
+      type: 'success',
+      color: '#67C23A',
+      subtitle: '家供应商'
+    });
+
+    // 第三个卡片：风险库存
+    cards.push({
+      title: '风险库存',
+      value: riskCount,
+      icon: '⚠️',
+      type: 'warning',
+      color: '#E6A23C',
+      subtitle: '条风险记录'
+    });
+
+    // 第四个卡片：冻结库存
+    cards.push({
+      title: '冻结库存',
+      value: frozenCount,
+      icon: '🧊',
+      type: 'danger',
+      color: '#F56C6C',
+      subtitle: '条冻结记录'
+    });
+  }
+
+  // 2. 生产/上线数据查询场景的卡片
+  else if (ruleName.includes('上线') || ruleName.includes('生产') || ruleName.includes('在线')) {
+    console.log('🏭 生成生产场景卡片');
+
+    const materialSet = new Set();
+    const batchSet = new Set();
+    const projectSet = new Set();
+    const supplierSet = new Set();
+    let highDefectCount = 0; // 不良率>3%的数量
+    let lowDefectCount = 0;  // 不良率<=3%的数量
+
+    data.forEach(item => {
+      if (item.material_code || item.物料编码) materialSet.add(item.material_code || item.物料编码);
+      if (item.batch_code || item.批次号) batchSet.add(item.batch_code || item.批次号);
+      if (item.project_name || item.项目) projectSet.add(item.project_name || item.项目);
+      if (item.supplier_name || item.供应商) supplierSet.add(item.supplier_name || item.供应商);
+
+      const defectRate = parseFloat(item.defect_rate || item.不良率 || 0);
+      if (defectRate > 3) {
+        highDefectCount++;
+      } else {
+        lowDefectCount++;
+      }
+    });
+
+    // 物料/批次卡片
+    cards.push({
+      title: '物料/批次',
+      icon: '📦',
+      type: 'info',
+      color: '#409EFF',
+      splitData: {
+        material: {
+          label: '物料种类',
+          value: materialSet.size,
+          unit: '种'
+        },
+        batch: {
+          label: '批次数量',
+          value: batchSet.size,
+          unit: '批'
+        }
+      }
+    });
+
+    // 项目种类卡片
+    cards.push({
+      title: '项目种类',
+      value: projectSet.size,
+      icon: '🎯',
+      type: 'success',
+      color: '#67C23A',
+      subtitle: '个项目'
+    });
+
+    // 供应商卡片
+    cards.push({
+      title: '供应商',
+      value: supplierSet.size,
+      icon: '🏭',
+      type: 'primary',
+      color: '#606266',
+      subtitle: '家供应商'
+    });
+
+    // 不良率分析卡片（3%分界）
+    cards.push({
+      title: '不良率分析',
+      icon: '📊',
+      type: highDefectCount > lowDefectCount ? 'danger' : 'success',
+      color: highDefectCount > lowDefectCount ? '#F56C6C' : '#67C23A',
+      splitData: {
+        material: {
+          label: '标准内(≤3%)',
+          value: lowDefectCount,
+          unit: '批'
+        },
+        batch: {
+          label: '标准外(>3%)',
+          value: highDefectCount,
+          unit: '批'
+        }
+      }
+    });
+  }
+
+  // 3. 测试场景数据查询的卡片
+  else if (ruleName.includes('测试') || ruleName.includes('ng') || ruleName.includes('检验')) {
+    console.log('🧪 生成测试场景卡片');
+
+    const materialSet = new Set();
+    const batchSet = new Set();
+    const projectSet = new Set();
+    const supplierSet = new Set();
+    let ngCount = 0;
+
+    data.forEach(item => {
+      if (item.material_code || item.物料编码) materialSet.add(item.material_code || item.物料编码);
+      if (item.batch_code || item.批次号) batchSet.add(item.batch_code || item.批次号);
+      if (item.project_name || item.项目) projectSet.add(item.project_name || item.项目);
+      if (item.supplier_name || item.供应商) supplierSet.add(item.supplier_name || item.供应商);
+
+      const result = item.test_result || item.测试结果 || '';
+      if (result === 'NG' || result.includes('失败') || result.includes('不合格')) {
+        ngCount++;
+      }
+    });
+
+    // 物料/批次卡片
+    cards.push({
+      title: '物料/批次',
+      icon: '📦',
+      type: 'info',
+      color: '#409EFF',
+      splitData: {
+        material: {
+          label: '物料种类',
+          value: materialSet.size,
+          unit: '种'
+        },
+        batch: {
+          label: '批次数量',
+          value: batchSet.size,
+          unit: '批'
+        }
+      }
+    });
+
+    // 项目卡片
+    cards.push({
+      title: '项目',
+      value: projectSet.size,
+      icon: '🎯',
+      type: 'success',
+      color: '#67C23A',
+      subtitle: '个项目'
+    });
+
+    // 供应商卡片
+    cards.push({
+      title: '供应商',
+      value: supplierSet.size,
+      icon: '🏭',
+      type: 'primary',
+      color: '#606266',
+      subtitle: '家供应商'
+    });
+
+    // NG批次卡片
+    cards.push({
+      title: 'NG批次',
+      value: ngCount,
+      icon: '❌',
+      type: 'danger',
+      color: '#F56C6C',
+      subtitle: '批次不合格'
+    });
+  }
+
+  console.log(`✅ 生成了 ${cards.length} 个统计卡片:`, cards.map(c => c.title));
+  return cards;
 }
  

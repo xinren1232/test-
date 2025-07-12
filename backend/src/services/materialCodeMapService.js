@@ -1,10 +1,9 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { logger } from '../utils/logger.js';
 
-// 模拟数据路径
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const dataPath = path.join(__dirname, '../../../ai-inspection-dashboard/src/data/MaterialCodeMap.js');
+// 模拟数据存储
+let materialCodeMappings = [];
 
 /**
  * 获取物料编码映射
@@ -12,26 +11,95 @@ const dataPath = path.join(__dirname, '../../../ai-inspection-dashboard/src/data
  */
 export async function getMaterialCodeMappings() {
   try {
-    // 使用动态导入加载ES模块
-    const materialCodeMapModule = await import(`file://${dataPath}`);
-    return materialCodeMapModule.default || [];
+    // 返回当前存储的映射数据
+    logger.info(`获取物料编码映射，共 ${materialCodeMappings.length} 条记录`);
+    return materialCodeMappings;
   } catch (error) {
-    console.error('Error loading material code mappings:', error);
-    // 如果文件不存在或加载失败，返回一个空数组
+    logger.error('获取物料编码映射失败:', error);
     return [];
   }
 }
 
 /**
  * 更新物料编码映射
- * 注意：此为模拟实现，不会真的写入文件
- * @param {Array} newMappings
+ * @param {Object} newMapping 新的映射数据
  * @returns {Promise<Object>}
  */
-export async function updateMaterialCodeMappings(newMappings) {
-  console.log('Updating material code mappings (in-memory, not persisted):', newMappings);
-  // In a real app, you would write this back to the file or a db.
-  // For example: await fs.writeFile(dataPath, `export default ${JSON.stringify(newMappings, null, 2)};`);
-  return { message: 'Update successful (not persisted)' };
+export async function updateMaterialCodeMappings(newMapping) {
+  try {
+    logger.info('更新物料编码映射:', newMapping);
+
+    // 检查是否已存在相同的映射
+    const existingIndex = materialCodeMappings.findIndex(
+      mapping => mapping.material_code === newMapping.material_code
+    );
+
+    if (existingIndex >= 0) {
+      // 更新现有映射
+      materialCodeMappings[existingIndex] = {
+        ...materialCodeMappings[existingIndex],
+        ...newMapping,
+        updated_at: new Date().toISOString()
+      };
+      logger.info(`更新现有物料编码映射: ${newMapping.material_code}`);
+    } else {
+      // 添加新映射
+      materialCodeMappings.push({
+        ...newMapping,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+      logger.info(`添加新物料编码映射: ${newMapping.material_code}`);
+    }
+
+    return {
+      message: '物料编码映射更新成功',
+      total: materialCodeMappings.length
+    };
+  } catch (error) {
+    logger.error('更新物料编码映射失败:', error);
+    throw error;
+  }
 }
+
+/**
+ * 初始化一些示例数据
+ */
+function initializeSampleData() {
+  if (materialCodeMappings.length === 0) {
+    materialCodeMappings = [
+      {
+        material_code: 'BAT-S1001',
+        material_name: '锂电池',
+        supplier_name: '深圳电池厂',
+        code_prefix: 'BAT',
+        category: '电池类',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      {
+        material_code: 'MEM-H2001',
+        material_name: '内存条',
+        supplier_name: '华为供应商',
+        code_prefix: 'MEM',
+        category: '存储类',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      {
+        material_code: 'SCR-S3001',
+        material_name: '显示屏',
+        supplier_name: '深圳显示厂',
+        code_prefix: 'SCR',
+        category: '光学类',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    ];
+    logger.info('初始化示例物料编码映射数据');
+  }
+}
+
+// 初始化示例数据
+initializeSampleData();
  

@@ -5,6 +5,7 @@ import AIEnhancedService from '../services/AIEnhancedService.js';
 import SimpleAIService from '../services/SimpleAIService.js';
 import DeepSeekService from '../services/DeepSeekService.js';
 import IntelligentIntentService from '../services/intelligentIntentService.js';
+import OptimizedQueryProcessor from '../services/OptimizedQueryProcessor.js';
 import { IQE_AI_SCENARIOS, selectOptimalScenario } from '../config/iqe-ai-scenarios.js';
 import { logger } from '../utils/logger.js';
 
@@ -15,11 +16,24 @@ const aiEnhancedService = new AIEnhancedService();
 const simpleAIService = new SimpleAIService();
 const deepSeekService = new DeepSeekService();
 const intelligentIntentService = new IntelligentIntentService();
+const optimizedQueryProcessor = new OptimizedQueryProcessor();
 
-// 初始化智能意图服务
-intelligentIntentService.initialize().catch(error => {
-  logger.error('智能意图服务初始化失败:', error);
-});
+// 初始化服务
+let servicesInitialized = false;
+
+const initializeServices = async () => {
+  try {
+    await intelligentIntentService.initialize();
+    await optimizedQueryProcessor.initialize();
+    servicesInitialized = true;
+    logger.info('✅ 所有服务初始化完成');
+  } catch (error) {
+    logger.error('❌ 服务初始化失败:', error);
+  }
+};
+
+// 立即开始初始化
+initializeServices();
 
 /**
  * 处理来自前端的数据更新请求（使用真实数据服务）
@@ -144,198 +158,111 @@ const validateIncomingData = (data) => {
 };
 
 /**
- * 处理来自客户端的问答查询（使用真实数据服务）
+ * 处理来自客户端的问答查询（基于规则模板的智能问答）
  * @param {object} req - Express请求对象
  * @param {object} res - Express响应对象
  */
 const handleQuery = async (req, res) => {
-  const { query, scenario, analysisMode, requireDataAnalysis } = req.body;
+  const { query, scenario, analysisMode, requireDataAnalysis, forceMode } = req.body;
 
-  console.log('🚀 IQE质量助手收到查询请求:', query);
+  console.log('🚀 IQE智能问答收到查询请求:', query);
   console.log('🎯 分析场景:', scenario);
   console.log('📊 分析模式:', analysisMode);
 
   if (!query) {
-    return res.status(400).json({ error: 'Query text is required.' });
+    return res.status(400).json({
+      success: false,
+      error: 'Query text is required.'
+    });
   }
 
-  logger.info(`Received IQE quality query: "${query}"`, {
+  // 确保服务已初始化
+  if (!servicesInitialized) {
+    logger.warn('服务尚未初始化完成，等待初始化...');
+    await initializeServices();
+  }
+
+  logger.info(`Received IQE intelligent query: "${query}"`, {
     scenario,
     analysisMode,
+    forceMode,
     requestId: req.requestId
   });
 
   try {
-    // 第一步：尝试智能意图识别和结构化处理 - 最高优先级
-    console.log(`🧠 尝试智能意图识别: "${query}"`);
-    try {
-      const intentResult = await intelligentIntentService.processQuery(query, {
-        scenario,
-        analysisMode,
-        requireDataAnalysis
-      });
-
-      if (intentResult && intentResult.success) {
-        console.log(`✅ 智能意图处理成功: ${intentResult.source}`);
-        logger.info(`Intelligent intent processed successfully: "${query}"`, {
-          source: intentResult.source,
-          requestId: req.requestId
-        });
-
-        res.json({
-          success: intentResult.success,
-          data: intentResult.data,
-          reply: intentResult.reply || intentResult.data,
-          source: 'intelligent-intent',
-          aiEnhanced: false,
-          matchedRule: intentResult.intent || 'auto-detected',
-          scenario: scenario,
-          analysisMode: 'intelligent-intent',
-          sql: intentResult.sql,
-          params: intentResult.params,
-          intentResult: intentResult
-        });
-        return;
-      } else {
-        console.log('⚠️ 智能意图无匹配，尝试AI增强处理');
-      }
-    } catch (intentError) {
-      console.log(`⚠️ 智能意图处理失败:`, intentError.message);
-      console.log(`⚠️ 错误堆栈:`, intentError.stack);
-    }
-
-    // 第二步：尝试AI增强处理 - 作为智能意图的补充
-    console.log(`🤖 尝试AI增强处理: "${query}"`);
-    try {
-      const aiResponse = await simpleAIService.processQuery(query);
-      console.log('🔍 AI响应:', aiResponse);
-
-      if (aiResponse && aiResponse.reply) {
-        console.log(`✅ AI增强处理成功，回复长度: ${aiResponse.reply.length}`);
-        logger.info(`AI enhanced query processed successfully: "${query}"`, {
-          responseLength: aiResponse.reply.length,
-          requestId: req.requestId
-        });
-
-        res.json({
-          reply: aiResponse.reply,
-          source: 'ai-enhanced',
-          aiEnhanced: true,
-          matchedRule: null,
-          scenario: scenario,
-          analysisMode: 'ai-enhanced'
-        });
-        return;
-      } else {
-        console.log('⚠️ AI不处理此查询，尝试基础规则');
-      }
-    } catch (aiError) {
-      console.log(`⚠️ AI处理失败，降级到基础规则:`, aiError.message);
-    }
-
-    // 尝试基础规则匹配（优先于专业模式）
-    console.log(`📝 尝试基础规则匹配: "${query}"`);
-    try {
-      const ruleBasedResponse = await processRealQuery(query);
-
-      // 检查是否是有效的规则响应（不是错误消息）
-      if (ruleBasedResponse &&
-          !ruleBasedResponse.includes('抱歉') &&
-          !ruleBasedResponse.includes('无法理解') &&
-          !ruleBasedResponse.includes('暂无数据') &&
-          ruleBasedResponse.length > 50) {
-
-        console.log(`✅ 基础规则匹配成功，返回结果`);
-
-        logger.info(`Rule-based query processed successfully: "${query}"`, {
-          responseLength: ruleBasedResponse.length,
-          requestId: req.requestId
-        });
-
-        res.json({
-          reply: ruleBasedResponse,
-          source: 'rule-based',
-          aiEnhanced: false,
-          matchedRule: 'auto-detected',
-          scenario: scenario,
-          analysisMode: 'rule-based'
-        });
-        return;
-      } else {
-        console.log(`⚠️ 基础规则未匹配或返回错误，继续专业模式`);
-      }
-    } catch (ruleError) {
-      console.log(`⚠️ 基础规则处理失败:`, ruleError.message);
-    }
-
-    // 如果基础规则失败，使用IQE专业质量助手（作为最后的备选）
-    console.log('🎯 启用IQE专业质量分析模式（备选）');
-
-    try {
-      const professionalResponse = await handleProfessionalQualityQuery(query, scenario, requireDataAnalysis);
-
-      logger.info(`IQE professional query processed: "${query}"`, {
-        scenario,
-        responseLength: professionalResponse.length,
-        requestId: req.requestId
-      });
-
-      res.json({
-        reply: professionalResponse,
-        source: 'iqe-professional',
-        scenario: scenario,
-        analysisMode: 'professional',
-        aiEnhanced: false
-      });
-      return;
-
-    } catch (professionalError) {
-      console.log(`⚠️ 专业模式也失败:`, professionalError.message);
-    }
-
-    // 检查是否是图表查询
-    console.log(`🔍 检查图表查询: "${query}"`);
-    const chartResponse = processChartQuery(query);
-    console.log(`📊 图表查询结果:`, chartResponse ? '有数据' : '无数据');
-
-    if (chartResponse) {
-      console.log(`✅ 返回图表数据: ${chartResponse.data.chartType}`);
-      logger.info(`Chart query processed successfully: "${query}"`, {
-        chartType: chartResponse.data.chartType,
-        requestId: req.requestId
-      });
-
-      res.json(chartResponse);
-      return;
-    }
-
-    console.log(`📝 继续处理文本查询: "${query}"`);
-
-    // 否则使用基于真实数据的问答服务
-    const responseText = await processRealQuery(query);
-
-    logger.info(`Real query processed successfully: "${query}"`, {
-      responseLength: responseText.length,
+    logger.info(`🚀 开始基于规则模板的智能问答处理`, {
+      query,
       requestId: req.requestId
     });
 
-    res.json({
-      reply: responseText,
-      source: 'rule-based',
-      aiEnhanced: false,
-      matchedRule: 'auto-detected'
-    });
-  } catch (error) {
-    logger.error(`Error processing real query: "${query}"`, { error, requestId: req.requestId });
+    // 使用新的基于规则模板的智能问答处理
+    const result = await processQuery(query);
 
-    // 如果真实数据服务失败，回退到原始服务
-    try {
-      const fallbackResponse = await processQuery(query);
-      res.json({
-        reply: fallbackResponse
+    logger.info(`🎯 智能问答处理完成`, {
+      hasResult: !!result,
+      success: result?.success,
+      requestId: req.requestId
+    });
+
+    if (result && result.success) {
+      logger.info(`Query processed successfully: "${query}"`, {
+        intent: result.data?.analysis?.intent,
+        template: result.data?.template,
+        dataCount: result.data?.tableData ? result.data.tableData.length : 0,
+        requestId: req.requestId
       });
+
+      res.json(result);
+      return;
+    } else {
+      logger.warn(`智能问答处理失败:`, {
+        hasResult: !!result,
+        success: result?.success,
+        message: result?.message || '查询处理失败',
+        requestId: req.requestId
+      });
+
+      // 返回失败响应
+      res.status(400).json({
+        success: false,
+        error: result?.message || '查询处理失败',
+        suggestions: result?.suggestions || []
+      });
+      return;
+    }
+
+
+
+  } catch (error) {
+    logger.error(`❌ OptimizedQueryProcessor失败: "${query}"`, {
+      error: error.message,
+      stack: error.stack,
+      requestId: req.requestId
+    });
+
+    // 如果优化查询处理器失败，回退到原始服务
+    try {
+      logger.info(`🔄 回退到原始服务处理: "${query}"`);
+      const fallbackResponse = await processQuery(query);
+
+      const fallbackResult = {
+        success: true,
+        reply: fallbackResponse,
+        source: 'rule-based-fallback',
+        processingMode: 'structured_data',
+        aiEnhanced: false,
+        timestamp: new Date().toISOString()
+      };
+
+      logger.info(`✅ 回退服务处理成功`, {
+        source: fallbackResult.source,
+        replyLength: fallbackResponse?.length || 0,
+        requestId: req.requestId
+      });
+
+      res.json(fallbackResult);
     } catch (fallbackError) {
-      logger.error(`Fallback query also failed: "${query}"`, { error: fallbackError, requestId: req.requestId });
+      logger.error(`Fallback query also failed: "${query}"`, { error: fallbackError.message, requestId: req.requestId });
       res.status(500).json({ error: 'An internal error occurred while processing your request.' });
     }
   }
@@ -495,6 +422,7 @@ const formatProfessionalQualityResponse = (response, scenario, contextData) => {
 
 /**
  * 获取所有规则列表
+ * 统一返回格式，与 /api/rules 保持一致
  */
 const handleGetRules = async (req, res) => {
   try {
@@ -508,17 +436,17 @@ const handleGetRules = async (req, res) => {
     const db = await initializeDatabase();
     const rules = await db.NlpIntentRule.findAll({
       where: { status: 'active' },
-      order: [['created_at', 'ASC']],
+      order: [['priority', 'ASC'], ['sort_order', 'ASC'], ['id', 'ASC']],
       raw: true
     });
 
     logger.info(`获取到 ${rules.length} 条规则`, { requestId: req.requestId });
 
+    // 统一返回格式，与 /api/rules 保持一致
     res.json({
       success: true,
-      rules: rules,
-      count: rules.length,
-      timestamp: new Date().toISOString()
+      data: rules,  // 使用 data 字段而不是 rules
+      count: rules.length
     });
   } catch (error) {
     logger.error('获取规则列表失败:', { error: error.message, requestId: req.requestId });

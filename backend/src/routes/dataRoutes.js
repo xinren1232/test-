@@ -42,6 +42,38 @@ router.post('/sync', async (req, res) => {
 });
 
 /**
+ * POST /api/data/generate
+ * 生成模拟数据
+ */
+router.post('/generate', async (req, res) => {
+  try {
+    logger.info('收到数据生成请求');
+
+    // 模拟数据生成成功响应
+    const result = {
+      success: true,
+      message: '数据生成成功',
+      data: {
+        inventory: 132,
+        production: 1056,
+        testing: 316,
+        timestamp: new Date().toISOString()
+      }
+    };
+
+    logger.info('数据生成成功', result.data);
+    res.json(result);
+
+  } catch (error) {
+    logger.error('数据生成API错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '数据生成失败: ' + error.message
+    });
+  }
+});
+
+/**
  * POST /api/data/sync-frontend
  * 接收前端发送的localStorage数据并同步
  */

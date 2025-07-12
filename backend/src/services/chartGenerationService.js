@@ -19,6 +19,306 @@ class ChartGenerationService {
     return await mysql.createConnection(this.dbConfig);
   }
 
+  // 🎯 智能问答专用图表生成方法
+
+  /**
+   * 生成供应商物料分布饼图
+   */
+  async generateSupplierMaterialsPieChart(supplier) {
+    const connection = await this.getConnection();
+    try {
+      const [results] = await connection.execute(`
+        SELECT
+          material_name as name,
+          SUM(quantity) as value,
+          COUNT(*) as batches
+        FROM inventory
+        WHERE supplier_name = ?
+        GROUP BY material_name
+        ORDER BY value DESC
+      `, [supplier]);
+
+      return {
+        type: 'pie',
+        title: `${supplier}供应商物料分布`,
+        data: results.map(item => ({
+          name: item.name,
+          value: item.value,
+          batches: item.batches
+        })),
+        config: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'right' },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const item = results[context.dataIndex];
+                  return `${context.label}: ${context.parsed} 件 (${item.batches} 批次)`;
+                }
+              }
+            }
+          }
+        }
+      };
+    } finally {
+      await connection.end();
+    }
+  }
+
+  /**
+   * 生成物料供应商对比柱状图
+   */
+  async generateMaterialSuppliersBarChart(material) {
+    const connection = await this.getConnection();
+    try {
+      const [results] = await connection.execute(`
+        SELECT
+          supplier_name as supplier,
+          SUM(quantity) as total_quantity,
+          COUNT(*) as batches,
+          AVG(quantity) as avg_quantity,
+          COUNT(CASE WHEN status = '风险' THEN 1 END) as risk_batches
+        FROM inventory
+        WHERE material_name = ?
+        GROUP BY supplier_name
+        ORDER BY total_quantity DESC
+      `, [material]);
+
+      return {
+        type: 'bar',
+        title: `${material}供应商对比分析`,
+        data: {
+          labels: results.map(item => item.supplier),
+          datasets: [
+            {
+              label: '总数量',
+              data: results.map(item => item.total_quantity),
+              backgroundColor: 'rgba(54, 162, 235, 0.8)',
+              borderColor: 'rgba(54, 162, 235, 1)',
+              borderWidth: 1
+            },
+            {
+              label: '批次数',
+              data: results.map(item => item.batches),
+              backgroundColor: 'rgba(255, 99, 132, 0.8)',
+              borderColor: 'rgba(255, 99, 132, 1)',
+              borderWidth: 1,
+              yAxisID: 'y1'
+            }
+          ]
+        },
+        config: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'top' },
+            tooltip: {
+              callbacks: {
+                afterLabel: function(context) {
+                  const item = results[context.dataIndex];
+                  return [
+                    `平均数量: ${Math.round(item.avg_quantity)} 件`,
+                    `风险批次: ${item.risk_batches} 批`
+                  ];
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              type: 'linear',
+              display: true,
+              position: 'left',
+              title: { display: true, text: '总数量' }
+            },
+            y1: {
+              type: 'linear',
+              display: true,
+              position: 'right',
+              title: { display: true, text: '批次数' },
+              grid: { drawOnChartArea: false }
+            }
+          }
+        }
+      };
+    } finally {
+      await connection.end();
+    }
+  }
+
+  /**
+   * 生成工厂库存状态分布堆叠图
+   */
+  async generateFactoryInventoryStackedChart(factory) {
+    const connection = await this.getConnection();
+    try {
+      const [results] = await connection.execute(`
+        SELECT
+          material_name,
+          status,
+          SUM(quantity) as quantity
+        FROM inventory
+        WHERE storage_location = ?
+        GROUP BY material_name, status
+        ORDER BY material_name, status
+      `, [factory]);
+
+      // 组织数据
+      const materials = [...new Set(results.map(item => item.material_name))];
+      const statuses = [...new Set(results.map(item => item.status))];
+
+      const datasets = statuses.map((status, index) => {
+        const colors = [
+          'rgba(75, 192, 192, 0.8)',  // 正常 - 绿色
+          'rgba(255, 206, 86, 0.8)',  // 风险 - 黄色
+          'rgba(255, 99, 132, 0.8)'   // 冻结 - 红色
+        ];
+
+        return {
+          label: status,
+          data: materials.map(material => {
+            const item = results.find(r => r.material_name === material && r.status === status);
+            return item ? item.quantity : 0;
+          }),
+          backgroundColor: colors[index] || 'rgba(153, 102, 255, 0.8)',
+          borderColor: colors[index]?.replace('0.8', '1') || 'rgba(153, 102, 255, 1)',
+          borderWidth: 1
+        };
+      });
+
+      return {
+        type: 'bar',
+        title: `${factory}库存状态分布`,
+        data: {
+          labels: materials,
+          datasets: datasets
+        },
+        config: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'top' },
+            tooltip: { mode: 'index', intersect: false }
+          },
+          scales: {
+            x: {
+              stacked: true,
+              title: { display: true, text: '物料类型' }
+            },
+            y: {
+              stacked: true,
+              title: { display: true, text: '库存数量' }
+            }
+          }
+        }
+      };
+    } finally {
+      await connection.end();
+    }
+  }
+
+  /**
+   * 生成测试通过率趋势图
+   */
+  async generateTestPassRateTrendChart(supplier = null, material = null) {
+    const connection = await this.getConnection();
+    try {
+      let sql = `
+        SELECT
+          DATE_FORMAT(test_date, '%Y-%m-%d') as date,
+          COUNT(*) as total_tests,
+          SUM(CASE WHEN test_result = 'PASS' THEN 1 ELSE 0 END) as pass_count,
+          ROUND(SUM(CASE WHEN test_result = 'PASS' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as pass_rate
+        FROM lab_tests
+        WHERE 1=1
+      `;
+
+      const params = [];
+
+      if (supplier) {
+        sql += ' AND supplier_name = ?';
+        params.push(supplier);
+      }
+
+      if (material) {
+        sql += ' AND material_name = ?';
+        params.push(material);
+      }
+
+      sql += `
+        GROUP BY DATE_FORMAT(test_date, '%Y-%m-%d')
+        ORDER BY date
+        LIMIT 30
+      `;
+
+      const [results] = await connection.execute(sql, params);
+
+      const title = supplier ? `${supplier}测试通过率趋势` :
+                    material ? `${material}测试通过率趋势` :
+                    '整体测试通过率趋势';
+
+      return {
+        type: 'line',
+        title: title,
+        data: {
+          labels: results.map(item => item.date),
+          datasets: [
+            {
+              label: '通过率 (%)',
+              data: results.map(item => item.pass_rate),
+              borderColor: 'rgba(75, 192, 192, 1)',
+              backgroundColor: 'rgba(75, 192, 192, 0.2)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.4
+            },
+            {
+              label: '测试总数',
+              data: results.map(item => item.total_tests),
+              borderColor: 'rgba(153, 102, 255, 1)',
+              backgroundColor: 'rgba(153, 102, 255, 0.2)',
+              borderWidth: 2,
+              fill: false,
+              yAxisID: 'y1'
+            }
+          ]
+        },
+        config: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'top' },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              callbacks: {
+                afterLabel: function(context) {
+                  const item = results[context.dataIndex];
+                  return `通过: ${item.pass_count}/${item.total_tests}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: { title: { display: true, text: '日期' } },
+            y: {
+              title: { display: true, text: '通过率 (%)' },
+              min: 0,
+              max: 100
+            },
+            y1: {
+              type: 'linear',
+              display: true,
+              position: 'right',
+              title: { display: true, text: '测试总数' },
+              grid: { drawOnChartArea: false }
+            }
+          }
+        }
+      };
+    } finally {
+      await connection.end();
+    }
+  }
+
   // 🏗️ 结构件类质量综合分析
   async generateStructuralMaterialsAnalysis() {
     const connection = await this.getConnection();
@@ -494,4 +794,4 @@ class ChartGenerationService {
   }
 }
 
-export default new ChartGenerationService();
+export default ChartGenerationService;

@@ -329,8 +329,23 @@ app.post('/api/assistant/query', async (req, res) => {
 
     console.log(`✅ 返回结果: ${response.substring(0, 100)}...`);
 
+    // 返回前端期望的结构化响应格式
     res.json({
-      reply: response,
+      success: true,
+      data: {
+        answer: response,
+        analysis: {
+          type: 'general',
+          intent: 'query',
+          entities: {},
+          confidence: 0.8
+        },
+        template: 'general_response',
+        tableData: null,
+        keyMetrics: null,
+        charts: null,
+        summary: null
+      },
       source: 'database-service',
       timestamp: new Date().toISOString()
     });

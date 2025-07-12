@@ -273,16 +273,21 @@ const exportAllRules = () => {
 const loadNlpRules = async () => {
   loading.value.nlp = true;
   try {
-    const response = await fetch('/api/intelligent-intent/rules');
+    const response = await fetch('/api/rules');  // 统一使用 /api/rules
     if (response.ok) {
-      const data = await response.json();
-      nlpRules.value = data.map(rule => ({
-        ...rule,
-        tested: false,
-        working: false,
-        error: false,
-        testing: false
-      }));
+      const result = await response.json();
+      // 统一处理数据格式：使用 result.data
+      if (result.success && Array.isArray(result.data)) {
+        nlpRules.value = result.data.map(rule => ({
+          ...rule,
+          tested: false,
+          working: false,
+          error: false,
+          testing: false
+        }));
+      } else {
+        throw new Error('API返回数据格式错误');
+      }
     } else {
       throw new Error('加载规则失败');
     }

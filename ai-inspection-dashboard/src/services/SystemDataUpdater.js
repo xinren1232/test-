@@ -1261,6 +1261,7 @@ class SystemDataUpdater {
             project_name: `${projectId}项目`,
             baseline_id: baselineId,
             baseline_name: baselineName,
+            inspectionDate: this.generateRandomTime(30), // 生成检验日期，往前推30天内的随机时间
             timestamp: new Date().toISOString()
           };
           factoryData.push(onlineRecord);

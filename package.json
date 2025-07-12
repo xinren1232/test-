@@ -6,6 +6,8 @@
     "dev": "pnpm --filter ai-inspection-dashboard run dev"
   },
   "dependencies": {
+    "@dicebear/collection": "^9.2.3",
+    "@dicebear/core": "^9.2.3",
     "axios": "^1.10.0",
     "danfojs": "^1.2.0",
     "dompurify": "^3.2.6",

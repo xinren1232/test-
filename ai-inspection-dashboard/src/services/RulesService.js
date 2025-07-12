@@ -112,13 +112,21 @@ class RulesService {
    * @param {number} priority 优先级
    */
   getCategoryByPriority(priority) {
-    if (priority >= 9) return '基础规则';
-    if (priority === 8) return '中级规则';
-    if (priority === 7) return '高级规则';
-    if (priority === 6) return '专项规则';
-    if (priority === 5) return '排行规则';
-    if (priority === 4) return '复杂规则';
-    return '其他规则';
+    switch (parseInt(priority)) {
+      case 10: return '基础查询规则';
+      case 20: return '进阶分析规则';
+      case 30: return '高级统计规则';
+      case 40: return '专项分析规则';
+      case 50: return '趋势对比规则';
+      case 9: return '中级规则';
+      case 8: return '中级规则';
+      case 7: return '高级规则';
+      case 6: return '专项规则';
+      case 5: return '排行规则';
+      case 4: return '复杂规则';
+      case 3: return '追溯规则';
+      default: return '未分类';
+    }
   }
 
   /**
@@ -127,14 +135,20 @@ class RulesService {
    */
   getCategoryColor(category) {
     const colorMap = {
-      '基础规则': '#67C23A',
-      '中级规则': '#409EFF',
-      '高级规则': '#E6A23C',
-      '专项规则': '#F56C6C',
-      '排行规则': '#909399',
-      '复杂规则': '#9C27B0'
+      '基础查询规则': '#67C23A',
+      '进阶分析规则': '#409EFF',
+      '高级统计规则': '#E6A23C',
+      '专项分析规则': '#F56C6C',
+      '趋势对比规则': '#909399',
+      '中级规则': '#95D475',
+      '高级规则': '#FFA940',
+      '专项规则': '#FF7875',
+      '排行规则': '#40A9FF',
+      '复杂规则': '#B37FEB',
+      '追溯规则': '#36CFC9',
+      '未分类': '#C0C4CC'
     };
-    return colorMap[category] || '#909399';
+    return colorMap[category] || '#C0C4CC';
   }
 
   /**

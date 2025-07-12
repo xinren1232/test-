@@ -50,21 +50,22 @@ onMounted(() => {
 const testRulesAPI = async () => {
   try {
     console.log('🧪 测试规则API...')
-    
-    const response = await fetch('/api/assistant/rules', {
+
+    const response = await fetch('/api/rules', {  // 统一使用 /api/rules
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       }
     })
-    
+
     console.log('📡 规则API响应状态:', response.status)
-    
+
     if (response.ok) {
       const result = await response.json()
       console.log('📊 规则API结果:', result)
       rulesResult.value = result
-      ElMessage.success(`获取到 ${result.rules?.length || 0} 个规则`)
+      // 统一处理数据格式：使用 result.data
+      ElMessage.success(`获取到 ${result.data?.length || 0} 个规则`)
     } else {
       const errorText = await response.text()
       console.error('❌ 规则API错误:', errorText)

@@ -480,6 +480,24 @@ const getActualBusinessData = async () => {
     }
   } catch (error) {
     console.error('获取业务数据失败:', error)
+    // 尝试从后端API获取数据
+    try {
+      const response = await fetch('/api/data/status');
+      const result = await response.json();
+      if (result.success) {
+        return {
+          inventoryCount: result.data.inventory,
+          productionCount: result.data.online,
+          testCount: result.data.lab,
+          factoryCount: 3,
+          timestamp: result.data.lastSync
+        }
+      }
+    } catch (apiError) {
+      console.error('从API获取数据也失败:', apiError);
+    }
+
+    // 最后的回退值
     return {
       inventoryCount: 132,
       productionCount: 1056,

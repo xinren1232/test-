@@ -143,6 +143,14 @@ function setupMockInterceptor(axiosInstance, delay = 500) {
   mock.onPost('/api/assistant/query').passThrough();
   mock.onPost('/api/assistant/update-data').passThrough();
   mock.onGet('/api/assistant/health').passThrough();
+  mock.onGet('/api/assistant/rules').passThrough();
+
+  // 规则管理API - 让所有rules相关请求通过到真实后端
+  mock.onGet('/api/rules').passThrough();
+  mock.onGet('/api/rules/categories').passThrough();
+  mock.onGet('/api/rules/stats').passThrough();
+  mock.onPost(/\/api\/rules\/test\/\d+/).passThrough();
+  mock.onPost('/api/rules/test-all').passThrough();
 
   // 其他未匹配的API请求返回404
   mock.onAny().reply(404, { message: 'API endpoint not found' });

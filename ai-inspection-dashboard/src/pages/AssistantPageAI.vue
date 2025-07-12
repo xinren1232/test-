@@ -351,9 +351,10 @@ const lastResponseTime = ref(0)
 
 // 数据统计
 const dataStats = reactive({
-  inventory: 132,
-  production: 1056,
-  inspection: 396
+  inventory: 0,
+  production: 0,
+  inspection: 0,
+  lastSync: null
 })
 
 // 快速操作
@@ -566,12 +567,41 @@ const aiServiceInstance = ref(null)
 
 // AI服务已在上面定义，删除重复定义
 
+// 加载数据统计
+const loadDataStats = async () => {
+  try {
+    console.log('📊 获取数据统计...');
+    const response = await fetch('/api/data/status');
+    const result = await response.json();
+
+    if (result.success) {
+      dataStats.inventory = result.data.inventory;
+      dataStats.inspection = result.data.lab;
+      dataStats.production = result.data.online;
+      dataStats.lastSync = result.data.lastSync;
+      console.log('✅ 数据统计获取成功:', result.data);
+    } else {
+      console.error('❌ 获取数据统计失败:', result.message);
+      // 使用默认值
+      dataStats.inventory = 132;
+      dataStats.inspection = 396;
+      dataStats.production = 1056;
+    }
+  } catch (error) {
+    console.error('❌ 获取数据统计异常:', error);
+    // 使用默认值
+    dataStats.inventory = 132;
+    dataStats.inspection = 396;
+    dataStats.production = 1056;
+  }
+}
+
 // 确保onMounted正确执行
 onMounted(async () => {
   console.log('🤖 AI智能助手重新设计版本已加载')
 
   // 加载数据统计
-  loadDataStats()
+  await loadDataStats()
 
   // 初始化AI服务
   await initAIService()

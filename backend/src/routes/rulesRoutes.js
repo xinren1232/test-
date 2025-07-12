@@ -26,7 +26,7 @@ router.get('/', async (req, res) => {
     const connection = await mysql.createConnection(dbConfig);
     
     const [rules] = await connection.execute(`
-      SELECT 
+      SELECT
         id,
         intent_name,
         description,
@@ -37,12 +37,13 @@ router.get('/', async (req, res) => {
         synonyms,
         example_query,
         category,
+        priority,
         sort_order,
         status,
         created_at,
         updated_at
       FROM nlp_intent_rules
-      ORDER BY sort_order ASC, id ASC
+      ORDER BY priority ASC, sort_order ASC, id ASC
     `);
     
     await connection.end();
@@ -87,11 +88,14 @@ router.get('/categories', async (req, res) => {
     
     await connection.end();
     
-    // 按分类分组
+    // 按新的场景分类分组
     const categories = {
-      '基础查询': rules.filter(r => r.category === '基础查询'),
-      '单场景分析': rules.filter(r => r.category === '单场景分析'),
-      '多场景分析': rules.filter(r => r.category === '多场景分析')
+      '库存场景': rules.filter(r => r.category === '库存场景'),
+      '上线场景': rules.filter(r => r.category === '上线场景'),
+      '测试场景': rules.filter(r => r.category === '测试场景'),
+      '批次场景': rules.filter(r => r.category === '批次场景'),
+      '对比场景': rules.filter(r => r.category === '对比场景'),
+      '综合场景': rules.filter(r => r.category === '综合场景')
     };
     
     const result = Object.keys(categories).map(category => ({
@@ -206,7 +210,14 @@ router.post('/test-all', async (req, res) => {
     
     for (const rule of rules) {
       try {
-        const [results] = await connection.execute(rule.action_target);
+        let sql = rule.action_target;
+
+        // 处理参数占位符，用测试值替换
+        sql = sql.replace(/\?/g, "'测试值'");
+        sql = sql.replace(/COALESCE\('测试值', ''\)/g, "COALESCE('测试值', '')");
+        sql = sql.replace(/COALESCE\('测试值', '未指定'\)/g, "COALESCE('测试值', '未指定')");
+
+        const [results] = await connection.execute(sql);
         testResults.push({
           id: rule.id,
           name: rule.intent_name,

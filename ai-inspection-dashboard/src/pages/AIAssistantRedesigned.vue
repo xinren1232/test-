@@ -288,9 +288,10 @@ const chatContent = ref(null)
 
 // 数据统计
 const dataStats = reactive({
-  inventory: 132,
-  production: 1056,
-  inspection: 396
+  inventory: 0,
+  production: 0,
+  inspection: 0,
+  lastSync: null
 })
 
 // 工具配置
@@ -760,11 +761,11 @@ const scrollToBottom = () => {
 }
 
 // 生命周期
-onMounted(() => {
+onMounted(async () => {
   console.log('🤖 AI智能助手重新设计版本已加载')
 
   // 加载数据统计
-  loadDataStats()
+  await loadDataStats()
 
   // 显示欢迎消息
   setTimeout(() => {
@@ -778,7 +779,31 @@ onMounted(() => {
   }, 1000)
 })
 
-const loadDataStats = () => {
+const loadDataStats = async () => {
+  try {
+    console.log('📊 获取数据统计...');
+    const response = await fetch('/api/data/status');
+    const result = await response.json();
+
+    if (result.success) {
+      dataStats.inventory = result.data.inventory;
+      dataStats.inspection = result.data.lab;
+      dataStats.production = result.data.online;
+      dataStats.lastSync = result.data.lastSync;
+      console.log('✅ 数据统计获取成功:', result.data);
+    } else {
+      console.error('❌ 获取数据统计失败:', result.message);
+      // 回退到localStorage
+      loadDataStatsFromLocalStorage();
+    }
+  } catch (error) {
+    console.error('❌ 获取数据统计异常:', error);
+    // 回退到localStorage
+    loadDataStatsFromLocalStorage();
+  }
+}
+
+const loadDataStatsFromLocalStorage = () => {
   try {
     // 从localStorage加载实际数据统计
     const inventoryData = localStorage.getItem('unified_inventory_data') || localStorage.getItem('inventory_data')
@@ -799,8 +824,14 @@ const loadDataStats = () => {
       const factory = JSON.parse(factoryData)
       dataStats.production = factory.length
     }
+
+    console.log('📊 从localStorage加载数据统计:', dataStats);
   } catch (error) {
-    console.warn('加载数据统计失败:', error)
+    console.warn('从localStorage加载数据统计失败:', error)
+    // 使用默认值
+    dataStats.inventory = 132;
+    dataStats.inspection = 396;
+    dataStats.production = 1056;
   }
 }
 </script>

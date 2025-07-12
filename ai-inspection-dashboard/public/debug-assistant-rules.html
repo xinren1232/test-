@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能助手规则调试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f7fa;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        .debug-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+        }
+        .debug-section h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        pre {
+            background: #f1f3f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .rule-group {
+            margin: 10px 0;
+            padding: 10px;
+            border-left: 3px solid #007bff;
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 智能助手规则调试页面</h1>
+        
+        <div id="status" class="status info">
+            正在进行调试检查...
+        </div>
+        
+        <div>
+            <button onclick="runFullDiagnostic()">🔄 完整诊断</button>
+            <button onclick="testRulesLoading()">📊 测试规则加载</button>
+            <button onclick="simulateAssistantPage()">🤖 模拟助手页面</button>
+            <button onclick="checkNetworkRequests()">🌐 检查网络请求</button>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        let diagnosticResults = {};
+
+        async function runFullDiagnostic() {
+            const statusDiv = document.getElementById('status');
+            const resultsDiv = document.getElementById('results');
+            
+            statusDiv.className = 'status info';
+            statusDiv.textContent = '🔄 正在运行完整诊断...';
+            
+            resultsDiv.innerHTML = '';
+            diagnosticResults = {};
+            
+            // 1. 测试规则文件访问
+            await testRulesFileAccess();
+            
+            // 2. 测试规则数据结构
+            await testRulesDataStructure();
+            
+            // 3. 模拟前端加载逻辑
+            await simulateLoadRulesData();
+            
+            // 4. 检查可能的错误
+            await checkPossibleErrors();
+            
+            // 显示结果
+            displayDiagnosticResults();
+        }
+        
+        async function testRulesFileAccess() {
+            try {
+                console.log('🔍 测试规则文件访问...');
+                
+                const response = await fetch('/data/rules.json');
+                diagnosticResults.fileAccess = {
+                    success: response.ok,
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: Object.fromEntries(response.headers.entries())
+                };
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    diagnosticResults.fileData = {
+                        totalRules: data.totalRules,
+                        categoriesCount: data.categories.length,
+                        categories: data.categories.map(cat => ({
+                            name: cat.name,
+                            rulesCount: cat.rules.length
+                        }))
+                    };
+                }
+                
+            } catch (error) {
+                diagnosticResults.fileAccess = {
+                    success: false,
+                    error: error.message
+                };
+            }
+        }
+        
+        async function testRulesDataStructure() {
+            try {
+                console.log('🔍 测试规则数据结构...');
+                
+                const response = await fetch('/data/rules.json');
+                const data = await response.json();
+                
+                // 检查数据结构
+                const structureCheck = {
+                    hasCategories: Array.isArray(data.categories),
+                    hasTotalRules: typeof data.totalRules === 'number',
+                    hasLastUpdated: !!data.lastUpdated,
+                    categoryStructure: []
+                };
+                
+                if (data.categories) {
+                    data.categories.forEach(category => {
+                        const categoryCheck = {
+                            name: category.name,
+                            hasRules: Array.isArray(category.rules),
+                            rulesCount: category.rules ? category.rules.length : 0,
+                            sampleRule: category.rules && category.rules[0] ? {
+                                hasName: !!category.rules[0].name,
+                                hasExample: !!category.rules[0].example,
+                                hasDescription: !!category.rules[0].description,
+                                hasCategory: !!category.rules[0].category
+                            } : null
+                        };
+                        structureCheck.categoryStructure.push(categoryCheck);
+                    });
+                }
+                
+                diagnosticResults.dataStructure = structureCheck;
+                
+            } catch (error) {
+                diagnosticResults.dataStructure = {
+                    error: error.message
+                };
+            }
+        }
+        
+        async function simulateLoadRulesData() {
+            try {
+                console.log('🔍 模拟前端加载逻辑...');
+                
+                // 模拟前端的loadRulesData函数
+                const response = await fetch('/data/rules.json');
+                const rulesData = await response.json();
+                
+                // 图标映射
+                const categoryIcons = {
+                    '库存场景': '📦',
+                    '上线场景': '🚀',
+                    '测试场景': '🧪',
+                    '批次场景': '📋',
+                    '对比场景': '🔍',
+                    '综合场景': '📊'
+                };
+                
+                // 将规则按分类组织
+                const organizedRules = {
+                    basic: [],
+                    advanced: [],
+                    charts: []
+                };
+                
+                rulesData.categories.forEach(category => {
+                    const icon = categoryIcons[category.name] || '📋';
+                    
+                    category.rules.forEach(rule => {
+                        const ruleItem = {
+                            name: rule.name,
+                            query: rule.example || rule.description,
+                            icon: icon,
+                            category: rule.category,
+                            description: rule.description
+                        };
+                        
+                        // 根据分类分配到不同组
+                        if (category.name === '库存场景' || category.name === '上线场景' || category.name === '测试场景') {
+                            organizedRules.basic.push(ruleItem);
+                        } else if (category.name === '批次场景' || category.name === '对比场景') {
+                            organizedRules.advanced.push(ruleItem);
+                        } else {
+                            organizedRules.charts.push(ruleItem);
+                        }
+                    });
+                });
+                
+                diagnosticResults.simulatedLoading = {
+                    success: true,
+                    basicRulesCount: organizedRules.basic.length,
+                    advancedRulesCount: organizedRules.advanced.length,
+                    chartsRulesCount: organizedRules.charts.length,
+                    sampleBasicRules: organizedRules.basic.slice(0, 3).map(r => r.name),
+                    organizedRules: organizedRules
+                };
+                
+            } catch (error) {
+                diagnosticResults.simulatedLoading = {
+                    success: false,
+                    error: error.message
+                };
+            }
+        }
+        
+        async function checkPossibleErrors() {
+            console.log('🔍 检查可能的错误...');
+            
+            const possibleIssues = [];
+            
+            // 检查CORS
+            try {
+                const response = await fetch('/data/rules.json', { method: 'HEAD' });
+                if (!response.ok) {
+                    possibleIssues.push(`HTTP错误: ${response.status} ${response.statusText}`);
+                }
+            } catch (error) {
+                possibleIssues.push(`网络错误: ${error.message}`);
+            }
+            
+            // 检查JSON格式
+            try {
+                const response = await fetch('/data/rules.json');
+                const text = await response.text();
+                JSON.parse(text);
+            } catch (error) {
+                possibleIssues.push(`JSON格式错误: ${error.message}`);
+            }
+            
+            // 检查缓存
+            const cacheCheck = await fetch('/data/rules.json', { 
+                cache: 'no-cache',
+                headers: { 'Cache-Control': 'no-cache' }
+            });
+            
+            diagnosticResults.possibleIssues = possibleIssues;
+        }
+        
+        function displayDiagnosticResults() {
+            const resultsDiv = document.getElementById('results');
+            const statusDiv = document.getElementById('status');
+            
+            let html = '<div class="debug-section"><h3>📊 诊断结果</h3>';
+            
+            // 文件访问结果
+            if (diagnosticResults.fileAccess) {
+                html += `<div class="rule-group">
+                    <h4>📁 文件访问测试</h4>
+                    <p><strong>状态:</strong> ${diagnosticResults.fileAccess.success ? '✅ 成功' : '❌ 失败'}</p>
+                    ${diagnosticResults.fileAccess.status ? `<p><strong>HTTP状态:</strong> ${diagnosticResults.fileAccess.status}</p>` : ''}
+                    ${diagnosticResults.fileAccess.error ? `<p><strong>错误:</strong> ${diagnosticResults.fileAccess.error}</p>` : ''}
+                </div>`;
+            }
+            
+            // 数据结构结果
+            if (diagnosticResults.fileData) {
+                html += `<div class="rule-group">
+                    <h4>📊 数据内容</h4>
+                    <p><strong>总规则数:</strong> ${diagnosticResults.fileData.totalRules}</p>
+                    <p><strong>分类数量:</strong> ${diagnosticResults.fileData.categoriesCount}</p>
+                    <p><strong>分类详情:</strong></p>
+                    <ul>
+                        ${diagnosticResults.fileData.categories.map(cat => 
+                            `<li>${cat.name}: ${cat.rulesCount}条规则</li>`
+                        ).join('')}
+                    </ul>
+                </div>`;
+            }
+            
+            // 模拟加载结果
+            if (diagnosticResults.simulatedLoading) {
+                if (diagnosticResults.simulatedLoading.success) {
+                    html += `<div class="rule-group">
+                        <h4>🤖 模拟前端加载</h4>
+                        <p><strong>状态:</strong> ✅ 成功</p>
+                        <p><strong>基础规则:</strong> ${diagnosticResults.simulatedLoading.basicRulesCount}条</p>
+                        <p><strong>高级规则:</strong> ${diagnosticResults.simulatedLoading.advancedRulesCount}条</p>
+                        <p><strong>图表规则:</strong> ${diagnosticResults.simulatedLoading.chartsRulesCount}条</p>
+                        <p><strong>示例基础规则:</strong></p>
+                        <ul>
+                            ${diagnosticResults.simulatedLoading.sampleBasicRules.map(name => 
+                                `<li>${name}</li>`
+                            ).join('')}
+                        </ul>
+                    </div>`;
+                } else {
+                    html += `<div class="rule-group">
+                        <h4>🤖 模拟前端加载</h4>
+                        <p><strong>状态:</strong> ❌ 失败</p>
+                        <p><strong>错误:</strong> ${diagnosticResults.simulatedLoading.error}</p>
+                    </div>`;
+                }
+            }
+            
+            // 可能的问题
+            if (diagnosticResults.possibleIssues && diagnosticResults.possibleIssues.length > 0) {
+                html += `<div class="rule-group">
+                    <h4>⚠️ 发现的问题</h4>
+                    <ul>
+                        ${diagnosticResults.possibleIssues.map(issue => 
+                            `<li>${issue}</li>`
+                        ).join('')}
+                    </ul>
+                </div>`;
+            }
+            
+            html += '</div>';
+            
+            // 建议
+            html += `<div class="debug-section">
+                <h3>🔧 修复建议</h3>
+                <ol>
+                    <li>如果文件访问失败，检查文件是否存在于 public/data/rules.json</li>
+                    <li>如果数据加载成功但前端未更新，尝试强制刷新浏览器 (Ctrl+Shift+R)</li>
+                    <li>检查浏览器开发者工具的Console标签是否有JavaScript错误</li>
+                    <li>检查Network标签中的请求状态</li>
+                    <li>在智能助手页面点击"强制刷新"按钮</li>
+                </ol>
+            </div>`;
+            
+            resultsDiv.innerHTML = html;
+            
+            // 更新状态
+            if (diagnosticResults.fileAccess && diagnosticResults.fileAccess.success && 
+                diagnosticResults.simulatedLoading && diagnosticResults.simulatedLoading.success) {
+                statusDiv.className = 'status success';
+                statusDiv.textContent = '✅ 诊断完成 - 规则加载应该正常工作';
+            } else {
+                statusDiv.className = 'status warning';
+                statusDiv.textContent = '⚠️ 诊断完成 - 发现潜在问题';
+            }
+        }
+        
+        async function testRulesLoading() {
+            await testRulesFileAccess();
+            await testRulesDataStructure();
+            displayDiagnosticResults();
+        }
+        
+        async function simulateAssistantPage() {
+            await simulateLoadRulesData();
+            displayDiagnosticResults();
+        }
+        
+        async function checkNetworkRequests() {
+            console.log('🌐 检查网络请求...');
+            // 这里可以添加更多网络相关的检查
+            await checkPossibleErrors();
+            displayDiagnosticResults();
+        }
+        
+        // 页面加载时自动运行诊断
+        window.addEventListener('load', runFullDiagnostic);
+    </script>
+</body>
+</html>

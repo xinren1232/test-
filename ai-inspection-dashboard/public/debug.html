@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>调试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .debug-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-container">
+        <h1>🔧 前端调试页面</h1>
+        
+        <div class="status success">
+            ✅ HTML页面加载成功
+        </div>
+        
+        <div class="status info">
+            📍 当前时间: <span id="currentTime"></span>
+        </div>
+        
+        <div class="status info">
+            🌐 当前URL: <span id="currentUrl"></span>
+        </div>
+        
+        <h2>JavaScript测试</h2>
+        <div id="jsTest" class="status error">❌ JavaScript未执行</div>
+        
+        <h2>Vue应用测试</h2>
+        <div id="vueTest" class="status error">❌ Vue应用未加载</div>
+        
+        <h2>网络测试</h2>
+        <button onclick="testNetwork()">测试网络连接</button>
+        <div id="networkResult"></div>
+        
+        <h2>控制台日志</h2>
+        <pre id="consoleLog">等待日志...</pre>
+        
+        <h2>错误信息</h2>
+        <pre id="errorLog">无错误</pre>
+    </div>
+
+    <script>
+        // 基础JavaScript测试
+        document.getElementById('jsTest').innerHTML = '✅ JavaScript执行正常';
+        document.getElementById('jsTest').className = 'status success';
+        
+        // 显示当前信息
+        document.getElementById('currentTime').textContent = new Date().toLocaleString();
+        document.getElementById('currentUrl').textContent = window.location.href;
+        
+        // 捕获所有错误
+        window.addEventListener('error', function(e) {
+            const errorLog = document.getElementById('errorLog');
+            errorLog.textContent += `错误: ${e.message}\n文件: ${e.filename}\n行号: ${e.lineno}\n\n`;
+        });
+        
+        // 捕获Promise错误
+        window.addEventListener('unhandledrejection', function(e) {
+            const errorLog = document.getElementById('errorLog');
+            errorLog.textContent += `Promise错误: ${e.reason}\n\n`;
+        });
+        
+        // 重写console.log来显示日志
+        const originalLog = console.log;
+        const originalError = console.error;
+        const consoleLog = document.getElementById('consoleLog');
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            consoleLog.textContent += `LOG: ${args.join(' ')}\n`;
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            consoleLog.textContent += `ERROR: ${args.join(' ')}\n`;
+        };
+        
+        // 测试Vue应用
+        setTimeout(() => {
+            if (window.Vue) {
+                document.getElementById('vueTest').innerHTML = '✅ Vue已加载';
+                document.getElementById('vueTest').className = 'status success';
+            } else {
+                // 尝试检查Vue应用是否挂载
+                const app = document.getElementById('app');
+                if (app && app.innerHTML.trim() !== '') {
+                    document.getElementById('vueTest').innerHTML = '✅ Vue应用已挂载';
+                    document.getElementById('vueTest').className = 'status success';
+                } else {
+                    document.getElementById('vueTest').innerHTML = '❌ Vue应用未挂载或加载失败';
+                }
+            }
+        }, 2000);
+        
+        // 网络测试
+        async function testNetwork() {
+            const result = document.getElementById('networkResult');
+            result.innerHTML = '<div class="status info">🔄 测试中...</div>';
+            
+            try {
+                // 测试静态资源
+                const response = await fetch('/vite.svg');
+                if (response.ok) {
+                    result.innerHTML += '<div class="status success">✅ 静态资源访问正常</div>';
+                } else {
+                    result.innerHTML += '<div class="status error">❌ 静态资源访问失败</div>';
+                }
+                
+                // 测试API
+                const apiResponse = await fetch('/api/health');
+                if (apiResponse.ok) {
+                    const data = await apiResponse.json();
+                    result.innerHTML += '<div class="status success">✅ API连接正常</div>';
+                    result.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    result.innerHTML += '<div class="status error">❌ API连接失败</div>';
+                }
+            } catch (error) {
+                result.innerHTML += `<div class="status error">❌ 网络测试失败: ${error.message}</div>`;
+            }
+        }
+        
+        console.log('调试页面初始化完成');
+    </script>
+</body>
+</html>
