@@ -14,13 +14,24 @@ import './assets/main.css';
 
 // 导入ECharts相关组件
 import * as echarts from 'echarts/core';
-import { LineChart } from 'echarts/charts';
+import {
+  LineChart,
+  BarChart,
+  PieChart,
+  RadarChart,
+  ScatterChart
+} from 'echarts/charts';
 import {
   TitleComponent,
   TooltipComponent,
   GridComponent,
   DataZoomComponent,
-  LegendComponent
+  LegendComponent,
+  ToolboxComponent,
+  MarkPointComponent,
+  MarkLineComponent,
+  DatasetComponent,
+  TransformComponent
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 
@@ -31,7 +42,16 @@ echarts.use([
   GridComponent,
   DataZoomComponent,
   LegendComponent,
+  ToolboxComponent,
+  MarkPointComponent,
+  MarkLineComponent,
+  DatasetComponent,
+  TransformComponent,
   LineChart,
+  BarChart,
+  PieChart,
+  RadarChart,
+  ScatterChart,
   CanvasRenderer
 ]);
 

@@ -10,6 +10,7 @@ import chartsRoutes from './routes/charts.js';
 import rulesRoutes from './routes/rulesRoutes.js';
 import materialCategoryRoutes from './routes/materialCategoryRoutes.js';
 import intelligentQARoutes from './routes/intelligentQARoutes.js';
+import materialQualityReportRoutes from './routes/materialQualityReportRoutes.js';
 import { swaggerDocs } from './utils/swagger.js';
 
 /**
@@ -32,6 +33,7 @@ export function setupRoutes(app) {
   app.use('/api/rules', rulesRoutes);
   app.use('/api/material-categories', materialCategoryRoutes);
   app.use('/api/intelligent-qa', intelligentQARoutes);
+  app.use('/api/material-quality-report', materialQualityReportRoutes);
   
   // API根路径
   app.get('/api', (req, res) => {

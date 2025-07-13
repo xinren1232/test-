@@ -78,6 +78,15 @@ const routes = [
     }
   },
   {
+    path: '/material-quality-report',
+    name: 'MaterialQualityReport',
+    component: () => import('../pages/MaterialQualityReportSimple.vue'),
+    meta: {
+      title: '物料质量总结报告',
+      icon: 'TrendCharts'
+    }
+  },
+  {
     path: '/batch',
     name: 'BatchManagement',
     component: BatchManagement,

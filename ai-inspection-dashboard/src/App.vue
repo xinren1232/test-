@@ -67,6 +67,10 @@
                 <el-icon class="submenu-icon"><Document /></el-icon>
                 <span class="submenu-title">批次管理</span>
               </el-menu-item>
+              <el-menu-item index="/material-quality-report" class="submenu-item">
+                <el-icon class="submenu-icon"><TrendCharts /></el-icon>
+                <span class="submenu-title">物料质量总结报告</span>
+              </el-menu-item>
             </el-sub-menu>
 
             <!-- 阶段二：数据功能搭建 -->
