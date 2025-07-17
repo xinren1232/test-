@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>验证智能助手更新</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .link-button {
+            background: #28a745;
+            text-decoration: none;
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 4px;
+            color: white;
+            margin-right: 10px;
+        }
+        .link-button:hover {
+            background: #218838;
+            color: white;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-success {
+            background-color: #28a745;
+        }
+        .status-error {
+            background-color: #dc3545;
+        }
+        .status-warning {
+            background-color: #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 智能助手更新验证</h1>
+        <p>验证 AssistantPageNew.vue 的规则加载更新是否生效</p>
+        
+        <div class="test-section">
+            <h3>1. 后端API连接测试</h3>
+            <button onclick="testBackendAPI()">测试后端API</button>
+            <div id="backendResult" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>2. 前端页面访问</h3>
+            <a href="http://localhost:5174/assistant" target="_blank" class="link-button">打开智能助手页面</a>
+            <button onclick="checkPageStatus()">检查页面状态</button>
+            <div id="pageResult" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>3. 浏览器控制台检查</h3>
+            <p>请在智能助手页面打开浏览器开发者工具(F12)，查看控制台输出：</p>
+            <ul>
+                <li><span class="status-indicator status-success"></span>应该看到: "🔄 开始从后端API加载规则数据..."</li>
+                <li><span class="status-indicator status-success"></span>应该看到: "✅ 规则数据从后端API加载完成"</li>
+                <li><span class="status-indicator status-success"></span>应该看到各场景的规则数量统计</li>
+                <li><span class="status-indicator status-error"></span>不应该看到: "从JSON文件加载规则"</li>
+            </ul>
+        </div>
+        
+        <div class="test-section">
+            <h3>4. 预期更新效果</h3>
+            <div class="result">
+✅ 更新内容:
+1. AssistantPageNew.vue 现在从 /api/rules 加载规则
+2. 规则按照后端数据库的分类进行组织
+3. 支持库存场景、上线场景、测试场景、高级场景
+
+📊 预期规则分布:
+- 📦 库存规则: 27条 (库存场景)
+- 🧪 质量规则: 27条 (测试场景) 
+- 🚀 生产规则: 27条 (上线场景)
+- 📊 汇总规则: 0条 (高级场景)
+
+🔍 验证步骤:
+1. 打开智能助手页面
+2. 查看左侧规则按钮是否按新分类显示
+3. 点击规则按钮测试查询功能
+4. 检查浏览器控制台的日志输出
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>5. 故障排除</h3>
+            <button onclick="troubleshoot()">运行故障排除</button>
+            <div id="troubleshootResult" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3001';
+        
+        async function testBackendAPI() {
+            const resultDiv = document.getElementById('backendResult');
+            resultDiv.textContent = '正在测试后端API...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/rules`);
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    let output = '✅ 后端API测试成功!\n\n';
+                    output += `规则总数: ${result.data.length}\n\n`;
+                    
+                    // 分类统计
+                    const categories = {};
+                    result.data.forEach(rule => {
+                        const cat = rule.category || '未分类';
+                        categories[cat] = (categories[cat] || 0) + 1;
+                    });
+                    
+                    output += '分类统计:\n';
+                    Object.entries(categories).forEach(([cat, count]) => {
+                        output += `  ${cat}: ${count} 条\n`;
+                    });
+                    
+                    output += '\n示例规则:\n';
+                    result.data.slice(0, 3).forEach((rule, index) => {
+                        output += `${index + 1}. ${rule.intent_name} (${rule.category})\n`;
+                        output += `   示例: ${rule.example_query}\n`;
+                    });
+                    
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = output;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ API返回错误: ${JSON.stringify(result, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ API请求失败: ${error.message}`;
+            }
+        }
+        
+        function checkPageStatus() {
+            const resultDiv = document.getElementById('pageResult');
+            
+            let output = '📋 页面状态检查:\n\n';
+            output += `当前时间: ${new Date().toLocaleString()}\n`;
+            output += `前端服务: http://localhost:5174\n`;
+            output += `智能助手页面: http://localhost:5174/assistant\n\n`;
+            
+            output += '🔍 检查要点:\n';
+            output += '1. 页面是否正常加载\n';
+            output += '2. 左侧是否显示规则按钮\n';
+            output += '3. 规则按钮是否按新分类组织\n';
+            output += '4. 点击规则按钮是否能正常查询\n';
+            output += '5. 浏览器控制台是否有错误\n\n';
+            
+            output += '💡 如果页面没有更新:\n';
+            output += '1. 硬刷新页面 (Ctrl+F5)\n';
+            output += '2. 清除浏览器缓存\n';
+            output += '3. 重启前端服务\n';
+            output += '4. 检查文件是否保存\n';
+            
+            resultDiv.className = 'result';
+            resultDiv.textContent = output;
+        }
+        
+        async function troubleshoot() {
+            const resultDiv = document.getElementById('troubleshootResult');
+            resultDiv.textContent = '正在运行故障排除...';
+            
+            let output = '🔧 故障排除报告:\n\n';
+            
+            // 检查后端API
+            try {
+                const response = await fetch(`${API_BASE}/api/rules`);
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    output += '✅ 后端API正常\n';
+                    output += `   规则数量: ${result.data.length}\n`;
+                } else {
+                    output += '❌ 后端API异常\n';
+                    output += `   错误: ${result.message || '未知错误'}\n`;
+                }
+            } catch (error) {
+                output += '❌ 后端API连接失败\n';
+                output += `   错误: ${error.message}\n`;
+            }
+            
+            // 检查前端服务
+            try {
+                const frontendResponse = await fetch('http://localhost:5174/');
+                if (frontendResponse.ok) {
+                    output += '✅ 前端服务正常\n';
+                } else {
+                    output += '❌ 前端服务异常\n';
+                }
+            } catch (error) {
+                output += '❌ 前端服务连接失败\n';
+                output += `   错误: ${error.message}\n`;
+            }
+            
+            output += '\n📝 建议操作:\n';
+            output += '1. 确保后端服务运行在端口3001\n';
+            output += '2. 确保前端服务运行在端口5174\n';
+            output += '3. 检查 AssistantPageNew.vue 文件是否已保存\n';
+            output += '4. 硬刷新智能助手页面\n';
+            output += '5. 查看浏览器控制台的错误信息\n';
+            
+            resultDiv.className = 'result';
+            resultDiv.textContent = output;
+        }
+        
+        // 页面加载时自动测试
+        window.onload = function() {
+            testBackendAPI();
+        };
+    </script>
+</body>
+</html>

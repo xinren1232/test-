@@ -16,8 +16,10 @@ app.use(express.json());
 const dbConfig = {
   host: 'localhost',
   user: 'root',
-  password: 'Flameaway3.',
-  database: 'iQE_database'
+  password: 'Zxylsy.99',
+  database: 'iqe_inspection',
+  charset: 'utf8mb4',
+  timezone: '+08:00'
 };
 
 // 识别查询场景类型

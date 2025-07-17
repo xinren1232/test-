@@ -481,6 +481,25 @@
                           </div>
                         </div>
 
+                        <!-- 统计卡片部分 -->
+                        <div v-if="message.tableData && Array.isArray(message.tableData) && message.tableData.length > 0" class="statistics-section">
+                          <div class="stats-cards">
+                            <div
+                              v-for="stat in generateStatistics(message.tableData, message.queryType || 'inventory')"
+                              :key="stat.label"
+                              class="stat-card"
+                              :class="`stat-${stat.type}`"
+                            >
+                              <div class="stat-icon">{{ stat.icon }}</div>
+                              <div class="stat-content">
+                                <div class="stat-value">{{ stat.value }}</div>
+                                <div class="stat-label">{{ stat.label }}</div>
+                                <div v-if="stat.subtitle" class="stat-subtitle">{{ stat.subtitle }}</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
                         <!-- 数据可视化部分 -->
                         <div v-if="message.tableData && Array.isArray(message.tableData) && message.tableData.length > 0" class="visualization-section">
                           <div class="viz-header">
@@ -840,70 +859,76 @@ const regenerateResponse = async (message) => {
   }
 };
 
-// 从JSON文件加载规则数据
+// 从后端API加载规则数据
 const loadRulesFromBackend = async () => {
   try {
-    console.log('🔄 开始从JSON文件加载规则数据...')
+    console.log('🔄 开始从后端API加载规则数据...')
 
-    // 从JSON文件加载规则数据
-    const timestamp = new Date().getTime()
-    const response = await fetch(`/data/rules.json?v=${timestamp}`)
+    // 从后端API加载规则数据
+    const response = await fetch('/api/rules')
 
     if (response.ok) {
-      const rulesData = await response.json()
-      console.log('📊 加载的规则数据:', rulesData)
+      const result = await response.json()
 
-      // 图标映射
-      const categoryIcons = {
-        '库存场景': '📦',
-        '上线场景': '🚀',
-        '测试场景': '🧪',
-        '批次场景': '📋',
-        '对比场景': '🔍',
-        '综合场景': '📊'
-      }
+      if (result.success && result.data) {
+        console.log('📊 加载的规则数据:', result.data)
 
-      // 清空现有规则
-      basicRules.inventory = []
-      basicRules.quality = []
-      basicRules.production = []
-      basicRules.summary = []
+        // 图标映射
+        const categoryIcons = {
+          '库存场景': '📦',
+          '上线场景': '🚀',
+          '测试场景': '🧪',
+          '高级场景': '📊'
+        }
 
-      // 按分类组织规则
-      rulesData.categories.forEach(category => {
-        const icon = categoryIcons[category.name] || '📋'
+        // 清空现有规则
+        basicRules.inventory = []
+        basicRules.quality = []
+        basicRules.production = []
+        basicRules.summary = []
 
-        category.rules.forEach(rule => {
+        // 按场景智能分类规则
+        result.data.forEach(rule => {
+          const desc = rule.description ? rule.description.toLowerCase() : ''
+          const target = rule.action_target ? rule.action_target.toLowerCase() : ''
+          const category = rule.category || '其他'
+
+          const icon = categoryIcons[category] || '📋'
+
           const ruleItem = {
-            name: `${icon} ${rule.name}`,
-            query: rule.example || rule.description,
-            intent: rule.id
+            name: `${icon} ${rule.intent_name || rule.description}`,
+            query: rule.example_query || rule.description,
+            intent: rule.id,
+            category: category
           }
 
           // 根据分类分配到不同组
-          if (category.name === '库存场景') {
+          if (category === '库存场景' || desc.includes('库存') || target.includes('inventory')) {
             basicRules.inventory.push(ruleItem)
-          } else if (category.name === '测试场景') {
+          } else if (category === '测试场景' || desc.includes('测试') || desc.includes('检验') || target.includes('lab_tests')) {
             basicRules.quality.push(ruleItem)
-          } else if (category.name === '上线场景') {
+          } else if (category === '上线场景' || desc.includes('上线') || target.includes('online_tracking')) {
             basicRules.production.push(ruleItem)
           } else {
             basicRules.summary.push(ruleItem)
           }
         })
-      })
 
-      console.log('✅ 规则数据从JSON文件加载完成')
-      console.log(`📦 库存规则: ${basicRules.inventory.length}条`)
-      console.log(`🧪 质量规则: ${basicRules.quality.length}条`)
-      console.log(`🚀 生产规则: ${basicRules.production.length}条`)
-      console.log(`📋 汇总规则: ${basicRules.summary.length}条`)
+        console.log('✅ 规则数据从后端API加载完成')
+        console.log(`📦 库存规则: ${basicRules.inventory.length}条`)
+        console.log(`🧪 质量规则: ${basicRules.quality.length}条`)
+        console.log(`🚀 生产规则: ${basicRules.production.length}条`)
+        console.log(`📊 汇总规则: ${basicRules.summary.length}条`)
+        console.log(`🔄 更新时间: ${new Date().toLocaleString()}`)
 
+      } else {
+        throw new Error(`API返回错误: ${result.message || '未知错误'}`)
+      }
     } else {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`)
     }
   } catch (error) {
-    console.error('❌ 从JSON文件加载规则失败:', error)
+    console.error('❌ 从后端API加载规则失败:', error)
     // 使用全面的默认规则作为后备
     basicRules.inventory = [
       // 按工厂查询
@@ -1404,10 +1429,15 @@ const handleSendMessage = async () => {
 
       console.log('📝 消息类型:', messageType, '图表数量:', finalCharts?.length || 0);
 
+      // 识别查询类型
+      const queryType = identifyQueryType(userMessage, result.data);
+      console.log('🔍 识别的查询类型:', queryType);
+
       messages.value[assistantMessageIndex] = {
         sender: 'assistant',
         text: responseText,
         type: messageType,
+        queryType: queryType, // 添加查询类型
         analysisData: analysisData,
         tableData: hasTableData ? result.data.tableData : null,
         keyMetrics: hasKeyMetrics ? result.data.keyMetrics : null,
@@ -2558,6 +2588,287 @@ const prepareChartData = (tableData, analysisData) => {
       }]
     }
   };
+};
+
+// 生成统计数据
+const generateStatistics = (tableData, queryType) => {
+  if (!tableData || tableData.length === 0) return [];
+
+  console.log('📊 生成统计数据:', { queryType, dataLength: tableData.length });
+
+  // 根据查询类型生成不同的统计
+  switch (queryType) {
+    case 'inventory':
+    case 'stock':
+      return generateInventoryStatistics(tableData);
+    case 'production':
+    case 'online':
+      return generateProductionStatistics(tableData);
+    case 'testing':
+    case 'lab':
+      return generateTestingStatistics(tableData);
+    default:
+      return generateDefaultStatistics(tableData);
+  }
+};
+
+// 库存场景统计
+const generateInventoryStatistics = (data) => {
+  const stats = [];
+
+  // 1. 物料和批次统计
+  const materials = new Set();
+  const batches = new Set();
+  data.forEach(item => {
+    if (item.物料名称) materials.add(item.物料名称);
+    if (item.批次号 || item.批次) batches.add(item.批次号 || item.批次);
+  });
+
+  stats.push({
+    icon: '📦',
+    label: '物料和批次',
+    value: materials.size,
+    subtitle: `${batches.size} 个批次`,
+    type: 'primary'
+  });
+
+  // 2. 供应商统计
+  const suppliers = new Set();
+  data.forEach(item => {
+    if (item.供应商) suppliers.add(item.供应商);
+  });
+
+  stats.push({
+    icon: '🏭',
+    label: '供应商',
+    value: suppliers.size,
+    subtitle: '家供应商',
+    type: 'info'
+  });
+
+  // 3. 风险库存统计
+  const riskItems = data.filter(item =>
+    item.状态 === '风险' || item.状态 === 'RISK' ||
+    (item.数量 && parseInt(item.数量) < 100)
+  );
+
+  stats.push({
+    icon: '⚠️',
+    label: '风险库存',
+    value: riskItems.length,
+    subtitle: '需关注',
+    type: 'warning'
+  });
+
+  // 4. 冻结库存统计
+  const frozenItems = data.filter(item =>
+    item.状态 === '冻结' || item.状态 === 'FROZEN'
+  );
+
+  stats.push({
+    icon: '🧊',
+    label: '冻结库存',
+    value: frozenItems.length,
+    subtitle: '已冻结',
+    type: 'danger'
+  });
+
+  return stats;
+};
+
+// 生产/上线场景统计
+const generateProductionStatistics = (data) => {
+  const stats = [];
+
+  // 1. 物料和批次统计
+  const materials = new Set();
+  const batches = new Set();
+  data.forEach(item => {
+    if (item.物料名称) materials.add(item.物料名称);
+    if (item.批次号 || item.批次) batches.add(item.批次号 || item.批次);
+  });
+
+  stats.push({
+    icon: '📦',
+    label: '物料和批次',
+    value: materials.size,
+    subtitle: `${batches.size} 个批次`,
+    type: 'primary'
+  });
+
+  // 2. 项目统计
+  const projects = new Set();
+  data.forEach(item => {
+    if (item.项目) projects.add(item.项目);
+  });
+
+  stats.push({
+    icon: '🎯',
+    label: '项目',
+    value: projects.size,
+    subtitle: '个项目',
+    type: 'info'
+  });
+
+  // 3. 供应商统计
+  const suppliers = new Set();
+  data.forEach(item => {
+    if (item.供应商) suppliers.add(item.供应商);
+  });
+
+  stats.push({
+    icon: '🏭',
+    label: '供应商',
+    value: suppliers.size,
+    subtitle: '家供应商',
+    type: 'success'
+  });
+
+  // 4. 不良率统计 (3%为分界)
+  const standardItems = data.filter(item => {
+    const defectRate = parseFloat(item.不良率) || 0;
+    return defectRate <= 3;
+  });
+
+  const overStandardItems = data.filter(item => {
+    const defectRate = parseFloat(item.不良率) || 0;
+    return defectRate > 3;
+  });
+
+  stats.push({
+    icon: '📊',
+    label: '不良率',
+    value: `${standardItems.length}/${overStandardItems.length}`,
+    subtitle: '标准内/标准外',
+    type: overStandardItems.length > 0 ? 'warning' : 'success'
+  });
+
+  return stats;
+};
+
+// 测试场景统计
+const generateTestingStatistics = (data) => {
+  const stats = [];
+
+  // 1. 物料和批次统计
+  const materials = new Set();
+  const batches = new Set();
+  data.forEach(item => {
+    if (item.物料名称) materials.add(item.物料名称);
+    if (item.批次号 || item.批次) batches.add(item.批次号 || item.批次);
+  });
+
+  stats.push({
+    icon: '📦',
+    label: '物料和批次',
+    value: materials.size,
+    subtitle: `${batches.size} 个批次`,
+    type: 'primary'
+  });
+
+  // 2. 项目统计
+  const projects = new Set();
+  data.forEach(item => {
+    if (item.项目) projects.add(item.项目);
+  });
+
+  stats.push({
+    icon: '🎯',
+    label: '项目',
+    value: projects.size,
+    subtitle: '个项目',
+    type: 'info'
+  });
+
+  // 3. 供应商统计
+  const suppliers = new Set();
+  data.forEach(item => {
+    if (item.供应商) suppliers.add(item.供应商);
+  });
+
+  stats.push({
+    icon: '🏭',
+    label: '供应商',
+    value: suppliers.size,
+    subtitle: '家供应商',
+    type: 'success'
+  });
+
+  // 4. NG批次统计
+  const ngBatches = new Set();
+  data.forEach(item => {
+    const result = item.测试结果 || item.testResult || '';
+    if (result === 'NG' || result === 'FAIL' || result.includes('失败')) {
+      if (item.批次号 || item.批次) {
+        ngBatches.add(item.批次号 || item.批次);
+      }
+    }
+  });
+
+  stats.push({
+    icon: '❌',
+    label: 'NG批次',
+    value: ngBatches.size,
+    subtitle: '个批次',
+    type: 'danger'
+  });
+
+  return stats;
+};
+
+// 默认统计
+const generateDefaultStatistics = (data) => {
+  return [
+    {
+      icon: '📊',
+      label: '总记录数',
+      value: data.length,
+      subtitle: '条记录',
+      type: 'primary'
+    }
+  ];
+};
+
+// 识别查询类型
+const identifyQueryType = (query, responseData) => {
+  const queryLower = query.toLowerCase();
+
+  // 检查查询内容关键词
+  if (queryLower.includes('库存') || queryLower.includes('inventory') || queryLower.includes('仓库')) {
+    return 'inventory';
+  }
+
+  if (queryLower.includes('上线') || queryLower.includes('生产') || queryLower.includes('production') || queryLower.includes('online')) {
+    return 'production';
+  }
+
+  if (queryLower.includes('测试') || queryLower.includes('检验') || queryLower.includes('test') || queryLower.includes('lab')) {
+    return 'testing';
+  }
+
+  // 检查响应数据的字段来推断类型
+  if (responseData && responseData.tableData && responseData.tableData.length > 0) {
+    const firstRow = responseData.tableData[0];
+    const fields = Object.keys(firstRow);
+
+    // 库存场景字段
+    if (fields.some(field => ['仓库', '入库时间', '到期时间', '状态'].includes(field))) {
+      return 'inventory';
+    }
+
+    // 生产场景字段
+    if (fields.some(field => ['基线', '项目', '不良率', '不良现象'].includes(field))) {
+      return 'production';
+    }
+
+    // 测试场景字段
+    if (fields.some(field => ['测试编号', '测试结果', '不合格描述', '检验日期'].includes(field))) {
+      return 'testing';
+    }
+  }
+
+  // 默认返回库存类型
+  return 'inventory';
 };
 
 // 获取数据统计
@@ -4314,6 +4625,117 @@ onMounted(async () => {
   margin-bottom: 16px;
   color: #374151;
   line-height: 1.6;
+}
+
+/* 统计卡片部分 */
+.statistics-section {
+  margin-bottom: 16px;
+}
+
+.stats-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.stat-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.stat-card.stat-primary {
+  border-left: 4px solid #3b82f6;
+}
+
+.stat-card.stat-info {
+  border-left: 4px solid #06b6d4;
+}
+
+.stat-card.stat-success {
+  border-left: 4px solid #10b981;
+}
+
+.stat-card.stat-warning {
+  border-left: 4px solid #f59e0b;
+}
+
+.stat-card.stat-danger {
+  border-left: 4px solid #ef4444;
+}
+
+.stat-icon {
+  font-size: 24px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.stat-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1f2937;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  line-height: 1.2;
+  margin-bottom: 2px;
+}
+
+.stat-subtitle {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.2;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .stats-cards {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+  }
+
+  .stat-card {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .stat-icon {
+    font-size: 20px;
+  }
+
+  .stat-value {
+    font-size: 20px;
+  }
+
+  .stat-label {
+    font-size: 13px;
+  }
+
+  .stat-subtitle {
+    font-size: 11px;
+  }
 }
 
 /* 数据可视化部分 */

@@ -5,7 +5,7 @@
       <div class="header-left">
         <div class="logo-section">
           <span class="logo-icon">🤖</span>
-          <span class="logo-text">QMS问答助手</span>
+          <span class="logo-text">QMS问答助手-小Q</span>
         </div>
       </div>
       <div class="header-right">
@@ -15,11 +15,81 @@
 
     <!-- 三栏主体布局 -->
     <div class="three-column-layout">
-      <!-- 左侧工具面板 -->
+      <!-- 左侧功能区 -->
       <div class="left-panel">
         <div class="panel-header">
-          <span class="panel-icon">🛠️</span>
-          <h3 class="panel-title">智能问答规则 [已更新]</h3>
+          <span class="panel-icon">⚙️</span>
+          <h3 class="panel-title">功能区</h3>
+        </div>
+
+        <!-- 对话管理区域 - 移至顶部 -->
+        <div class="conversation-management">
+          <div class="section-header" @click="toggleSection('conversation')">
+            <span class="section-icon">💬</span>
+            <span class="section-title">对话管理</span>
+            <span class="expand-icon" :class="{ expanded: expandedSections.conversation }">▼</span>
+          </div>
+          <div v-show="expandedSections.conversation" class="section-content">
+            <div class="conversation-controls">
+              <button @click="startNewConversation" class="control-btn new-conversation">
+                <span class="btn-icon">➕</span>
+                <span class="btn-text">新建对话</span>
+              </button>
+              <button @click="saveCurrentSession" class="control-btn save-session">
+                <span class="btn-icon">💾</span>
+                <span class="btn-text">保存会话</span>
+              </button>
+              <button @click="clearMessages" class="control-btn clear-messages">
+                <span class="btn-icon">🗑️</span>
+                <span class="btn-text">清空对话</span>
+              </button>
+            </div>
+
+            <!-- 历史会话列表 -->
+            <div v-if="savedSessions.length > 0" class="saved-sessions">
+              <div class="sessions-header">
+                <h5 class="sessions-title">历史会话 ({{ savedSessions.length }})</h5>
+                <div class="sessions-controls">
+                  <button @click="refreshSessions" class="refresh-btn" title="刷新会话列表">
+                    🔄
+                  </button>
+                  <button @click="clearAllSessions" class="clear-all-btn" title="清空所有历史会话">
+                    🗑️
+                  </button>
+                </div>
+              </div>
+              <div class="sessions-container">
+                <div class="sessions-list-scrollable">
+                  <div
+                    v-for="session in savedSessions"
+                    :key="session.id"
+                    @click="loadSession(session)"
+                    class="session-item"
+                    :class="{ 'active': session.id === currentSessionId }"
+                    :title="session.title"
+                  >
+                    <div class="session-content">
+                      <span class="session-icon">📝</span>
+                      <div class="session-info">
+                        <span class="session-title">{{ session.title }}</span>
+                        <span class="session-preview">{{ getSessionPreview(session) }}</span>
+                      </div>
+                      <div class="session-meta">
+                        <span class="session-time">{{ formatSessionTime(session.timestamp) }}</span>
+                        <button
+                          @click.stop="deleteSession(session.id)"
+                          class="delete-session-btn"
+                          title="删除此会话"
+                        >
+                          ❌
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- 调试信息 -->
@@ -27,11 +97,11 @@
           ✅ 规则已优化去重 | 库存({{ basicRules.inventory.length }}) 质量({{ basicRules.quality.length }}) 生产({{ basicRules.production.length }}) | {{ new Date().toLocaleTimeString() }}
         </div>
 
-        <!-- 基础规则问答 -->
+        <!-- 智能问答规则 -->
         <div class="rule-section">
           <div class="section-header" @click="toggleSection('basic')">
             <span class="section-icon">📋</span>
-            <span class="section-title">基础规则问答</span>
+            <span class="section-title">智能问答规则</span>
             <span class="expand-icon" :class="{ expanded: expandedSections.basic }">▼</span>
           </div>
           <div v-show="expandedSections.basic" class="section-content">
@@ -250,17 +320,77 @@
                 <div class="assistant-avatar">🤖</div>
                 <div class="assistant-content">
                   <div class="assistant-header">
-                    <span class="assistant-name">QMS智能助手</span>
+                    <span class="assistant-name">QMS问答助手-小Q</span>
                     <span class="message-source" v-if="message.source">{{ getSourceLabel(message.source) }}</span>
+                    <!-- 语音播放按钮 -->
+                    <button
+                      v-if="voiceStatus.isSupported && !message.isLoading"
+                      @click="speakResponse(message.content)"
+                      class="voice-play-button"
+                      :disabled="voiceStatus.isSpeaking"
+                      :title="voiceStatus.isSpeaking ? '正在播放...' : '点击播放语音'"
+                    >
+                      <span v-if="voiceStatus.isSpeaking">🔊</span>
+                      <span v-else>🔉</span>
+                    </button>
                   </div>
+                  <!-- 加载状态 -->
+                  <div v-if="message.isLoading" class="loading-content">
+                    <div class="loading-spinner">⏳</div>
+                    <div class="loading-text">{{ message.content }}</div>
+                  </div>
+
                   <!-- 结构化响应渲染 -->
-                  <EnhancedResponseRenderer
-                    v-if="isStructuredResponse(message.content)"
-                    :data="message.content"
-                    @action="handleResponseAction"
-                  />
-                  <!-- 传统文本响应 -->
-                  <div v-else class="assistant-text" v-html="formatAssistantMessage(message.content)"></div>
+                  <div v-else-if="isStructuredResponse(message.content)">
+                    <EnhancedResponseRenderer
+                      :data="message.content"
+                      @action="handleResponseAction"
+                    />
+                  </div>
+
+                  <!-- 真实数据响应渲染 -->
+                  <div v-else>
+                    <!-- AI回答使用Markdown渲染 -->
+                    <div v-if="message.source === 'ai-consultation' || message.source === 'ai-enhanced'" class="ai-response">
+                      <MarkdownRenderer :content="message.content" />
+                    </div>
+                    <!-- 普通文本回答 -->
+                    <div v-else class="assistant-text" v-html="formatAssistantMessage(message.content)"></div>
+
+                    <!-- 卡片数据展示 -->
+                    <div v-if="message.cards && message.cards.length > 0" class="cards-container">
+                      <div v-for="(card, cardIndex) in message.cards" :key="cardIndex" class="data-card">
+                        <div class="card-header">
+                          <span class="card-icon">{{ card.icon || '📊' }}</span>
+                          <span class="card-title">{{ card.title }}</span>
+                        </div>
+                        <div class="card-content">
+                          <div class="card-value">{{ card.value }}</div>
+                          <div v-if="card.subtitle" class="card-subtitle">{{ card.subtitle }}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- 表格数据展示 -->
+                    <div v-if="message.tableData && message.tableData.length > 0" class="table-container">
+                      <table class="data-table">
+                        <thead>
+                          <tr>
+                            <th v-for="column in message.tableColumns" :key="column.key">
+                              {{ column.title }}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="(row, rowIndex) in message.tableData" :key="rowIndex">
+                            <td v-for="column in message.tableColumns" :key="column.key">
+                              {{ row[column.key] }}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
 
                   <!-- 工作流信息 -->
                   <div v-if="message.workflow" class="workflow-info">
@@ -271,18 +401,10 @@
                   </div>
 
                   <!-- 图表信息 -->
-                  <div v-if="message.chartData" class="chart-info">
+                  <div v-if="message.chartId" class="chart-info">
                     <div class="chart-summary">
                       <span class="chart-icon">📊</span>
-                      <span class="chart-text">已生成{{ message.chartData.name }}，请查看左侧预览</span>
-                    </div>
-                  </div>
-
-                  <!-- 数据统计 -->
-                  <div v-if="message.data" class="data-stats">
-                    <div class="stats-item">
-                      <span class="stats-icon">📋</span>
-                      <span class="stats-text">数据量: {{ getDataCount(message.data) }}</span>
+                      <span class="chart-text">已生成图表，ID: {{ message.chartId }}</span>
                     </div>
                   </div>
 
@@ -298,10 +420,25 @@
               <input
                 v-model="inputMessage"
                 @keyup.enter="sendMessage"
-                placeholder="输入您的问题..."
+                placeholder="向小Q提问，或点击🎤语音输入..."
                 class="message-input"
                 :disabled="isLoading"
               />
+
+              <!-- 语音按钮 -->
+              <button
+                @click="toggleVoiceInput"
+                class="voice-button"
+                :class="{ 'listening': voiceStatus.isListening, 'disabled': !voiceStatus.isSupported }"
+                :disabled="isLoading"
+                :title="voiceStatus.isSupported ? (voiceStatus.isListening ? '点击停止录音' : '点击开始语音输入') : '浏览器不支持语音功能'"
+              >
+                <span v-if="voiceStatus.isListening">🔴</span>
+                <span v-else-if="voiceStatus.isSupported">🎤</span>
+                <span v-else>🚫</span>
+              </button>
+
+              <!-- 发送按钮 -->
               <button
                 @click="sendMessage"
                 class="send-button"
@@ -310,6 +447,39 @@
                 <span v-if="isLoading">⏳</span>
                 <span v-else>🚀</span>
               </button>
+            </div>
+
+            <!-- 语音状态提示 -->
+            <div v-if="voiceStatus.isListening" class="voice-status">
+              <div class="voice-indicator">
+                <div class="voice-wave"></div>
+                <div class="voice-wave"></div>
+                <div class="voice-wave"></div>
+              </div>
+              <span class="voice-text">正在听您说话...</span>
+            </div>
+
+            <!-- 语音识别结果预览 -->
+            <div v-if="voiceTranscript.interim || voiceTranscript.final" class="voice-transcript">
+              <div v-if="voiceTranscript.interim" class="transcript-line">
+                <span class="transcript-label">识别中:</span>
+                <span class="transcript-text interim">{{ voiceTranscript.interim }}</span>
+              </div>
+              <div v-if="voiceTranscript.final" class="transcript-line">
+                <span class="transcript-label">识别完成:</span>
+                <span class="transcript-text final">{{ voiceTranscript.final }}</span>
+                <span class="confidence">({{ (voiceTranscript.confidence * 100).toFixed(1) }}%)</span>
+              </div>
+            </div>
+
+            <!-- 调试信息 -->
+            <div v-if="voiceStatus.isSupported" class="voice-debug">
+              <small class="debug-info">
+                语音状态: {{ voiceStatus.isListening ? '🔴 录音中' : '⚪ 待机' }} |
+                支持: ✅ |
+                <button @click="testVoiceDebug" class="debug-button">测试语音</button> |
+                <button @click="testMarkdownResponse" class="debug-button">测试MD</button>
+              </small>
             </div>
           </div>
         </div>
@@ -411,6 +581,9 @@ import { ref, onMounted, nextTick, watch, onBeforeUnmount } from 'vue'
 import AnalysisProcessPanel from '../components/AnalysisProcessPanel.vue'
 import ChartToolPanel from '../components/ChartToolPanel.vue'
 import EnhancedResponseRenderer from '../components/EnhancedResponseRenderer.vue'
+import MarkdownRenderer from '../components/MarkdownRenderer.vue'
+import AIServiceManager from '../services/AIServiceManager.js'
+import VoiceServiceManager from '../services/VoiceServiceManager.js'
 
 // 响应式数据
 const messages = ref([])
@@ -423,16 +596,37 @@ const multiStepServiceUrl = 'http://localhost:3005'
 // 当前分析状态
 const currentAnalysis = ref(null)
 
+// AI服务状态
+const aiServiceStatus = ref({
+  available: false,
+  lastCheck: null,
+  error: null
+})
+
+// 语音服务状态
+const voiceStatus = ref({
+  isSupported: false,
+  isListening: false,
+  isSpeaking: false
+})
+
+// 语音识别结果
+const voiceTranscript = ref({
+  final: '',
+  interim: '',
+  confidence: 0
+})
+
 // 对话历史管理
 const conversationHistory = ref([])
 const savedSessions = ref([])
 
 // 左侧面板状态
 const expandedSections = ref({
-  basic: true,  // 基础规则默认展开
+  basic: true,  // 智能问答规则默认展开
   ai: false,
   chart: false,
-  conversation: false
+  conversation: true  // 对话管理默认展开
 })
 
 // 对话管理状态
@@ -490,7 +684,7 @@ const chartRules = ref({
   ]
 })
 
-// 发送消息
+// 发送消息 - 集成AI智能分析和真实数据问答功能
 const sendMessage = async () => {
   if (!inputMessage.value.trim() || isLoading.value) {
     return
@@ -506,78 +700,135 @@ const sendMessage = async () => {
     timestamp: new Date()
   })
 
-  // 创建分析任务
-  const analysisType = userQuestion.includes('AI') || userQuestion.includes('智能') || userQuestion.includes('分析') ? 'ai-enhanced' : 'basic'
-  createAnalysisTask(userQuestion, analysisType)
+  // 添加加载中的消息
+  const loadingMessage = {
+    type: 'assistant',
+    content: '正在智能分析您的问题...',
+    isLoading: true,
+    timestamp: new Date()
+  }
+  messages.value.push(loadingMessage)
 
+  // 清空输入
   inputMessage.value = ''
   isLoading.value = true
 
   try {
-    console.log('🔄 启动多步骤AI分析...')
+    // 第一步：AI智能意图分析
+    console.log('🧠 执行AI意图分析...')
+    const intentAnalysis = await AIServiceManager.analyzeUserIntent(userQuestion)
+    console.log('🎯 意图分析结果:', intentAnalysis)
 
-    // 模拟分析步骤进度
-    simulateAnalysisProgress()
+    // 更新加载消息
+    const messageIndex = messages.value.length - 1
+    messages.value[messageIndex].content = '正在处理您的请求...'
 
-    // 首先尝试基础规则匹配
-    const basicResponse = await tryBasicRules(userQuestion)
-    if (basicResponse) {
-      console.log('✅ 基础规则匹配成功')
-      messages.value.push({
+    let result = null
+
+    // 第二步：根据意图选择处理方式
+    if (intentAnalysis.needsDataQuery) {
+      console.log('📊 需要数据查询，调用数据API...')
+
+      // 调用数据查询API
+      const response = await fetch('/api/assistant/query', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          question: userQuestion,
+          scenario: 'basic',
+          intentAnalysis: intentAnalysis
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`数据查询API请求失败: ${response.status}`)
+      }
+
+      result = await response.json()
+      console.log('✅ 数据查询成功:', result)
+
+      // 更新消息为数据查询结果
+      messages.value[messageIndex] = {
         type: 'assistant',
-        content: basicResponse,
+        content: result.data?.answer || '查询完成',
+        cards: result.data?.cards || [],
+        tableData: result.data?.tableData || [],
+        tableColumns: result.data?.tableColumns || [],
+        chartId: result.data?.chartId || null,
+        isLoading: false,
         timestamp: new Date(),
-        source: 'basic-rules'
-      })
-      return
+        source: 'data-query',
+        intentAnalysis: intentAnalysis
+      }
+
+    } else {
+      console.log('💬 咨询问答，使用AI增强回复...')
+
+      try {
+        // 使用AI生成咨询回复
+        const aiResponse = await AIServiceManager.callDeepSeek(`
+我是小Q，QMS问答助手，专业的质量管理AI助手。请回答以下问题：
+
+用户问题：${userQuestion}
+
+请以小Q的身份提供专业、详细的回答，包含：
+1. 问题分析
+2. 专业建议
+3. 最佳实践
+4. 注意事项
+
+回答要求：
+- 以"小Q为您解答"开头
+- 语言亲切专业
+- 结构清晰
+- 实用性强
+- 符合质量管理标准
+- 结尾可以说"还有其他问题随时问小Q哦！"
+        `)
+
+        // 更新消息为AI咨询回复
+        messages.value[messageIndex] = {
+          type: 'assistant',
+          content: aiResponse,
+          isLoading: false,
+          timestamp: new Date(),
+          source: 'ai-consultation',
+          intentAnalysis: intentAnalysis
+        }
+
+      } catch (aiError) {
+        console.warn('⚠️ AI咨询失败，使用降级回复:', aiError.message)
+
+        // 使用降级回复
+        const fallbackResponse = AIServiceManager.generateFallbackResponse(userQuestion, intentAnalysis.intent)
+
+        messages.value[messageIndex] = {
+          type: 'assistant',
+          content: fallbackResponse,
+          isLoading: false,
+          timestamp: new Date(),
+          source: 'fallback',
+          intentAnalysis: intentAnalysis
+        }
+      }
     }
 
-    // 调用优化版多步骤AI服务
-    const response = await fetch(`${multiStepServiceUrl}/api/multi-step-query`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        question: userQuestion
-      })
-    })
-
-    if (!response.ok) {
-      throw new Error(`多步骤AI服务请求失败: ${response.status}`)
-    }
-
-    const result = await response.json()
-    console.log('✅ 多步骤AI分析完成:', result)
-
-    // 更新工作流状态
-    currentWorkflow.value = result.workflow
-
-    // 添加AI回复
-    const messageToAdd = {
-      type: 'assistant',
-      content: result.result?.answer || '抱歉，分析过程中出现问题。',
-      timestamp: new Date(),
-      workflow: result.workflow,
-      data: result.result?.data,
-      tools: result.result?.tools,
-      source: 'ai-enhanced'
-    }
-
-    console.log('📨 准备添加消息:', messageToAdd)
-    messages.value.push(messageToAdd)
-
-    console.log('📊 当前消息总数:', messages.value.length)
-    console.log('✅ 消息处理完成')
+    console.log('📊 消息处理完成')
 
   } catch (error) {
     console.error('❌ 处理消息失败:', error)
 
-    messages.value.push({
+    // 更新加载中的消息为错误信息
+    const messageIndex = messages.value.length - 1
+    messages.value[messageIndex] = {
       type: 'assistant',
       content: `抱歉，处理您的问题时出现错误：${error.message}`,
-      timestamp: new Date()
-    })
+      isLoading: false,
+      timestamp: new Date(),
+      source: 'error'
+    }
   } finally {
     isLoading.value = false
   }
@@ -588,6 +839,132 @@ const clearMessages = () => {
   messages.value = []
   currentWorkflow.value = null
   console.log('🗑️ 对话已清空')
+}
+
+// 语音输入切换
+const toggleVoiceInput = () => {
+  if (!voiceStatus.value.isSupported) {
+    console.warn('⚠️ 浏览器不支持语音功能')
+    return
+  }
+
+  if (voiceStatus.value.isListening) {
+    stopVoiceInput()
+  } else {
+    startVoiceInput()
+  }
+}
+
+// 开始语音输入
+const startVoiceInput = () => {
+  console.log('🎤 开始语音输入')
+
+  // 清空之前的识别结果和输入框
+  voiceTranscript.value = { final: '', interim: '', confidence: 0 }
+
+  const success = VoiceServiceManager.startListening()
+  if (success) {
+    voiceStatus.value.isListening = true
+    console.log('🎤 语音识别已启动，请开始说话...')
+  } else {
+    console.error('❌ 语音识别启动失败')
+  }
+}
+
+// 停止语音输入
+const stopVoiceInput = () => {
+  console.log('🎤 停止语音输入')
+
+  const success = VoiceServiceManager.stopListening()
+  if (success) {
+    voiceStatus.value.isListening = false
+
+    // 如果有最终识别结果，自动填入输入框
+    if (voiceTranscript.value.final.trim()) {
+      inputMessage.value = voiceTranscript.value.final.trim()
+      voiceTranscript.value = { final: '', interim: '', confidence: 0 }
+    }
+  }
+}
+
+// 语音播放回复
+const speakResponse = (text) => {
+  if (!voiceStatus.value.isSupported) {
+    console.warn('⚠️ 浏览器不支持语音合成')
+    return false
+  }
+
+  // 清理文本中的HTML标签和特殊字符
+  const cleanText = text
+    .replace(/<[^>]*>/g, '') // 移除HTML标签
+    .replace(/[#*`]/g, '') // 移除Markdown符号
+    .replace(/\n+/g, '。') // 换行替换为句号
+    .trim()
+
+  if (cleanText.length === 0) {
+    console.warn('⚠️ 没有可播放的文本内容')
+    return false
+  }
+
+  console.log('🔊 开始语音播放回复')
+  return VoiceServiceManager.speak(cleanText)
+}
+
+// 语音调试测试
+const testVoiceDebug = () => {
+  console.log('🧪 开始语音调试测试')
+  console.log('🎤 当前语音状态:', voiceStatus.value)
+  console.log('📝 当前识别结果:', voiceTranscript.value)
+  console.log('💬 当前输入内容:', inputMessage.value)
+
+  // 测试语音识别
+  if (!voiceStatus.value.isListening) {
+    console.log('🎤 启动语音识别测试...')
+    startVoiceInput()
+  } else {
+    console.log('🎤 停止语音识别测试...')
+    stopVoiceInput()
+  }
+}
+
+// 测试Markdown渲染（开发调试用）
+const testMarkdownResponse = () => {
+  const markdownContent = `# 小Q为您解答
+
+## 质量管理分析报告
+
+### 1. 问题分析
+您询问的是关于**质量管理**的问题，这是一个非常重要的话题。
+
+### 2. 专业建议
+- **建立完善的质量体系**：确保所有流程都有明确的标准
+- **定期质量检查**：建立定期检查机制
+- **数据驱动决策**：基于数据分析进行质量改进
+
+### 3. 最佳实践
+\`\`\`javascript
+// 质量检查示例代码
+function qualityCheck(product) {
+  if (product.defectRate > 0.03) {
+    return 'FAIL';
+  }
+  return 'PASS';
+}
+\`\`\`
+
+### 4. 注意事项
+> 质量管理是一个持续改进的过程，需要全员参与。
+
+---
+
+还有其他问题随时问小Q哦！`
+
+  messages.value.push({
+    type: 'assistant',
+    content: markdownContent,
+    timestamp: new Date(),
+    source: 'ai-consultation'
+  })
 }
 
 // 格式化时间
@@ -937,8 +1314,16 @@ const loadSavedSessions = () => {
   }
 }
 
-const loadSession = (sessionId) => {
-  const session = savedSessions.value.find(s => s.id === sessionId)
+const loadSession = (sessionOrId) => {
+  let session
+  if (typeof sessionOrId === 'string') {
+    // 如果传入的是ID
+    session = savedSessions.value.find(s => s.id === sessionOrId)
+  } else {
+    // 如果传入的是session对象
+    session = sessionOrId
+  }
+
   if (session) {
     messages.value = [...session.messages]
     currentAnalysis.value = session.analysis ? {...session.analysis} : null
@@ -960,6 +1345,29 @@ const createNewSession = () => {
   console.log('🆕 创建新会话')
 }
 
+// 新建对话（功能区使用）
+const startNewConversation = () => {
+  createNewSession()
+
+  // 添加欢迎消息
+  const features = []
+  if (aiServiceStatus.value.available) features.push('AI增强分析')
+  if (voiceStatus.value.isSupported) features.push('语音交互')
+
+  const welcomeMessage = features.length > 0
+    ? `👋 您好！我是小Q，您的专属QMS问答助手！已启用${features.join('、')}功能，可以帮您查询质量数据、分析问题和提供专业建议。有什么问题尽管问我吧！`
+    : '👋 您好！我是小Q，您的专属QMS问答助手！当前使用基础模式，可以帮您查询质量数据和提供基础建议。有什么问题尽管问我吧！'
+
+  messages.value.push({
+    type: 'assistant',
+    content: welcomeMessage,
+    timestamp: new Date(),
+    source: 'system'
+  })
+}
+
+
+
 const deleteSession = (sessionId) => {
   savedSessions.value = savedSessions.value.filter(s => s.id !== sessionId)
   localStorage.setItem('ai_chat_sessions', JSON.stringify(savedSessions.value))
@@ -970,6 +1378,42 @@ const deleteSession = (sessionId) => {
   }
 
   console.log('🗑️ 会话已删除')
+}
+
+// 刷新会话列表
+const refreshSessions = () => {
+  loadSavedSessions()
+  console.log('🔄 已刷新会话列表')
+}
+
+// 清空所有历史会话
+const clearAllSessions = () => {
+  if (confirm('确定要清空所有历史会话吗？此操作不可恢复。')) {
+    savedSessions.value = []
+    localStorage.removeItem('ai_chat_sessions')
+    console.log('🗑️ 已清空所有历史会话')
+  }
+}
+
+// 获取会话预览内容
+const getSessionPreview = (session) => {
+  if (!session.messages || session.messages.length === 0) {
+    return '空会话'
+  }
+
+  // 找到第一个用户消息作为预览
+  const userMessage = session.messages.find(msg => msg.type === 'user')
+  if (userMessage) {
+    return userMessage.content.substring(0, 30) + (userMessage.content.length > 30 ? '...' : '')
+  }
+
+  // 如果没有用户消息，使用第一个助手消息
+  const assistantMessage = session.messages.find(msg => msg.type === 'assistant')
+  if (assistantMessage) {
+    return assistantMessage.content.substring(0, 30) + (assistantMessage.content.length > 30 ? '...' : '')
+  }
+
+  return '无内容'
 }
 
 // 自动保存监听
@@ -983,14 +1427,112 @@ watch(messages, () => {
 }, { deep: true })
 
 // 组件初始化
-onMounted(() => {
-  console.log('🚀 QMS智能助手初始化...')
+onMounted(async () => {
+  console.log('🚀 QMS问答助手-小Q初始化...')
   loadSavedSessions()
+
+  // 初始化AI服务
+  try {
+    console.log('🤖 初始化AI服务...')
+    const aiAvailable = await AIServiceManager.initialize()
+    aiServiceStatus.value = {
+      available: aiAvailable,
+      lastCheck: new Date(),
+      error: aiAvailable ? null : 'AI服务初始化失败'
+    }
+    console.log('🤖 AI服务状态:', aiServiceStatus.value)
+  } catch (error) {
+    console.error('❌ AI服务初始化失败:', error)
+    aiServiceStatus.value = {
+      available: false,
+      lastCheck: new Date(),
+      error: error.message
+    }
+  }
+
+  // 初始化语音服务
+  try {
+    console.log('🎤 初始化语音服务...')
+    const voiceServiceStatus = VoiceServiceManager.getStatus()
+    voiceStatus.value = voiceServiceStatus
+
+    // 设置语音服务回调
+    VoiceServiceManager.setCallbacks({
+      onResult: (result) => {
+        console.log('🎤 语音识别结果:', result)
+        voiceTranscript.value = result
+
+        // 如果是最终结果且有内容，自动填入输入框
+        if (result.final && result.final.trim()) {
+          console.log('🎤 自动填入识别结果:', result.final)
+          inputMessage.value = result.final.trim()
+          // 清空识别结果显示
+          setTimeout(() => {
+            voiceTranscript.value = { final: '', interim: '', confidence: 0 }
+          }, 1000)
+        }
+      },
+      onError: (error) => {
+        console.error('❌ 语音识别错误:', error)
+        voiceStatus.value.isListening = false
+        voiceTranscript.value = { final: '', interim: '', confidence: 0 }
+      },
+      onStart: () => {
+        console.log('🎤 语音识别开始')
+        voiceStatus.value.isListening = true
+        // 清空之前的识别结果
+        voiceTranscript.value = { final: '', interim: '', confidence: 0 }
+      },
+      onEnd: () => {
+        console.log('🎤 语音识别结束')
+        voiceStatus.value.isListening = false
+
+        // 如果有最终识别结果但还没填入输入框，现在填入
+        if (voiceTranscript.value.final && voiceTranscript.value.final.trim() && !inputMessage.value) {
+          console.log('🎤 识别结束时填入结果:', voiceTranscript.value.final)
+          inputMessage.value = voiceTranscript.value.final.trim()
+          // 清空识别结果显示
+          setTimeout(() => {
+            voiceTranscript.value = { final: '', interim: '', confidence: 0 }
+          }, 1000)
+        }
+      },
+      onSpeechStart: () => {
+        console.log('🔊 语音播放开始')
+        voiceStatus.value.isSpeaking = true
+      },
+      onSpeechEnd: () => {
+        console.log('🔊 语音播放结束')
+        voiceStatus.value.isSpeaking = false
+      }
+    })
+
+    console.log('🎤 语音服务状态:', voiceStatus.value)
+  } catch (error) {
+    console.error('❌ 语音服务初始化失败:', error)
+    voiceStatus.value.isSupported = false
+  }
 
   // 如果有历史会话，可以选择加载最近的一个
   if (savedSessions.value.length > 0) {
     console.log(`📚 发现 ${savedSessions.value.length} 个历史会话`)
   }
+
+  // 添加欢迎消息
+  const features = []
+  if (aiServiceStatus.value.available) features.push('AI增强分析')
+  if (voiceStatus.value.isSupported) features.push('语音交互')
+
+  const welcomeMessage = features.length > 0
+    ? `👋 您好！我是小Q，您的专属QMS问答助手！已启用${features.join('、')}功能，可以帮您查询质量数据、分析问题和提供专业建议。有什么问题尽管问我吧！`
+    : '👋 您好！我是小Q，您的专属QMS问答助手！当前使用基础模式，可以帮您查询质量数据和提供基础建议。有什么问题尽管问我吧！'
+
+  messages.value.push({
+    type: 'assistant',
+    content: welcomeMessage,
+    timestamp: new Date(),
+    source: 'system'
+  })
 })
 
 // 处理图表生成事件
@@ -1084,17 +1626,17 @@ onBeforeUnmount(() => {
 }
 
 .left-panel {
-  width: 25%;
-  min-width: 250px;
+  width: 27%;
+  min-width: 270px;
 }
 
 .center-panel {
-  width: 40%;
+  width: 50%;
   min-width: 400px;
 }
 
 .right-panel {
-  width: 35%;
+  width: 33%;
   min-width: 300px;
   border-right: none;
 }
@@ -1117,6 +1659,245 @@ onBeforeUnmount(() => {
   font-size: 16px;
   font-weight: 600;
   color: #2c3e50;
+}
+
+/* 对话管理样式 */
+.conversation-management {
+  margin-bottom: 16px;
+}
+
+.conversation-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.control-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.control-btn:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.control-btn.new-conversation {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  border-color: #28a745;
+}
+
+.control-btn.new-conversation:hover {
+  background: linear-gradient(135deg, #218838, #1ea080);
+}
+
+.control-btn.save-session {
+  background: linear-gradient(135deg, #007bff, #6610f2);
+  color: white;
+  border-color: #007bff;
+}
+
+.control-btn.save-session:hover {
+  background: linear-gradient(135deg, #0056b3, #520dc2);
+}
+
+.control-btn.clear-messages {
+  background: linear-gradient(135deg, #dc3545, #fd7e14);
+  color: white;
+  border-color: #dc3545;
+}
+
+.control-btn.clear-messages:hover {
+  background: linear-gradient(135deg, #c82333, #e8590c);
+}
+
+.btn-icon {
+  font-size: 14px;
+}
+
+.btn-text {
+  font-weight: 500;
+}
+
+/* 历史会话样式 */
+.saved-sessions {
+  margin-top: 12px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sessions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.sessions-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sessions-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.refresh-btn, .clear-all-btn {
+  padding: 2px 6px;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 10px;
+  transition: all 0.2s;
+}
+
+.refresh-btn:hover {
+  background: #e9ecef;
+}
+
+.clear-all-btn:hover {
+  background: #f5c6cb;
+  border-color: #f1aeb5;
+}
+
+.sessions-container {
+  flex: 1;
+  min-height: 0;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.sessions-list-scrollable {
+  height: 200px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.sessions-list-scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sessions-list-scrollable::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.sessions-list-scrollable::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.sessions-list-scrollable::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+.session-item {
+  margin-bottom: 4px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  overflow: hidden;
+}
+
+.session-item:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+  transform: translateX(2px);
+}
+
+.session-item.active {
+  background: #e3f2fd;
+  border-color: #2196f3;
+}
+
+.session-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+}
+
+.session-icon {
+  font-size: 12px;
+  color: #6c757d;
+  margin-top: 2px;
+}
+
+.session-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-title {
+  display: block;
+  color: #495057;
+  font-weight: 500;
+  font-size: 11px;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 2px;
+}
+
+.session-preview {
+  display: block;
+  color: #6c757d;
+  font-size: 10px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.session-time {
+  color: #6c757d;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.delete-session-btn {
+  padding: 1px 3px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 8px;
+  opacity: 0.6;
+  transition: all 0.2s;
+}
+
+.delete-session-btn:hover {
+  opacity: 1;
+  transform: scale(1.2);
 }
 
 .tool-content {
@@ -1227,6 +2008,162 @@ onBeforeUnmount(() => {
 .send-button:disabled {
   background: #ccc;
   cursor: not-allowed;
+}
+
+/* 语音按钮样式 */
+.voice-button {
+  padding: 12px;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.3s;
+  min-width: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.voice-button:hover:not(:disabled) {
+  background: #218838;
+  transform: scale(1.05);
+}
+
+.voice-button.listening {
+  background: #dc3545;
+  animation: pulse 1.5s infinite;
+}
+
+.voice-button.listening:hover {
+  background: #c82333;
+}
+
+.voice-button.disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.voice-button:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+/* 语音状态提示 */
+.voice-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #e3f2fd;
+  border-radius: 8px;
+  margin-top: 8px;
+  font-size: 14px;
+  color: #1976d2;
+}
+
+.voice-indicator {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.voice-wave {
+  width: 3px;
+  height: 12px;
+  background: #1976d2;
+  border-radius: 2px;
+  animation: wave 1.2s infinite ease-in-out;
+}
+
+.voice-wave:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.voice-wave:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+@keyframes wave {
+  0%, 40%, 100% { transform: scaleY(0.4); }
+  20% { transform: scaleY(1); }
+}
+
+/* 语音识别结果预览 */
+.voice-transcript {
+  padding: 8px 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-top: 8px;
+  font-size: 14px;
+  border-left: 3px solid #007bff;
+}
+
+.transcript-label {
+  color: #6c757d;
+  font-weight: 500;
+  margin-right: 8px;
+}
+
+.transcript-text {
+  color: #495057;
+}
+
+.transcript-text.interim {
+  color: #6c757d;
+  font-style: italic;
+}
+
+.transcript-text.final {
+  color: #28a745;
+  font-weight: 500;
+}
+
+.transcript-line {
+  margin-bottom: 4px;
+}
+
+.confidence {
+  color: #6c757d;
+  font-size: 12px;
+  margin-left: 8px;
+}
+
+/* 调试信息样式 */
+.voice-debug {
+  padding: 4px 16px;
+  background: #f8f9fa;
+  border-top: 1px solid #dee2e6;
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.debug-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.debug-button {
+  padding: 2px 8px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.debug-button:hover {
+  background: #0056b3;
 }
 
 /* 左侧面板规则样式 */
@@ -1887,6 +2824,27 @@ onBeforeUnmount(() => {
   margin-bottom: 8px;
 }
 
+.voice-play-button {
+  padding: 4px 8px;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+  margin-left: auto;
+}
+
+.voice-play-button:hover:not(:disabled) {
+  background: #e9ecef;
+  transform: scale(1.1);
+}
+
+.voice-play-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .assistant-name {
   font-weight: 600;
   color: #2c3e50;
@@ -1906,6 +2864,140 @@ onBeforeUnmount(() => {
   line-height: 1.6;
   color: #2c3e50;
   margin-bottom: 12px;
+}
+
+/* AI回答样式 */
+.ai-response {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 1px solid #dee2e6;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  position: relative;
+}
+
+.ai-response::before {
+  content: '🤖 AI增强回复';
+  position: absolute;
+  top: -8px;
+  left: 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* 加载状态样式 */
+.loading-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  color: #666;
+  font-style: italic;
+}
+
+/* 卡片容器样式 */
+.cards-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.data-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease;
+}
+
+.data-card:hover {
+  transform: translateY(-2px);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.card-icon {
+  font-size: 18px;
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.card-content {
+  text-align: center;
+}
+
+.card-value {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.card-subtitle {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* 表格容器样式 */
+.table-container {
+  margin: 12px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.data-table th {
+  background: #f8f9fa;
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #495057;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.data-table td {
+  padding: 12px;
+  border-bottom: 1px solid #dee2e6;
+  color: #495057;
+}
+
+.data-table tr:hover {
+  background: #f8f9fa;
 }
 
 /* 高亮样式 */

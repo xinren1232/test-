@@ -9,6 +9,7 @@ import { templateEngine } from './templateEngine.js';
 import { getRealInMemoryData } from './realDataAssistantService.js';
 import EnhancedResponseFormatter from './EnhancedResponseFormatter.js';
 import initializeDatabase from '../models/index.js';
+import { applyFieldMapping } from '../utils/fieldMappingUtils.js';
 
 // 内置意图规则配置（作为备用）
 const FALLBACK_INTENT_RULES = [
@@ -47,7 +48,6 @@ const FALLBACK_INTENT_RULES = [
       FROM inventory
       WHERE storage_location LIKE CONCAT('%', ?, '%')
       ORDER BY inbound_time DESC
-      LIMIT 20
     `,
     status: 'active',
     parameters: [
@@ -597,14 +597,14 @@ class IntelligentIntentService {
   async executeAction(intentRule, params, context) {
     switch (intentRule.action_type) {
       case 'SQL_QUERY':
-        return await this.executeSQLQuery(intentRule.action_target, params);
-      
+        return await this.executeSQLQuery(intentRule.action_target, params, intentRule);
+
       case 'FUNCTION_CALL':
         return await this.executeFunctionCall(intentRule.action_target, params, context);
-      
+
       case 'API_CALL':
         return await this.executeAPICall(intentRule.action_target, params);
-      
+
       default:
         throw new Error(`不支持的动作类型: ${intentRule.action_type}`);
     }
@@ -614,9 +614,10 @@ class IntelligentIntentService {
    * 执行SQL查询
    * @param {string} sqlTemplate - SQL模板
    * @param {object} params - 参数
+   * @param {object} intentRule - 意图规则（包含result_fields）
    * @returns {object} 查询结果
    */
-  async executeSQLQuery(sqlTemplate, params) {
+  async executeSQLQuery(sqlTemplate, params, intentRule = null) {
     try {
       // 使用模板引擎渲染SQL
       const sql = templateEngine.render(sqlTemplate, params);
@@ -624,17 +625,20 @@ class IntelligentIntentService {
 
       // 首先尝试真实数据库查询
       try {
-        const results = await this.executeRealDatabaseQuery(sql, params);
-        this.logger.info(`✅ 数据库查询成功，返回 ${results.length} 条记录`);
+        const rawResults = await this.executeRealDatabaseQuery(sql, params);
+        this.logger.info(`✅ 数据库查询成功，返回 ${rawResults.length} 条记录`);
+
+        // 应用字段映射
+        const mappedResults = this.applyResultFieldMapping(rawResults, intentRule);
 
         return {
           success: true,
-          data: results, // 返回原始数据数组
-          reply: this.formatSQLResults(results, params), // 格式化的回复
+          data: mappedResults, // 返回映射后的数据数组
+          reply: this.formatSQLResults(mappedResults, params), // 格式化的回复
           source: 'database',
           sql: sql,
           params: params,
-          results: results
+          results: mappedResults
         };
       } catch (dbError) {
         this.logger.warn(`⚠️ 数据库查询失败: ${dbError.message}，尝试内存数据`);
@@ -646,23 +650,26 @@ class IntelligentIntentService {
                          realData.inspection.length > 0 ||
                          realData.production.length > 0;
 
-      let results;
+      let rawResults;
       if (hasRealData) {
         this.logger.info('✅ 使用内存中的真实数据执行查询');
-        results = this.executeInMemoryQuery(sql, params, realData);
+        rawResults = this.executeInMemoryQuery(sql, params, realData);
       } else {
         this.logger.warn('⚠️ 内存数据为空，使用模拟数据');
-        results = this.generateMockSQLResults(sql, params);
+        rawResults = this.generateMockSQLResults(sql, params);
       }
+
+      // 应用字段映射
+      const mappedResults = this.applyResultFieldMapping(rawResults, intentRule);
 
       return {
         success: true,
-        data: results, // 返回原始数据数组
-        reply: this.formatSQLResults(results, params), // 格式化的回复
+        data: mappedResults, // 返回映射后的数据数组
+        reply: this.formatSQLResults(mappedResults, params), // 格式化的回复
         source: hasRealData ? 'memory_data' : 'mock_data',
         sql: sql,
         params: params,
-        results: results
+        results: mappedResults
       };
 
     } catch (error) {
@@ -674,6 +681,32 @@ class IntelligentIntentService {
         error: error.message
       };
     }
+  }
+
+  /**
+   * 应用结果字段映射
+   * @param {Array} results - 原始查询结果
+   * @param {object} intentRule - 意图规则
+   * @returns {Array} 映射后的结果
+   */
+  applyResultFieldMapping(results, intentRule) {
+    if (!intentRule || !intentRule.result_fields) {
+      this.logger.warn('规则没有定义result_fields，返回原始数据');
+      return results;
+    }
+
+    const resultFields = Array.isArray(intentRule.result_fields)
+      ? intentRule.result_fields
+      : intentRule.result_fields;
+
+    if (!Array.isArray(resultFields) || resultFields.length === 0) {
+      this.logger.warn('result_fields格式无效，返回原始数据');
+      return results;
+    }
+
+    this.logger.info(`应用字段映射 [${intentRule.intent_name}]: ${resultFields.join(', ')}`);
+
+    return applyFieldMapping(results, resultFields, intentRule.intent_name);
   }
 
   /**
@@ -1033,7 +1066,7 @@ class IntelligentIntentService {
         case 'FUNCTION_CALL':
           return await this.executeFunctionCall(intentRule.action_target, params);
         case 'SQL_QUERY':
-          return await this.executeSQLQuery(intentRule.action_target, params);
+          return await this.executeSQLQuery(intentRule.action_target, params, intentRule);
         default:
           throw new Error(`不支持的动作类型: ${intentRule.action_type}`);
       }

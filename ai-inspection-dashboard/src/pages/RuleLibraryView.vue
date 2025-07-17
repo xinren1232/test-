@@ -543,10 +543,14 @@ const loadNlpRules = async () => {
   try {
     console.log('开始加载规则...');
 
-    // 使用新的RulesService
-    const { default: RulesService } = await import('../services/RulesService.js');
-    const result = await RulesService.getAllRules();
+    // 直接使用fetch避免复杂的服务层问题
+    const response = await fetch('/api/rules');
 
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
     console.log('API响应数据:', result);
 
     if (result.success && Array.isArray(result.data)) {

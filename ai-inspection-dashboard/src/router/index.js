@@ -9,6 +9,7 @@ import AdminDataPage from '../pages/AdminDataPage.vue';
 import DataImportExport from '../components/admin/DataImportExport.vue';
 import RuleLibraryView from '../pages/RuleLibraryView.vue';
 import RuleLibraryViewSimple from '../pages/RuleLibraryViewSimple.vue';
+import RuleLibraryViewDebug from '../pages/RuleLibraryViewDebug.vue';
 import ApiTestPage from '../pages/ApiTestPage.vue';
 import TestApiPage from '../pages/TestApiPage.vue';
 import TestRulesPage from '../pages/TestRulesPage.vue';
@@ -181,6 +182,15 @@ const routes = [
       icon: 'Document'
     }
   },
+  {
+    path: '/rule-library-debug',
+    name: 'RuleLibraryDebug',
+    component: RuleLibraryViewDebug,
+    meta: {
+      title: '规则库调试页面',
+      icon: 'Bug'
+    }
+  },
 
   // AI场景管理
   {
@@ -277,7 +287,13 @@ const routes = [
     path: '/assistant-ai-three-column',
     name: 'AssistantAIThreeColumn',
     component: () => import('../pages/SimpleAIThreeColumn.vue'),
-    meta: { title: 'QMS问答助手', icon: 'Grid' }
+    meta: { title: 'QMS问答助手-小Q', icon: 'Grid' }
+  },
+  {
+    path: '/test-voice-ai',
+    name: 'TestVoiceAI',
+    component: () => import('../pages/TestVoiceAI.vue'),
+    meta: { title: '小Q语音测试', icon: 'Microphone' }
   },
   {
     path: '/qms-assistant-loading',
@@ -382,6 +398,16 @@ const routes = [
     name: 'TestRealDataDisplay',
     component: () => import('../pages/TestRealDataDisplay.vue'),
     meta: { title: '真实数据显示测试', icon: 'DataBoard' }
+  },
+  {
+    path: '/data-cleaning',
+    name: 'DataCleaning',
+    component: () => import('../pages/DataCleaningPage.vue'),
+    meta: {
+      title: '数据清洗治理',
+      icon: 'Tools',
+      requiresAuth: false
+    }
   },
   {
     path: '/:pathMatch(.*)*',

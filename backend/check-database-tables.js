@@ -1,56 +1,46 @@
-/**
- * 检查数据库表结构
- */
-
 import mysql from 'mysql2/promise';
+import dbConfig from './src/config/db.config.js';
 
-const dbConfig = {
-  host: 'localhost',
-  user: 'root',
-  password: 'Zxylsy.99',
-  database: 'iqe_inspection'
-};
-
-async function checkDatabaseTables() {
-  console.log('🔍 检查数据库表结构...');
-  
-  const connection = await mysql.createConnection(dbConfig);
-  
+async function checkTables() {
   try {
-    // 获取所有表
-    const [tables] = await connection.execute('SHOW TABLES');
-    
-    console.log('\n📊 数据库中的表:');
-    tables.forEach((table, index) => {
-      const tableName = Object.values(table)[0];
-      console.log(`${index + 1}. ${tableName}`);
+    const connection = await mysql.createConnection({
+      host: dbConfig.host,
+      user: dbConfig.username,
+      password: dbConfig.password,
+      database: dbConfig.database
     });
     
-    // 检查每个表的结构
-    for (const table of tables) {
-      const tableName = Object.values(table)[0];
-      
+    console.log('🔍 检查数据库表结构...');
+    
+    const [tables] = await connection.execute('SHOW TABLES');
+    console.log('\n📋 数据库中的表:');
+    tables.forEach(table => console.log('  -', Object.values(table)[0]));
+    
+    // 检查具体需要的表
+    const requiredTables = ['inventory_data', 'inspection_data', 'production_data', 'batch_management'];
+    
+    console.log('\n🎯 检查必需的表:');
+    for (const tableName of requiredTables) {
       try {
-        const [columns] = await connection.execute(`DESCRIBE ${tableName}`);
-        console.log(`\n📋 ${tableName} 表结构:`);
-        columns.forEach(col => {
-          console.log(`  - ${col.Field} (${col.Type}) ${col.Null === 'YES' ? 'NULL' : 'NOT NULL'}`);
-        });
-        
-        // 检查数据量
-        const [count] = await connection.execute(`SELECT COUNT(*) as count FROM ${tableName}`);
-        console.log(`  📊 数据量: ${count[0].count} 条记录`);
-        
+        const [result] = await connection.execute(`SHOW TABLES LIKE '${tableName}'`);
+        if (result.length > 0) {
+          console.log(`  ✅ ${tableName} - 存在`);
+          
+          // 显示表结构
+          const [columns] = await connection.execute(`DESCRIBE ${tableName}`);
+          console.log(`     字段: ${columns.map(col => col.Field).join(', ')}`);
+        } else {
+          console.log(`  ❌ ${tableName} - 不存在`);
+        }
       } catch (error) {
-        console.log(`❌ 无法检查表 ${tableName}: ${error.message}`);
+        console.log(`  ❌ ${tableName} - 检查失败: ${error.message}`);
       }
     }
     
-    return tables.map(table => Object.values(table)[0]);
-    
-  } finally {
     await connection.end();
+  } catch (error) {
+    console.error('❌ 数据库检查失败:', error.message);
   }
 }
 
-checkDatabaseTables().catch(console.error);
+checkTables();

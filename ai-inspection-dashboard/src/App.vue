@@ -128,6 +128,18 @@
               </el-menu-item>
             </el-sub-menu>
 
+            <!-- 阶段四：场景探索 -->
+            <el-sub-menu index="/stage4-menu" class="submenu-enhanced">
+              <template #title>
+                <el-icon class="menu-icon"><Search /></el-icon>
+                <span class="menu-title">阶段四：场景探索</span>
+              </template>
+              <el-menu-item index="/data-cleaning" class="submenu-item">
+                <el-icon class="submenu-icon"><Tools /></el-icon>
+                <span class="submenu-title">数据清洗治理</span>
+              </el-menu-item>
+            </el-sub-menu>
+
             <!-- QMS AI智能助手 - 主页面 -->
             <el-menu-item index="/assistant-ai-three-column" class="main-menu-item">
               <el-icon class="menu-icon"><MagicStick /></el-icon>
@@ -201,7 +213,7 @@ import zhCn from 'element-plus/es/locale/lang/zh-cn';
 import {
   HomeFilled, DataBoard, Goods, OfficeBuilding,
   Document, Operation, Stopwatch, Fold, Expand,
-  DataAnalysis, ChatLineRound, ChatDotRound, CaretBottom, User, Setting, Tools, MagicStick, Connection, TrendCharts, View, Download
+  DataAnalysis, ChatLineRound, ChatDotRound, CaretBottom, User, Setting, Tools, MagicStick, Connection, TrendCharts, View, Download, Search
 } from '@element-plus/icons-vue';
 
 export default {
@@ -210,7 +222,7 @@ export default {
     ElConfigProvider,
     HomeFilled, DataBoard, Goods, OfficeBuilding,
     Document, Operation, Stopwatch, Fold, Expand,
-    DataAnalysis, ChatLineRound, ChatDotRound, CaretBottom, User, Setting, Tools, MagicStick, Connection, TrendCharts, View, Download
+    DataAnalysis, ChatLineRound, ChatDotRound, CaretBottom, User, Setting, Tools, MagicStick, Connection, TrendCharts, View, Download, Search
   },
   setup() {
     const route = useRoute();

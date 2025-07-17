@@ -1,3 +1,84 @@
+import mysql from 'mysql2/promise';
+
+// 添加缺失的findMatchingRule函数
+async function findMatchingRule(queryText) {
+  if (!queryText || typeof queryText !== 'string') {
+    return null;
+  }
+
+  const connection = await mysql.createConnection({
+    host: 'localhost',
+    user: 'root',
+    password: 'Zxylsy.99',
+    database: 'iqe_inspection'
+  });
+
+  try {
+    const queryLower = queryText.toLowerCase();
+
+    // 获取所有活跃规则
+    const [rules] = await connection.execute(`
+      SELECT id, intent_name, description, action_target, trigger_words, example_query, category, priority
+      FROM nlp_intent_rules
+      WHERE status = 'active'
+      ORDER BY priority DESC, category = '数据探索' DESC
+    `);
+
+    let bestMatch = null;
+    let maxScore = 0;
+
+    for (const rule of rules) {
+      let score = 0;
+      let triggerWords = [];
+
+      // 解析触发词
+      try {
+        if (typeof rule.trigger_words === 'string') {
+          triggerWords = JSON.parse(rule.trigger_words || '[]');
+        } else if (Array.isArray(rule.trigger_words)) {
+          triggerWords = rule.trigger_words;
+        } else {
+          triggerWords = [];
+        }
+      } catch (e) {
+        triggerWords = rule.trigger_words ? String(rule.trigger_words).split(',').map(w => w.trim()) : [];
+      }
+
+      // 检查触发词匹配
+      for (const word of triggerWords) {
+        if (queryLower.includes(word.toLowerCase())) {
+          score += word.length * 2; // 长词权重更高
+        }
+      }
+
+      // 规则名称匹配
+      if (rule.intent_name && queryLower.includes(rule.intent_name.toLowerCase())) {
+        score += 50;
+      }
+
+      // 数据探索规则优先级提升
+      if (rule.category === '数据探索') {
+        score += 20;
+      }
+
+      // 完全匹配加分
+      if (triggerWords.some(word => queryLower === word.toLowerCase())) {
+        score += 100;
+      }
+
+      if (score > maxScore) {
+        maxScore = score;
+        bestMatch = rule;
+      }
+    }
+
+    console.log(`🎯 规则匹配结果: ${bestMatch?.intent_name} (得分: ${maxScore})`);
+    return maxScore > 1 ? bestMatch : null;
+
+  } finally {
+    await connection.end();
+  }
+}
 import express from 'express';
 import { processQuery, updateInMemoryData } from '../services/assistantService.js';
 import { processRealQuery, updateRealInMemoryData, getRealInMemoryData, processChartQuery } from '../services/realDataAssistantService.js';
@@ -7,6 +88,7 @@ import DeepSeekService from '../services/DeepSeekService.js';
 import IntelligentIntentService from '../services/intelligentIntentService.js';
 import OptimizedQueryProcessor from '../services/OptimizedQueryProcessor.js';
 import { IQE_AI_SCENARIOS, selectOptimalScenario } from '../config/iqe-ai-scenarios.js';
+import { syncFrontendData } from '../services/DataSyncService.js';
 import { logger } from '../utils/logger.js';
 
 const router = express.Router();
@@ -40,7 +122,52 @@ initializeServices();
  * @param {object} req - Express请求对象
  * @param {object} res - Express响应对象
  */
-const handleDataUpdate = (req, res) => {
+
+// 存储真实数据到数据库
+async function storeRealDataToDatabase(data) {
+  try {
+    const connection = await mysql.createConnection({
+      host: 'localhost',
+      user: 'root',
+      password: 'Zxylsy.99',
+      database: 'iqe_inspection'
+    });
+    
+    // 清空旧数据
+    await connection.execute('DELETE FROM real_data_storage WHERE is_active = TRUE');
+    
+    // 存储新数据
+    if (data.inventory && data.inventory.length > 0) {
+      await connection.execute(
+        'INSERT INTO real_data_storage (data_type, data_content) VALUES (?, ?)',
+        ['inventory', JSON.stringify(data.inventory)]
+      );
+    }
+    
+    if (data.inspection && data.inspection.length > 0) {
+      await connection.execute(
+        'INSERT INTO real_data_storage (data_type, data_content) VALUES (?, ?)',
+        ['inspection', JSON.stringify(data.inspection)]
+      );
+    }
+    
+    if (data.production && data.production.length > 0) {
+      await connection.execute(
+        'INSERT INTO real_data_storage (data_type, data_content) VALUES (?, ?)',
+        ['production', JSON.stringify(data.production)]
+      );
+    }
+    
+    await connection.end();
+    console.log('✅ 真实数据已存储到数据库');
+    return true;
+  } catch (error) {
+    console.error('❌ 存储真实数据失败:', error);
+    return false;
+  }
+}
+
+const handleDataUpdate = async (req, res) => {
   const { body: data } = req;
   if (!data || (Object.keys(data).length === 0)) {
     return res.status(400).json({ error: 'No data provided for update.' });
@@ -67,6 +194,13 @@ const handleDataUpdate = (req, res) => {
     // 同时更新两个服务的数据（兼容性）
     updateInMemoryData(data);
     updateRealInMemoryData(data);
+
+    // 同步到DataSyncService（用于规则验证）
+    const syncResult = await syncFrontendData(data);
+    console.log('📊 DataSyncService同步结果:', syncResult);
+
+    // 同时存储到数据库
+    await storeRealDataToDatabase(data);
 
     // 验证数据是否真的被更新了
     const verifyData = getRealInMemoryData();
@@ -143,14 +277,20 @@ const validateIncomingData = (data) => {
     }
   }
 
-  // 检查数据内容
+  // 检查数据内容 - 放宽验证要求，只检查基本字段
   if (data.inventory && data.inventory.length > 0) {
     const sample = data.inventory[0];
-    const requiredInventoryFields = ['materialName', 'batchNo', 'supplier'];
+    // 支持多种字段名格式，兼容前端和数据库的不同命名
+    const requiredInventoryFields = ['materialName'];
     for (const field of requiredInventoryFields) {
       if (!sample[field]) {
         errors.push(`库存数据缺少必要字段: ${field}`);
       }
+    }
+
+    // 检查供应商字段（支持多种命名）
+    if (!sample.supplier && !sample.supplierName && !sample.supplier_name) {
+      errors.push(`库存数据缺少供应商字段 (支持: supplier, supplierName, supplier_name)`);
     }
   }
 
@@ -192,6 +332,57 @@ const handleQuery = async (req, res) => {
   });
 
   try {
+    // 获取查询文本和匹配的规则 - 支持多种请求格式
+    const { query, question } = req.body;
+    const queryText = query || question;
+
+    if (!queryText) {
+      return res.status(400).json({
+        success: false,
+        error: '缺少查询文本参数'
+      });
+    }
+
+    const matchedRule = await findMatchingRule(queryText);
+    
+    if (matchedRule && matchedRule.action_type === 'memory_query') {
+      console.log('📋 处理内存查询规则:', matchedRule.intent_name);
+      
+      // 获取内存数据
+      const memoryData = getRealInMemoryData();
+      
+      // 检查内存数据是否存在
+      if (!memoryData || 
+          (matchedRule.action_target === 'inventory' && (!memoryData.inventory || memoryData.inventory.length === 0)) ||
+          (matchedRule.action_target === 'inspection' && (!memoryData.inspection || memoryData.inspection.length === 0)) ||
+          (matchedRule.action_target === 'production' && (!memoryData.production || memoryData.production.length === 0))) {
+        return res.json({
+          success: false,
+          error: '内存数据不存在，请先生成并同步数据'
+        });
+      }
+      
+      // 根据规则的action_target选择数据源
+      let dataSource = [];
+      if (matchedRule.action_target === 'inventory') {
+        dataSource = memoryData.inventory;
+      } else if (matchedRule.action_target === 'inspection') {
+        dataSource = memoryData.inspection;
+      } else if (matchedRule.action_target === 'production') {
+        dataSource = memoryData.production;
+      }
+      
+      // 返回完整数据，不限制数量
+      const results = dataSource;
+
+      return res.json({
+        success: true,
+        data: {
+          answer: `找到 ${results.length} 条相关记录`,
+          tableData: results
+        }
+      });
+    }
     logger.info(`🚀 开始基于规则模板的智能问答处理`, {
       query: queryText,
       requestId: req.requestId
@@ -435,6 +626,72 @@ const handleGetRules = async (req, res) => {
 
     // 从数据库获取规则
     const initializeDatabase = (await import('../models/index.js')).default;
+
+// 添加缺失的findMatchingRule函数
+async function findMatchingRule(queryText) {
+  const connection = await mysql.createConnection({
+    host: 'localhost',
+    user: 'root',
+    password: 'Zxylsy.99',
+    database: 'iqe_inspection'
+  });
+  
+  try {
+    const queryLower = queryText.toLowerCase();
+    
+    // 获取所有活跃规则
+    const [rules] = await connection.execute(`
+      SELECT id, intent_name, description, action_target, trigger_words, example_query, category
+      FROM nlp_intent_rules 
+      WHERE status = 'active'
+      ORDER BY priority DESC
+    `);
+    
+    let bestMatch = null;
+    let maxScore = 0;
+    
+    for (const rule of rules) {
+      let score = 0;
+      let triggerWords = [];
+      
+      // 解析触发词
+      try {
+        triggerWords = JSON.parse(rule.trigger_words || '[]');
+      } catch (e) {
+        triggerWords = rule.trigger_words ? rule.trigger_words.split(',').map(w => w.trim()) : [];
+      }
+      
+      // 检查触发词匹配
+      for (const word of triggerWords) {
+        if (queryLower.includes(word.toLowerCase())) {
+          score += word.length * 2; // 长词权重更高
+        }
+      }
+      
+      // 规则名称匹配
+      if (rule.intent_name && queryLower.includes(rule.intent_name.toLowerCase())) {
+        score += 50;
+      }
+      
+      // 数据探索规则优先级提升
+      if (rule.category === '数据探索') {
+        score += 10;
+      }
+      
+      if (score > maxScore) {
+        maxScore = score;
+        bestMatch = rule;
+      }
+    }
+    
+    console.log(`🎯 规则匹配结果: ${bestMatch?.intent_name} (得分: ${maxScore})`);
+    return maxScore > 5 ? bestMatch : null;
+    
+  } finally {
+    await connection.end();
+  }
+}
+
     const db = await initializeDatabase();
     const rules = await db.NlpIntentRule.findAll({
       where: { status: 'active' },

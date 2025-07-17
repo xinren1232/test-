@@ -442,28 +442,25 @@ app.post('/api/assistant/verify-data', async (req, res) => {
   }
 });
 
-// 智能查询处理函数
+// 智能查询处理函数 - 简化版本
 async function processSimpleQuery(query, connection) {
   try {
-    console.log(`🔍 分析查询: "${query}"`);
+    console.log(`🔍 处理查询: "${query}"`);
 
-    // 提取查询中的关键信息
-    const queryInfo = analyzeQuery(query);
-    console.log('📋 查询分析结果:', queryInfo);
-
-    // 根据查询类型执行相应的查询
-    if (queryInfo.type === 'inventory') {
-      return await handleInventoryQuery(query, queryInfo, connection);
-    } else if (queryInfo.type === 'test') {
-      return await handleTestQuery(query, queryInfo, connection);
-    } else if (queryInfo.type === 'production') {
-      return await handleProductionQuery(query, queryInfo, connection);
+    // 基础规则匹配
+    if (query.includes('物料') || query.includes('库存')) {
+      return await handleBasicInventoryQuery(query, connection);
+    } else if (query.includes('测试') || query.includes('检验')) {
+      return await handleBasicTestQuery(query, connection);
+    } else if (query.includes('生产') || query.includes('上线')) {
+      return await handleBasicProductionQuery(query, connection);
     } else {
-      return await handleGeneralQuery(query, connection);
+      return await handleBasicGeneralQuery(query, connection);
     }
 
   } catch (error) {
     console.error('查询处理错误:', error);
+    console.error('错误堆栈:', error.stack);
     return `❌ 查询处理失败：${error.message}`;
   }
 }
@@ -510,7 +507,7 @@ function analyzeQuery(query) {
   for (const pattern of factoryPatterns) {
     const factoryMatch = query.match(pattern);
     if (factoryMatch) {
-      console.log(`🏭 工厂匹配成功: "${factoryMatch[1]}" (模式: ${pattern})`);
+      console.log(`🏭 工厂匹配成功: "${factoryMatch[1]}"`);
       analysis.filters.factory = factoryMatch[1];
       analysis.keywords.push(factoryMatch[1]);
       hasInventoryEntity = true;
@@ -536,7 +533,7 @@ function analyzeQuery(query) {
     for (const pattern of supplierPatterns) {
       const supplierMatch = query.match(pattern);
       if (supplierMatch) {
-        console.log(`🎯 供应商匹配成功: "${supplierMatch[1]}" (模式: ${pattern})`);
+        console.log(`🎯 供应商匹配成功: "${supplierMatch[1]}"`);
         analysis.filters.supplier = supplierMatch[1];
         analysis.keywords.push(supplierMatch[1]);
         hasInventoryEntity = true;
@@ -832,6 +829,126 @@ async function handleGeneralQuery(query, connection) {
          `💡 提示：您可以询问关于库存、物料、测试、检验等相关问题。\n` +
          `💡 例如："查询泰科电子的物料"、"查询正常状态库存"、"查询测试不合格的记录"`;
 }
+
+// 规则管理接口
+app.get('/api/rules', async (req, res) => {
+  try {
+    console.log('📋 获取规则列表请求');
+
+    const connection = await mysql.createConnection(dbConfig);
+
+    const [rules] = await connection.execute(`
+      SELECT
+        id,
+        intent_name,
+        description,
+        action_type,
+        action_target,
+        parameters,
+        trigger_words,
+        synonyms,
+        example_query,
+        category,
+        priority,
+        sort_order,
+        status,
+        created_at,
+        updated_at
+      FROM nlp_intent_rules
+      WHERE status = 'active'
+      ORDER BY priority ASC, sort_order ASC, id ASC
+    `);
+
+    await connection.end();
+
+    console.log(`✅ 返回 ${rules.length} 条规则`);
+
+    res.json({
+      success: true,
+      data: rules,
+      count: rules.length
+    });
+
+  } catch (error) {
+    console.error('❌ 获取规则失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '获取规则失败: ' + error.message
+    });
+  }
+});
+
+// 规则分类接口
+app.get('/api/rules/categories', async (req, res) => {
+  try {
+    console.log('📂 获取规则分类请求');
+
+    const connection = await mysql.createConnection(dbConfig);
+
+    const [categories] = await connection.execute(`
+      SELECT
+        category,
+        COUNT(*) as count
+      FROM nlp_intent_rules
+      WHERE status = 'active'
+      GROUP BY category
+      ORDER BY category
+    `);
+
+    await connection.end();
+
+    console.log(`✅ 返回 ${categories.length} 个分类`);
+
+    res.json({
+      success: true,
+      data: categories,
+      count: categories.length
+    });
+
+  } catch (error) {
+    console.error('❌ 获取规则分类失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '获取规则分类失败: ' + error.message
+    });
+  }
+});
+
+// 规则统计接口
+app.get('/api/rules/stats', async (req, res) => {
+  try {
+    console.log('📊 获取规则统计请求');
+
+    const connection = await mysql.createConnection(dbConfig);
+
+    const [stats] = await connection.execute(`
+      SELECT
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
+        SUM(CASE WHEN status = 'inactive' THEN 1 ELSE 0 END) as inactive,
+        COUNT(DISTINCT category) as categories
+      FROM nlp_intent_rules
+    `);
+
+    await connection.end();
+
+    const result = stats[0] || { total: 0, active: 0, inactive: 0, categories: 0 };
+
+    console.log('✅ 规则统计:', result);
+
+    res.json({
+      success: true,
+      data: result
+    });
+
+  } catch (error) {
+    console.error('❌ 获取规则统计失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '获取规则统计失败: ' + error.message
+    });
+  }
+});
 
 // 启动服务器
 app.listen(PORT, () => {

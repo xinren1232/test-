@@ -6,8 +6,169 @@
 import { logger } from '../utils/logger.js';
 import initializeDatabase from '../models/index.js';
 
-// 预定义的意图规则
+// 预定义的意图规则 - 全面覆盖复杂场景
 const INTENT_RULES = [
+  // ===== 供应商相关查询规则 =====
+  {
+    intent_name: 'supplier_inventory_query',
+    description: '供应商库存查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      storage_location as 工厂,
+      warehouse as 仓库,
+      material_code as 物料编码,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      quantity as 数量,
+      status as 状态,
+      DATE_FORMAT(inbound_time, '%Y-%m-%d') as 入库时间,
+      DATE_FORMAT(expiry_date, '%Y-%m-%d') as 到期时间,
+      COALESCE(notes, '') as 备注
+    FROM inventory
+    WHERE supplier_name LIKE '%{{ supplier }}%'
+    {% if material %} AND material_name LIKE '%{{ material }}%' {% endif %}
+    {% if status %} AND status = '{{ status }}' {% endif %}
+    {% if factory %} AND storage_location LIKE '%{{ factory }}%' {% endif %}
+    ORDER BY inbound_time DESC LIMIT 50`,
+    parameters: [
+      {
+        name: 'supplier',
+        type: 'string',
+        required: true,
+        extract_pattern: '(聚龙|欣冠|广正|帝晶|天马|BOE|华星|盛泰|天实|深奥|百俊达|奥海|辰阳|锂威|风华|维科|东声|豪声|歌尔|丽德宝|裕同|富群)'
+      },
+      {
+        name: 'material',
+        type: 'string',
+        required: false,
+        extract_pattern: '(电池盖|中框|手机卡托|侧键|装饰件|LCD显示屏|OLED显示屏|摄像头模组|电池|充电器|扬声器|听筒|保护套|标签|包装盒)'
+      },
+      {
+        name: 'status',
+        type: 'string',
+        required: false,
+        extract_pattern: '(正常|风险|异常|冻结)'
+      },
+      {
+        name: 'factory',
+        type: 'string',
+        required: false,
+        extract_pattern: '(重庆|深圳|南昌|宜宾)工厂?'
+      }
+    ],
+    trigger_words: ['供应商', '库存', '物料', '仓库'],
+    synonyms: {
+      '供应商': ['厂商', '厂家', '提供商'],
+      '库存': ['物料', '存货', '仓储'],
+      '物料': ['材料', '产品', '零件']
+    },
+    example_query: 'BOE供应商的物料库存',
+    priority: 1,
+    status: 'active'
+  },
+  {
+    intent_name: 'supplier_testing_query',
+    description: '供应商测试查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      test_id as 测试编号,
+      DATE_FORMAT(test_date, '%Y-%m-%d') as 日期,
+      COALESCE(project, '') as 项目,
+      COALESCE(baseline, '') as 基线,
+      material_code as 物料编码,
+      quantity as 数量,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      test_result as 测试结果,
+      COALESCE(defect_desc, '') as 不合格描述,
+      COALESCE(notes, '') as 备注
+    FROM lab_tests
+    WHERE supplier_name LIKE '%{{ supplier }}%'
+    {% if material %} AND material_name LIKE '%{{ material }}%' {% endif %}
+    {% if test_result %} AND test_result = '{{ test_result }}' {% endif %}
+    ORDER BY test_date DESC LIMIT 50`,
+    parameters: [
+      {
+        name: 'supplier',
+        type: 'string',
+        required: true,
+        extract_pattern: '(聚龙|欣冠|广正|帝晶|天马|BOE|华星|盛泰|天实|深奥|百俊达|奥海|辰阳|锂威|风华|维科|东声|豪声|歌尔|丽德宝|裕同|富群)'
+      },
+      {
+        name: 'material',
+        type: 'string',
+        required: false,
+        extract_pattern: '(电池盖|中框|手机卡托|侧键|装饰件|LCD显示屏|OLED显示屏|摄像头模组|电池|充电器|扬声器|听筒|保护套|标签|包装盒)'
+      },
+      {
+        name: 'test_result',
+        type: 'string',
+        required: false,
+        extract_pattern: '(PASS|FAIL|通过|失败|OK|NG|合格|不合格)'
+      }
+    ],
+    trigger_words: ['供应商', '测试', '检验', '检测'],
+    synonyms: {
+      '供应商': ['厂商', '厂家', '提供商'],
+      '测试': ['检测', '检验', '试验'],
+      '通过': ['PASS', '合格', 'OK'],
+      '失败': ['FAIL', '不合格', 'NG']
+    },
+    example_query: 'BOE供应商的测试记录',
+    priority: 2,
+    status: 'active'
+  },
+  {
+    intent_name: 'supplier_production_query',
+    description: '供应商生产上线查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      factory as 工厂,
+      baseline as 基线,
+      project as 项目,
+      material_code as 物料编码,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      batch_number as 批次号,
+      defect_rate as 不良率,
+      defect_phenomenon as 不良现象,
+      DATE_FORMAT(inspection_date, '%Y-%m-%d') as 检验日期,
+      COALESCE(notes, '') as 备注
+    FROM online_tracking
+    WHERE supplier_name LIKE '%{{ supplier }}%'
+    {% if material %} AND material_name LIKE '%{{ material }}%' {% endif %}
+    {% if factory %} AND factory LIKE '%{{ factory }}%' {% endif %}
+    ORDER BY inspection_date DESC LIMIT 50`,
+    parameters: [
+      {
+        name: 'supplier',
+        type: 'string',
+        required: true,
+        extract_pattern: '(聚龙|欣冠|广正|帝晶|天马|BOE|华星|盛泰|天实|深奥|百俊达|奥海|辰阳|锂威|风华|维科|东声|豪声|歌尔|丽德宝|裕同|富群)'
+      },
+      {
+        name: 'material',
+        type: 'string',
+        required: false,
+        extract_pattern: '(电池盖|中框|手机卡托|侧键|装饰件|LCD显示屏|OLED显示屏|摄像头模组|电池|充电器|扬声器|听筒|保护套|标签|包装盒)'
+      },
+      {
+        name: 'factory',
+        type: 'string',
+        required: false,
+        extract_pattern: '(重庆|深圳|南昌|宜宾)工厂?'
+      }
+    ],
+    trigger_words: ['供应商', '上线', '生产', '产线'],
+    synonyms: {
+      '供应商': ['厂商', '厂家', '提供商'],
+      '上线': ['生产', '产线', '制造'],
+      '不良率': ['缺陷率', '失败率']
+    },
+    example_query: 'BOE供应商的上线生产记录',
+    priority: 3,
+    status: 'active'
+  },
   {
     intent_name: 'batch_risk_check',
     description: '批次风险检查',
@@ -187,6 +348,701 @@ LIMIT 10`,
     },
     example_query: '查询测试结果',
     priority: 10,
+    status: 'active'
+  },
+
+  // ===== 具体供应商库存查询规则 =====
+  {
+    intent_name: 'BOE供应商库存查询',
+    description: 'BOE供应商库存查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      storage_location as 工厂,
+      warehouse as 仓库,
+      material_code as 物料编码,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      quantity as 数量,
+      status as 状态,
+      DATE_FORMAT(inbound_time, '%Y-%m-%d') as 入库时间,
+      DATE_FORMAT(expiry_date, '%Y-%m-%d') as 到期时间,
+      COALESCE(notes, '') as 备注
+    FROM inventory
+    WHERE supplier_name = 'BOE'
+    ORDER BY inbound_time DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['BOE', '供应商', '库存'],
+    synonyms: {},
+    example_query: 'BOE供应商库存查询',
+    priority: 15,
+    status: 'active'
+  },
+  {
+    intent_name: '东声供应商库存查询',
+    description: '东声供应商库存查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      storage_location as 工厂,
+      warehouse as 仓库,
+      material_code as 物料编码,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      quantity as 数量,
+      status as 状态,
+      DATE_FORMAT(inbound_time, '%Y-%m-%d') as 入库时间,
+      DATE_FORMAT(expiry_date, '%Y-%m-%d') as 到期时间,
+      COALESCE(notes, '') as 备注
+    FROM inventory
+    WHERE supplier_name = '东声'
+    ORDER BY inbound_time DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['东声', '供应商', '库存'],
+    synonyms: {},
+    example_query: '东声供应商库存查询',
+    priority: 15,
+    status: 'active'
+  },
+  {
+    intent_name: '丽德宝供应商库存查询',
+    description: '丽德宝供应商库存查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      storage_location as 工厂,
+      warehouse as 仓库,
+      material_code as 物料编码,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      quantity as 数量,
+      status as 状态,
+      DATE_FORMAT(inbound_time, '%Y-%m-%d') as 入库时间,
+      DATE_FORMAT(expiry_date, '%Y-%m-%d') as 到期时间,
+      COALESCE(notes, '') as 备注
+    FROM inventory
+    WHERE supplier_name = '丽德宝'
+    ORDER BY inbound_time DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['丽德宝', '供应商', '库存'],
+    synonyms: {},
+    example_query: '丽德宝供应商库存查询',
+    priority: 15,
+    status: 'active'
+  },
+  {
+    intent_name: '华星供应商库存查询',
+    description: '华星供应商库存查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      storage_location as 工厂,
+      warehouse as 仓库,
+      material_code as 物料编码,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      quantity as 数量,
+      status as 状态,
+      DATE_FORMAT(inbound_time, '%Y-%m-%d') as 入库时间,
+      DATE_FORMAT(expiry_date, '%Y-%m-%d') as 到期时间,
+      COALESCE(notes, '') as 备注
+    FROM inventory
+    WHERE supplier_name = '华星'
+    ORDER BY inbound_time DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['华星', '供应商', '库存'],
+    synonyms: {},
+    example_query: '华星供应商库存查询',
+    priority: 15,
+    status: 'active'
+  },
+  {
+    intent_name: '天实供应商库存查询',
+    description: '天实供应商库存查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      storage_location as 工厂,
+      warehouse as 仓库,
+      material_code as 物料编码,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      quantity as 数量,
+      status as 状态,
+      DATE_FORMAT(inbound_time, '%Y-%m-%d') as 入库时间,
+      DATE_FORMAT(expiry_date, '%Y-%m-%d') as 到期时间,
+      COALESCE(notes, '') as 备注
+    FROM inventory
+    WHERE supplier_name = '天实'
+    ORDER BY inbound_time DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['天实', '供应商', '库存'],
+    synonyms: {},
+    example_query: '天实供应商库存查询',
+    priority: 15,
+    status: 'active'
+  },
+  {
+    intent_name: '天马供应商库存查询',
+    description: '天马供应商库存查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      storage_location as 工厂,
+      warehouse as 仓库,
+      material_code as 物料编码,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      quantity as 数量,
+      status as 状态,
+      DATE_FORMAT(inbound_time, '%Y-%m-%d') as 入库时间,
+      DATE_FORMAT(expiry_date, '%Y-%m-%d') as 到期时间,
+      COALESCE(notes, '') as 备注
+    FROM inventory
+    WHERE supplier_name = '天马'
+    ORDER BY inbound_time DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['天马', '供应商', '库存'],
+    synonyms: {},
+    example_query: '天马供应商库存查询',
+    priority: 15,
+    status: 'active'
+  },
+  {
+    intent_name: '奥海供应商库存查询',
+    description: '奥海供应商库存查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      storage_location as 工厂,
+      warehouse as 仓库,
+      material_code as 物料编码,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      quantity as 数量,
+      status as 状态,
+      DATE_FORMAT(inbound_time, '%Y-%m-%d') as 入库时间,
+      DATE_FORMAT(expiry_date, '%Y-%m-%d') as 到期时间,
+      COALESCE(notes, '') as 备注
+    FROM inventory
+    WHERE supplier_name = '奥海'
+    ORDER BY inbound_time DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['奥海', '供应商', '库存'],
+    synonyms: {},
+    example_query: '奥海供应商库存查询',
+    priority: 15,
+    status: 'active'
+  },
+  {
+    intent_name: '富群供应商库存查询',
+    description: '富群供应商库存查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      storage_location as 工厂,
+      warehouse as 仓库,
+      material_code as 物料编码,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      quantity as 数量,
+      status as 状态,
+      DATE_FORMAT(inbound_time, '%Y-%m-%d') as 入库时间,
+      DATE_FORMAT(expiry_date, '%Y-%m-%d') as 到期时间,
+      COALESCE(notes, '') as 备注
+    FROM inventory
+    WHERE supplier_name = '富群'
+    ORDER BY inbound_time DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['富群', '供应商', '库存'],
+    synonyms: {},
+    example_query: '富群供应商库存查询',
+    priority: 15,
+    status: 'active'
+  },
+  {
+    intent_name: '广正供应商库存查询',
+    description: '广正供应商库存查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      storage_location as 工厂,
+      warehouse as 仓库,
+      material_code as 物料编码,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      quantity as 数量,
+      status as 状态,
+      DATE_FORMAT(inbound_time, '%Y-%m-%d') as 入库时间,
+      DATE_FORMAT(expiry_date, '%Y-%m-%d') as 到期时间,
+      COALESCE(notes, '') as 备注
+    FROM inventory
+    WHERE supplier_name = '广正'
+    ORDER BY inbound_time DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['广正', '供应商', '库存'],
+    synonyms: {},
+    example_query: '广正供应商库存查询',
+    priority: 15,
+    status: 'active'
+  },
+  {
+    intent_name: '怡同供应商库存查询',
+    description: '怡同供应商库存查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      storage_location as 工厂,
+      warehouse as 仓库,
+      material_code as 物料编码,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      quantity as 数量,
+      status as 状态,
+      DATE_FORMAT(inbound_time, '%Y-%m-%d') as 入库时间,
+      DATE_FORMAT(expiry_date, '%Y-%m-%d') as 到期时间,
+      COALESCE(notes, '') as 备注
+    FROM inventory
+    WHERE supplier_name = '怡同'
+    ORDER BY inbound_time DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['怡同', '供应商', '库存'],
+    synonyms: {},
+    example_query: '怡同供应商库存查询',
+    priority: 15,
+    status: 'active'
+  },
+  {
+    intent_name: '欣冠供应商库存查询',
+    description: '欣冠供应商库存查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      storage_location as 工厂,
+      warehouse as 仓库,
+      material_code as 物料编码,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      quantity as 数量,
+      status as 状态,
+      DATE_FORMAT(inbound_time, '%Y-%m-%d') as 入库时间,
+      DATE_FORMAT(expiry_date, '%Y-%m-%d') as 到期时间,
+      COALESCE(notes, '') as 备注
+    FROM inventory
+    WHERE supplier_name = '欣冠'
+    ORDER BY inbound_time DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['欣冠', '供应商', '库存'],
+    synonyms: {},
+    example_query: '欣冠供应商库存查询',
+    priority: 15,
+    status: 'active'
+  },
+  {
+    intent_name: '歌尔供应商库存查询',
+    description: '歌尔供应商库存查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      storage_location as 工厂,
+      warehouse as 仓库,
+      material_code as 物料编码,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      quantity as 数量,
+      status as 状态,
+      DATE_FORMAT(inbound_time, '%Y-%m-%d') as 入库时间,
+      DATE_FORMAT(expiry_date, '%Y-%m-%d') as 到期时间,
+      COALESCE(notes, '') as 备注
+    FROM inventory
+    WHERE supplier_name = '歌尔'
+    ORDER BY inbound_time DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['歌尔', '供应商', '库存'],
+    synonyms: {},
+    example_query: '歌尔供应商库存查询',
+    priority: 15,
+    status: 'active'
+  },
+
+  // ===== 供应商测试查询规则 =====
+  {
+    intent_name: 'BOE供应商测试查询',
+    description: 'BOE供应商测试查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      test_id as 测试编号,
+      DATE_FORMAT(test_date, '%Y-%m-%d') as 日期,
+      COALESCE(project, '') as 项目,
+      COALESCE(baseline, '') as 基线,
+      material_code as 物料编码,
+      quantity as 数量,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      test_result as 测试结果,
+      COALESCE(defect_desc, '') as 不合格描述,
+      COALESCE(notes, '') as 备注
+    FROM lab_tests
+    WHERE supplier_name = 'BOE'
+    ORDER BY test_date DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['BOE', '供应商', '测试'],
+    synonyms: {},
+    example_query: 'BOE供应商测试查询',
+    priority: 15,
+    status: 'active'
+  },
+  {
+    intent_name: '东声供应商测试查询',
+    description: '东声供应商测试查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      test_id as 测试编号,
+      DATE_FORMAT(test_date, '%Y-%m-%d') as 日期,
+      COALESCE(project, '') as 项目,
+      COALESCE(baseline, '') as 基线,
+      material_code as 物料编码,
+      quantity as 数量,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      test_result as 测试结果,
+      COALESCE(defect_desc, '') as 不合格描述,
+      COALESCE(notes, '') as 备注
+    FROM lab_tests
+    WHERE supplier_name = '东声'
+    ORDER BY test_date DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['东声', '供应商', '测试'],
+    synonyms: {},
+    example_query: '东声供应商测试查询',
+    priority: 15,
+    status: 'active'
+  },
+  {
+    intent_name: '天马供应商测试查询',
+    description: '天马供应商测试查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      test_id as 测试编号,
+      DATE_FORMAT(test_date, '%Y-%m-%d') as 日期,
+      COALESCE(project, '') as 项目,
+      COALESCE(baseline, '') as 基线,
+      material_code as 物料编码,
+      quantity as 数量,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      test_result as 测试结果,
+      COALESCE(defect_desc, '') as 不合格描述,
+      COALESCE(notes, '') as 备注
+    FROM lab_tests
+    WHERE supplier_name = '天马'
+    ORDER BY test_date DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['天马', '供应商', '测试'],
+    synonyms: {},
+    example_query: '天马供应商测试查询',
+    priority: 15,
+    status: 'active'
+  },
+  {
+    intent_name: '歌尔供应商测试查询',
+    description: '歌尔供应商测试查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      test_id as 测试编号,
+      DATE_FORMAT(test_date, '%Y-%m-%d') as 日期,
+      COALESCE(project, '') as 项目,
+      COALESCE(baseline, '') as 基线,
+      material_code as 物料编码,
+      quantity as 数量,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      test_result as 测试结果,
+      COALESCE(defect_desc, '') as 不合格描述,
+      COALESCE(notes, '') as 备注
+    FROM lab_tests
+    WHERE supplier_name = '歌尔'
+    ORDER BY test_date DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['歌尔', '供应商', '测试'],
+    synonyms: {},
+    example_query: '歌尔供应商测试查询',
+    priority: 15,
+    status: 'active'
+  },
+
+  // ===== 供应商上线查询规则 =====
+  {
+    intent_name: 'BOE供应商上线查询',
+    description: 'BOE供应商上线查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      factory as 工厂,
+      baseline as 基线,
+      project as 项目,
+      material_code as 物料编码,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      batch_number as 批次号,
+      defect_rate as 不良率,
+      defect_phenomenon as 不良现象,
+      DATE_FORMAT(inspection_date, '%Y-%m-%d') as 检验日期,
+      COALESCE(notes, '') as 备注
+    FROM online_tracking
+    WHERE supplier_name = 'BOE'
+    ORDER BY inspection_date DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['BOE', '供应商', '上线'],
+    synonyms: {},
+    example_query: 'BOE供应商上线查询',
+    priority: 15,
+    status: 'active'
+  },
+  {
+    intent_name: '天马供应商上线查询',
+    description: '天马供应商上线查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      factory as 工厂,
+      baseline as 基线,
+      project as 项目,
+      material_code as 物料编码,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      batch_number as 批次号,
+      defect_rate as 不良率,
+      defect_phenomenon as 不良现象,
+      DATE_FORMAT(inspection_date, '%Y-%m-%d') as 检验日期,
+      COALESCE(notes, '') as 备注
+    FROM online_tracking
+    WHERE supplier_name = '天马'
+    ORDER BY inspection_date DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['天马', '供应商', '上线'],
+    synonyms: {},
+    example_query: '天马供应商上线查询',
+    priority: 15,
+    status: 'active'
+  },
+  {
+    intent_name: '歌尔供应商上线查询',
+    description: '歌尔供应商上线查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      factory as 工厂,
+      baseline as 基线,
+      project as 项目,
+      material_code as 物料编码,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      batch_number as 批次号,
+      defect_rate as 不良率,
+      defect_phenomenon as 不良现象,
+      DATE_FORMAT(inspection_date, '%Y-%m-%d') as 检验日期,
+      COALESCE(notes, '') as 备注
+    FROM online_tracking
+    WHERE supplier_name = '歌尔'
+    ORDER BY inspection_date DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['歌尔', '供应商', '上线'],
+    synonyms: {},
+    example_query: '歌尔供应商上线查询',
+    priority: 15,
+    status: 'active'
+  },
+
+  // ===== 物料类别查询规则 =====
+  {
+    intent_name: '结构件类库存查询',
+    description: '结构件类库存查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      storage_location as 工厂,
+      warehouse as 仓库,
+      material_code as 物料编码,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      quantity as 数量,
+      status as 状态,
+      DATE_FORMAT(inbound_time, '%Y-%m-%d') as 入库时间,
+      DATE_FORMAT(expiry_date, '%Y-%m-%d') as 到期时间,
+      COALESCE(notes, '') as 备注
+    FROM inventory
+    WHERE material_name IN ('电池盖', '中框', '手机卡托', '侧键', '装饰件')
+    ORDER BY inbound_time DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['结构件类', '库存'],
+    synonyms: {},
+    example_query: '结构件类库存查询',
+    priority: 15,
+    status: 'active'
+  },
+  {
+    intent_name: '光学类库存查询',
+    description: '光学类库存查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      storage_location as 工厂,
+      warehouse as 仓库,
+      material_code as 物料编码,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      quantity as 数量,
+      status as 状态,
+      DATE_FORMAT(inbound_time, '%Y-%m-%d') as 入库时间,
+      DATE_FORMAT(expiry_date, '%Y-%m-%d') as 到期时间,
+      COALESCE(notes, '') as 备注
+    FROM inventory
+    WHERE material_name IN ('LCD显示屏', 'OLED显示屏', '摄像头模组')
+    ORDER BY inbound_time DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['光学类', '库存'],
+    synonyms: {},
+    example_query: '光学类库存查询',
+    priority: 15,
+    status: 'active'
+  },
+  {
+    intent_name: '充电类库存查询',
+    description: '充电类库存查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      storage_location as 工厂,
+      warehouse as 仓库,
+      material_code as 物料编码,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      quantity as 数量,
+      status as 状态,
+      DATE_FORMAT(inbound_time, '%Y-%m-%d') as 入库时间,
+      DATE_FORMAT(expiry_date, '%Y-%m-%d') as 到期时间,
+      COALESCE(notes, '') as 备注
+    FROM inventory
+    WHERE material_name IN ('电池', '充电器')
+    ORDER BY inbound_time DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['充电类', '库存'],
+    synonyms: {},
+    example_query: '充电类库存查询',
+    priority: 15,
+    status: 'active'
+  },
+  {
+    intent_name: '声学类库存查询',
+    description: '声学类库存查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      storage_location as 工厂,
+      warehouse as 仓库,
+      material_code as 物料编码,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      quantity as 数量,
+      status as 状态,
+      DATE_FORMAT(inbound_time, '%Y-%m-%d') as 入库时间,
+      DATE_FORMAT(expiry_date, '%Y-%m-%d') as 到期时间,
+      COALESCE(notes, '') as 备注
+    FROM inventory
+    WHERE material_name IN ('扬声器', '听筒')
+    ORDER BY inbound_time DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['声学类', '库存'],
+    synonyms: {},
+    example_query: '声学类库存查询',
+    priority: 15,
+    status: 'active'
+  },
+  {
+    intent_name: '包装类库存查询',
+    description: '包装类库存查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      storage_location as 工厂,
+      warehouse as 仓库,
+      material_code as 物料编码,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      quantity as 数量,
+      status as 状态,
+      DATE_FORMAT(inbound_time, '%Y-%m-%d') as 入库时间,
+      DATE_FORMAT(expiry_date, '%Y-%m-%d') as 到期时间,
+      COALESCE(notes, '') as 备注
+    FROM inventory
+    WHERE material_name IN ('保护套', '标签', '包装盒')
+    ORDER BY inbound_time DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['包装类', '库存'],
+    synonyms: {},
+    example_query: '包装类库存查询',
+    priority: 15,
+    status: 'active'
+  },
+
+  // ===== 物料类别测试查询规则 =====
+  {
+    intent_name: '结构件类测试查询',
+    description: '结构件类测试查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      test_id as 测试编号,
+      DATE_FORMAT(test_date, '%Y-%m-%d') as 日期,
+      COALESCE(project, '') as 项目,
+      COALESCE(baseline, '') as 基线,
+      material_code as 物料编码,
+      quantity as 数量,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      test_result as 测试结果,
+      COALESCE(defect_desc, '') as 不合格描述,
+      COALESCE(notes, '') as 备注
+    FROM lab_tests
+    WHERE material_name IN ('电池盖', '中框', '手机卡托', '侧键', '装饰件')
+    ORDER BY test_date DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['结构件类', '测试'],
+    synonyms: {},
+    example_query: '结构件类测试查询',
+    priority: 15,
+    status: 'active'
+  },
+  {
+    intent_name: '光学类测试查询',
+    description: '光学类测试查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      test_id as 测试编号,
+      DATE_FORMAT(test_date, '%Y-%m-%d') as 日期,
+      COALESCE(project, '') as 项目,
+      COALESCE(baseline, '') as 基线,
+      material_code as 物料编码,
+      quantity as 数量,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      test_result as 测试结果,
+      COALESCE(defect_desc, '') as 不合格描述,
+      COALESCE(notes, '') as 备注
+    FROM lab_tests
+    WHERE material_name IN ('LCD显示屏', 'OLED显示屏', '摄像头模组')
+    ORDER BY test_date DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['光学类', '测试'],
+    synonyms: {},
+    example_query: '光学类测试查询',
+    priority: 15,
+    status: 'active'
+  },
+  {
+    intent_name: '充电类测试查询',
+    description: '充电类测试查询',
+    action_type: 'SQL_QUERY',
+    action_target: `SELECT
+      test_id as 测试编号,
+      DATE_FORMAT(test_date, '%Y-%m-%d') as 日期,
+      COALESCE(project, '') as 项目,
+      COALESCE(baseline, '') as 基线,
+      material_code as 物料编码,
+      quantity as 数量,
+      material_name as 物料名称,
+      supplier_name as 供应商,
+      test_result as 测试结果,
+      COALESCE(defect_desc, '') as 不合格描述,
+      COALESCE(notes, '') as 备注
+    FROM lab_tests
+    WHERE material_name IN ('电池', '充电器')
+    ORDER BY test_date DESC LIMIT 50`,
+    parameters: [],
+    trigger_words: ['充电类', '测试'],
+    synonyms: {},
+    example_query: '充电类测试查询',
+    priority: 15,
     status: 'active'
   }
 ];

@@ -850,11 +850,15 @@ function extractQueryParameters(queryText, rule) {
   const parameters = {};
   const entities = extractEntities(queryText.toLowerCase());
 
+  console.log(`🔍 参数提取调试 - 查询文本: "${queryText}"`);
+  console.log(`🔍 提取到的实体:`, entities);
+
   // 根据实体类型设置参数
   entities.forEach(entity => {
     switch (entity.type) {
       case 'supplier':
         parameters.supplier = entity.value;
+        console.log(`✅ 设置供应商参数: ${entity.value}`);
         break;
       case 'material':
         parameters.material = entity.value;
@@ -874,6 +878,7 @@ function extractQueryParameters(queryText, rule) {
   if (queryText.includes('ng') || queryText.includes('不合格')) parameters.result = 'NG';
   if (queryText.includes('ok') || queryText.includes('合格')) parameters.result = 'OK';
 
+  console.log(`🔍 最终参数:`, parameters);
   return parameters;
 }
 
@@ -914,7 +919,7 @@ async function executeInMemoryQuery(rule, queryText) {
 
   return {
     success: true,
-    data: filteredData.slice(0, 20), // 限制返回数量
+    data: filteredData, // 返回完整数据，不限制数量
     rule: rule,
     source: 'memory'
   };

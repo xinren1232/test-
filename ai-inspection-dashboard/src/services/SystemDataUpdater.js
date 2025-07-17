@@ -337,7 +337,7 @@ class SystemDataUpdater {
 
     // 标准同步
     try {
-      const result = await api.post('/assistant/update-data', dataToPush, {
+      const result = await api.post('/api/assistant/update-data', dataToPush, {
         headers: {
           'X-Sync-Timestamp': new Date().toISOString(),
           'X-Data-Version': this.generateDataVersion(dataToPush)

@@ -92,6 +92,9 @@
             <h3>上线物料质量监控</h3>
           <div class="table-actions">
               <el-switch v-model="showCharts" active-text="显示图表" inactive-text="隐藏图表" />
+              <el-button type="warning" size="small" @click="debugDataStatus" style="margin-left: 10px;">
+                🔍 调试数据
+              </el-button>
           </div>
         </div>
       </template>
@@ -327,7 +330,20 @@ const totalMaterials = computed(() => filteredMaterials.value.length);
 const paginatedMaterials = computed(() => {
   const startIndex = (pagination.currentPage - 1) * pagination.pageSize;
   const endIndex = startIndex + pagination.pageSize;
-  return filteredMaterials.value.slice(startIndex, endIndex);
+  const result = filteredMaterials.value.slice(startIndex, endIndex);
+
+  // 调试：检查分页数据
+  console.log('🔍 paginatedMaterials 计算结果:', {
+    materialsLength: materials.value?.length || 0,
+    filteredLength: filteredMaterials.value?.length || 0,
+    paginatedLength: result?.length || 0,
+    currentPage: pagination.currentPage,
+    pageSize: pagination.pageSize,
+    startIndex,
+    endIndex
+  });
+
+  return result;
 });
 
 // 处理页码变化
@@ -1061,10 +1077,55 @@ async function extractMaterialData() {
   try {
     console.log('🔍 开始获取工厂上线数据...');
 
-    // 使用统一数据服务获取上线数据（现在是异步的）
-    const factoryData = await unifiedDataService.getFactoryData();
-    console.log('🔍 unifiedDataService.getFactoryData() 返回:', factoryData);
+    // 检查unifiedDataService是否可用
+    if (!unifiedDataService) {
+      console.error('❌ unifiedDataService未定义，尝试直接从localStorage获取数据');
+      const rawData = localStorage.getItem('unified_factory_data');
+      if (rawData) {
+        const factoryData = JSON.parse(rawData);
+        console.log('📦 直接从localStorage获取数据:', factoryData.length, '条');
+        return processFactoryData(factoryData);
+      } else {
+        console.error('❌ localStorage中也没有数据');
+        return [];
+      }
+    }
 
+    // 使用统一数据服务获取上线数据
+    let factoryData;
+    try {
+      factoryData = await unifiedDataService.getFactoryData();
+      console.log('🔍 unifiedDataService.getFactoryData() 返回:', factoryData);
+    } catch (error) {
+      console.error('❌ 获取工厂数据失败:', error);
+      // 尝试同步方式获取数据
+      try {
+        factoryData = unifiedDataService.getOnlineData();
+        console.log('🔄 使用同步方式获取数据:', factoryData);
+      } catch (syncError) {
+        console.error('❌ 同步方式也失败:', syncError);
+        // 最后尝试直接从localStorage获取
+        const rawData = localStorage.getItem('unified_factory_data');
+        if (rawData) {
+          factoryData = JSON.parse(rawData);
+          console.log('🔄 最终从localStorage获取数据:', factoryData.length, '条');
+        } else {
+          factoryData = [];
+        }
+      }
+    }
+
+    return processFactoryData(factoryData);
+  } catch (error) {
+    console.error('❌ 处理上线数据失败:', error);
+    ElMessage.error('处理上线数据失败，请刷新页面重试');
+    return [];
+  }
+}
+
+// 独立的数据处理函数
+function processFactoryData(factoryData) {
+  try {
     if (!factoryData || factoryData.length === 0) {
       console.log('⚠️ 未找到上线数据，请检查数据生成状态');
       ElMessage.warning('未找到上线数据，请在"管理工具"中生成数据');
@@ -1091,9 +1152,9 @@ async function extractMaterialData() {
 
     // 验证是否包含真实物料
     const realMaterialNames = [
-      '手机壳料', '电池盖', '中框', '摄像头模组', 'OLED显示屏', 'LCD显示屏',
-      '扬声器', '麦克风', '充电接口', '处理器', '内存芯片', '存储芯片',
-      '传感器', '天线', '振动马达', '散热片', '保护膜', '手机卡托', '侧键'
+      'LCD显示屏', 'OLED显示屏', '中框', '侧键', '手机卡托',
+      '电池盖', '装饰件', '听筒', '喇叭', '摄像头', '电池',
+      '充电器', '保护套', '包装盒', '标签'
     ];
 
     const hasRealMaterials = factoryData.some(item => {
@@ -1108,28 +1169,43 @@ async function extractMaterialData() {
       console.log('✅ 验证通过：数据包含真实业务物料');
     }
 
-    // 转换数据格式 - 确保不限制数据量
-    const processedData = factoryData.map(item => ({
-      id: item.id || `OL-${Math.floor(Math.random() * 100000)}`,
-      materialCode: item.materialCode || item.material_code || '',
-      materialName: item.materialName || item.material_name || '',
-      category: item.category || '',
-      batchNo: item.batchNo || item.batch_no || '',
-      supplier: item.supplier || '',
-      factory: item.factory || '',
-      line: item.line || item.productionLine || '',
-      defectRate: parseFloat(item.defectRate?.toString().replace('%', '') || '0'),
-      yield: parseFloat(item.yield || '98.5'),
-      project: item.project || item.projectId || '',
-      project_display: item.project_display || `项目${item.project || ''}`,
-      baseline_display: item.baseline_display || '',
-      quality: item.quality || '合格',
-      status: item.status || '正常',
-      useTime: item.useTime || item.onlineDate || new Date().toISOString(),
-      inspectionDate: item.inspectionDate || '',
-      exceptionCount: parseInt(item.exceptionCount || '0'),
-      defect: item.defect || ''
-    }));
+    // 转换数据格式 - 确保不限制数据量，并添加详细的字段映射调试
+    const processedData = factoryData.map((item, index) => {
+      // 调试：检查原始数据结构
+      if (index === 0) {
+        console.log('🔍 原始数据样本结构:', Object.keys(item));
+        console.log('🔍 原始数据样本内容:', item);
+      }
+
+      const processed = {
+        id: item.id || `OL-${Math.floor(Math.random() * 100000)}`,
+        materialCode: item.materialCode || item.material_code || '',
+        materialName: item.materialName || item.material_name || '',
+        category: item.category || '',
+        batchNo: item.batchNo || item.batch_no || '',
+        supplier: item.supplier || '',
+        factory: item.factory || '',
+        line: item.line || item.productionLine || '',
+        defectRate: parseFloat(item.defectRate?.toString().replace('%', '') || '0'),
+        yield: parseFloat(item.yield || '98.5'),
+        project: item.project || item.projectId || item.project_id || '',
+        project_display: item.project_display || item.project_name || `项目${item.project || item.projectId || item.project_id || ''}`,
+        baseline_display: item.baseline_display || item.baseline_name || item.baseline || '',
+        quality: item.quality || '合格',
+        status: item.status || '正常',
+        useTime: item.useTime || item.onlineTime || item.onlineDate || new Date().toISOString(),
+        inspectionDate: item.inspectionDate || item.inspection_date || '',
+        exceptionCount: parseInt(item.exceptionCount || '0'),
+        defect: item.defect || ''
+      };
+
+      // 调试：检查处理后的数据
+      if (index === 0) {
+        console.log('🔍 处理后数据样本:', processed);
+      }
+
+      return processed;
+    });
 
     console.log(`✅ 已成功处理${processedData.length}条上线数据`);
     if (processedData.length > 0) {
@@ -1137,7 +1213,25 @@ async function extractMaterialData() {
         materialCode: processedData[0].materialCode,
         materialName: processedData[0].materialName,
         supplier: processedData[0].supplier,
-        factory: processedData[0].factory
+        factory: processedData[0].factory,
+        batchNo: processedData[0].batchNo,
+        defectRate: processedData[0].defectRate
+      });
+
+      // 额外调试：检查前5条数据的完整结构
+      console.log('🔍 前5条数据详细结构:');
+      processedData.slice(0, 5).forEach((item, index) => {
+        console.log(`数据${index + 1}:`, {
+          id: item.id,
+          materialName: item.materialName,
+          materialCode: item.materialCode,
+          batchNo: item.batchNo,
+          supplier: item.supplier,
+          factory: item.factory,
+          defectRate: item.defectRate,
+          project: item.project,
+          inspectionDate: item.inspectionDate
+        });
       });
     }
 
@@ -1276,7 +1370,10 @@ function updateStatistics() {
 
 // 在组件挂载时初始化
 onMounted(async () => {
+  loading.value = true;
   try {
+    console.log('🚀 开始初始化工厂页面...');
+
     // 加载数据生成器到全局，以便刷新时使用
     try {
       const dataGenerator = await import('../data/data_generator.js');
@@ -1287,12 +1384,22 @@ onMounted(async () => {
     }
 
     // 提取物料数据
+    console.log('📦 开始提取物料数据...');
     materials.value = await extractMaterialData();
+
+    // 调试：检查materials.value的状态
+    console.log('🔍 materials.value 赋值后状态:', {
+      length: materials.value?.length || 0,
+      isArray: Array.isArray(materials.value),
+      sample: materials.value?.[0] || null
+    });
 
     // 检查材料数据状态，但不自动生成
     if (!materials.value || materials.value.length === 0) {
       console.warn('没有找到物料数据，请在"管理工具"中手动生成数据');
       ElMessage.warning('未检测到物料数据，请在"管理工具"中生成数据');
+    } else {
+      console.log(`✅ 成功加载 ${materials.value.length} 条物料数据到页面`);
     }
 
     // 更新统计信息
@@ -1313,6 +1420,9 @@ onMounted(async () => {
   } catch (error) {
     console.error("初始化失败:", error);
     ElMessage.error("初始化失败，请刷新页面重试");
+  } finally {
+    loading.value = false;
+    console.log('✅ 工厂页面初始化完成');
   }
 });
 
@@ -1535,6 +1645,67 @@ function exportToExcel() {
   setTimeout(() => {
     ElMessage.success('数据导出成功');
   }, 1000);
+}
+
+// 调试数据状态
+function debugDataStatus() {
+  console.log('🔍 === 数据状态调试 ===');
+
+  // 1. 检查localStorage
+  const rawData = localStorage.getItem('unified_factory_data');
+  console.log('📦 localStorage数据:', {
+    exists: !!rawData,
+    length: rawData ? rawData.length : 0,
+    preview: rawData ? rawData.substring(0, 200) + '...' : 'null'
+  });
+
+  // 2. 检查unifiedDataService
+  let serviceData = [];
+  try {
+    if (unifiedDataService) {
+      serviceData = unifiedDataService.getOnlineData();
+    } else {
+      console.warn('⚠️ unifiedDataService未定义');
+    }
+  } catch (error) {
+    console.error('❌ unifiedDataService调用失败:', error);
+  }
+  console.log('🔧 unifiedDataService数据:', {
+    length: serviceData?.length || 0,
+    sample: serviceData?.[0] || null
+  });
+
+  // 3. 检查materials.value
+  console.log('📋 materials.value状态:', {
+    length: materials.value?.length || 0,
+    isArray: Array.isArray(materials.value),
+    sample: materials.value?.[0] || null
+  });
+
+  // 4. 检查filteredMaterials
+  console.log('🔍 filteredMaterials状态:', {
+    length: filteredMaterials.value?.length || 0,
+    sample: filteredMaterials.value?.[0] || null
+  });
+
+  // 5. 检查paginatedMaterials
+  console.log('📄 paginatedMaterials状态:', {
+    length: paginatedMaterials.value?.length || 0,
+    sample: paginatedMaterials.value?.[0] || null
+  });
+
+  // 6. 显示结果
+  const message = `
+数据状态检查结果：
+- localStorage: ${rawData ? '有数据' : '无数据'}
+- Service数据: ${serviceData?.length || 0}条
+- materials.value: ${materials.value?.length || 0}条
+- 过滤后数据: ${filteredMaterials.value?.length || 0}条
+- 分页数据: ${paginatedMaterials.value?.length || 0}条
+  `;
+
+  ElMessage.info(message);
+  console.log('🔍 === 调试完成 ===');
 }
 
 // 安全图表渲染方法

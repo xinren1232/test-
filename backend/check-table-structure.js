@@ -1,45 +1,57 @@
 /**
- * 检查数据库表结构
+ * 检查数据表结构
  */
 
 import mysql from 'mysql2/promise';
 
+const dbConfig = {
+  host: 'localhost',
+  user: 'root',
+  password: 'Zxylsy.99',
+  database: 'iqe_inspection'
+};
+
 async function checkTableStructure() {
-  console.log('🔍 检查数据库表结构\n');
+  console.log('🔍 检查数据表结构...\n');
+  
+  const connection = await mysql.createConnection(dbConfig);
   
   try {
-    const connection = await mysql.createConnection({
-      host: 'localhost',
-      user: 'root', 
-      password: 'Zxylsy.99',
-      database: 'iqe_inspection'
+    // 检查online_tracking表结构
+    console.log('📋 online_tracking表结构:');
+    const [onlineColumns] = await connection.execute('DESCRIBE online_tracking');
+    onlineColumns.forEach(col => {
+      console.log(`   ${col.Field}: ${col.Type} ${col.Null === 'YES' ? '(可空)' : '(非空)'} ${col.Key ? `[${col.Key}]` : ''}`);
     });
     
-    // 检查nlp_intent_rules表结构
-    console.log('📋 nlp_intent_rules 表结构:');
-    const [ruleColumns] = await connection.query('DESCRIBE nlp_intent_rules');
-    console.table(ruleColumns);
+    // 检查数据样本
+    console.log('\n📊 online_tracking数据样本:');
+    const [onlineSample] = await connection.execute('SELECT * FROM online_tracking LIMIT 3');
+    console.log(JSON.stringify(onlineSample, null, 2));
+    
+    // 检查数据统计
+    console.log('\n📈 数据统计:');
+    const [onlineCount] = await connection.execute('SELECT COUNT(*) as count FROM online_tracking');
+    console.log(`online_tracking总数: ${onlineCount[0].count} 条`);
     
     // 检查inventory表结构
-    console.log('\n📦 inventory 表结构:');
-    const [inventoryColumns] = await connection.query('DESCRIBE inventory');
-    console.table(inventoryColumns);
+    console.log('\n📋 inventory表结构:');
+    const [inventoryColumns] = await connection.execute('DESCRIBE inventory');
+    inventoryColumns.forEach(col => {
+      console.log(`   ${col.Field}: ${col.Type} ${col.Null === 'YES' ? '(可空)' : '(非空)'} ${col.Key ? `[${col.Key}]` : ''}`);
+    });
     
     // 检查lab_tests表结构
-    console.log('\n🧪 lab_tests 表结构:');
-    const [labColumns] = await connection.query('DESCRIBE lab_tests');
-    console.table(labColumns);
+    console.log('\n📋 lab_tests表结构:');
+    const [labColumns] = await connection.execute('DESCRIBE lab_tests');
+    labColumns.forEach(col => {
+      console.log(`   ${col.Field}: ${col.Type} ${col.Null === 'YES' ? '(可空)' : '(非空)'} ${col.Key ? `[${col.Key}]` : ''}`);
+    });
     
-    // 检查online_tracking表结构
-    console.log('\n🏭 online_tracking 表结构:');
-    const [trackingColumns] = await connection.query('DESCRIBE online_tracking');
-    console.table(trackingColumns);
-    
+  } finally {
     await connection.end();
-    
-  } catch (error) {
-    console.error('❌ 检查失败:', error);
   }
 }
 
-checkTableStructure();
+// 运行检查
+checkTableStructure().catch(console.error);

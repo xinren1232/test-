@@ -471,50 +471,7 @@
         </div>
       </div>
 
-      <!-- 物料大类详细分析 -->
-      <div class="category-detailed-analysis">
-        <div class="category-cards">
-          <div class="category-detail-card" v-for="category in categoryDetailData" :key="category.name">
-            <div class="category-detail-header">
-              <div class="category-detail-icon" :style="{ backgroundColor: category.color + '20', color: category.color }">
-                <el-icon><component :is="category.icon" /></el-icon>
-              </div>
-              <div class="category-detail-info">
-                <h4>{{ category.name }}</h4>
-                <span class="category-detail-count">{{ category.materialCount }}种物料</span>
-              </div>
-              <div class="category-detail-stats">
-                <div class="stat-item">
-                  <span class="stat-value" :style="{ color: category.color }">{{ category.defectRate }}%</span>
-                  <span class="stat-label">不良率</span>
-                </div>
-              </div>
-            </div>
 
-            <div class="category-detail-content">
-              <div class="supplier-info">
-                <span class="info-label">覆盖供应商:</span>
-                <span class="info-value">{{ category.supplierCount }}家</span>
-              </div>
-              <div class="inspection-info">
-                <span class="info-label">检验次数:</span>
-                <span class="info-value">{{ category.inspectionCount }}次</span>
-              </div>
-
-              <div class="top-defect-materials">
-                <h5>异常率前3物料:</h5>
-                <div class="defect-material-list">
-                  <div class="defect-material-item" v-for="(material, index) in category.topDefectMaterials" :key="material.code">
-                    <span class="material-rank">{{ index + 1 }}.</span>
-                    <span class="material-name">{{ material.name }}</span>
-                    <span class="material-rate" :class="{ 'high-defect': material.defectRate > 5 }">{{ material.defectRate }}%</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <div class="category-analysis">
         <div class="category-overview">
@@ -525,25 +482,7 @@
             </div>
             <div ref="categoryDistributionChart" class="chart"></div>
           </div>
-          <div class="category-stats">
-            <div class="stat-item" v-for="category in categoryStats" :key="category.name">
-              <div class="stat-header">
-                <span class="category-name">{{ category.name }}</span>
-                <span class="category-count">{{ category.count }}种</span>
-              </div>
-              <div class="stat-progress">
-                <el-progress
-                  :percentage="category.percentage"
-                  :color="category.color"
-                  :show-text="false"
-                />
-              </div>
-              <div class="stat-details">
-                <span class="quality-rate">合格率: {{ category.qualityRate }}%</span>
-                <span class="risk-count">风险: {{ category.riskCount }}</span>
-              </div>
-            </div>
-          </div>
+
         </div>
 
         <div class="category-details">
@@ -1349,7 +1288,7 @@ export default {
 
         // 生成分类详细数据
         categoryDetailData.value = Object.values(categoryStats)
-          .filter(category => category.inspectionCount > 0)
+          .filter(category => category.inspectionCount > 0 && category.name !== '其他类')
           .map(category => {
             const defectRate = ((category.defectCount / category.inspectionCount) * 100).toFixed(1)
 
@@ -3904,89 +3843,9 @@ export default {
   margin-bottom: 32px;
 }
 
-.category-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 20px;
-}
 
-.category-detail-card {
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  padding: 20px;
-  transition: all 0.3s ease;
-}
 
-.category-detail-card:hover {
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
-}
 
-.category-detail-header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #f1f5f9;
-}
-
-.category-detail-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  flex-shrink: 0;
-}
-
-.category-detail-info {
-  flex: 1;
-}
-
-.category-detail-info h4 {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1e293b;
-  margin: 0 0 4px 0;
-}
-
-.category-detail-count {
-  font-size: 12px;
-  color: #64748b;
-}
-
-.category-detail-stats {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-}
-
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-}
-
-.stat-value {
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.stat-label {
-  font-size: 11px;
-  color: #64748b;
-}
-
-.category-detail-content {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
 
 .supplier-info,
 .inspection-info {

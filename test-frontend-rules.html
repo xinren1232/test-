@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>规则加载测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .loading { background-color: #fff3cd; color: #856404; }
+        .rule-item {
+            border: 1px solid #ddd;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 4px;
+            background: #f9f9f9;
+        }
+        .rule-header {
+            font-weight: bold;
+            color: #333;
+        }
+        .rule-description {
+            color: #666;
+            margin: 5px 0;
+        }
+        .rule-meta {
+            font-size: 12px;
+            color: #999;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 规则库加载测试</h1>
+        
+        <div class="controls">
+            <button onclick="testDirectAPI()">测试直接API</button>
+            <button onclick="testProxyAPI()">测试代理API</button>
+            <button onclick="clearResults()">清空结果</button>
+        </div>
+        
+        <div id="status"></div>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function showResults(content) {
+            document.getElementById('results').innerHTML = content;
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('status').innerHTML = '';
+        }
+
+        async function testDirectAPI() {
+            showStatus('🔄 正在测试直接API连接...', 'loading');
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/rules');
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showStatus(`✅ 直接API测试成功！获取到 ${data.count} 条规则`, 'success');
+                    displayRules(data.data, '直接API结果');
+                } else {
+                    showStatus(`❌ 直接API测试失败: ${data.message || '未知错误'}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`❌ 直接API连接失败: ${error.message}`, 'error');
+                console.error('直接API错误:', error);
+            }
+        }
+
+        async function testProxyAPI() {
+            showStatus('🔄 正在测试代理API连接...', 'loading');
+            
+            try {
+                const response = await fetch('/api/rules');
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showStatus(`✅ 代理API测试成功！获取到 ${data.count} 条规则`, 'success');
+                    displayRules(data.data, '代理API结果');
+                } else {
+                    showStatus(`❌ 代理API测试失败: ${data.message || '未知错误'}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`❌ 代理API连接失败: ${error.message}`, 'error');
+                console.error('代理API错误:', error);
+            }
+        }
+
+        function displayRules(rules, title) {
+            if (!Array.isArray(rules) || rules.length === 0) {
+                showResults(`<h3>${title}</h3><p>没有规则数据</p>`);
+                return;
+            }
+
+            let html = `<h3>${title} (${rules.length} 条规则)</h3>`;
+            
+            // 显示前10条规则
+            const displayRules = rules.slice(0, 10);
+            
+            displayRules.forEach(rule => {
+                html += `
+                    <div class="rule-item">
+                        <div class="rule-header">${rule.intent_name || '未知规则'}</div>
+                        <div class="rule-description">${rule.description || '无描述'}</div>
+                        <div class="rule-meta">
+                            ID: ${rule.id} | 
+                            分类: ${rule.category || '未分类'} | 
+                            状态: ${rule.status || '未知'} | 
+                            优先级: ${rule.priority || 'N/A'}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            if (rules.length > 10) {
+                html += `<p><em>... 还有 ${rules.length - 10} 条规则未显示</em></p>`;
+            }
+            
+            showResults(html);
+        }
+
+        // 页面加载时自动测试代理API
+        window.addEventListener('load', () => {
+            showStatus('📋 页面已加载，点击按钮开始测试', 'info');
+        });
+    </script>
+</body>
+</html>

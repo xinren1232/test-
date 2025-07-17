@@ -155,9 +155,18 @@ function handleFactoryInventoryQuery(query) {
 
 function handleSupplierInventoryQuery(query) {
   const supplierName = extractSupplierName(query);
+
+  if (!supplierName) {
+    return `抱歉，无法识别查询中的供应商名称。请尝试使用具体的供应商名称，如：天马、BOE、聚龙等。`;
+  }
+
   const results = realTimeData.inventory.filter(item =>
     item.supplier && item.supplier.includes(supplierName)
   );
+
+  if (results.length === 0) {
+    return `未找到供应商"${supplierName}"的库存数据。`;
+  }
 
   return EnhancedResponseFormatter.formatInventoryQuery(results, {
     title: `${supplierName}供应商库存查询结果`,
@@ -380,11 +389,39 @@ function extractFactoryName(query) {
 }
 
 function extractSupplierName(query) {
-  const suppliers = ['BOE', '歌尔股份', '聚龙', '欣冠', '广正'];
-  for (const supplier of suppliers) {
-    if (query.includes(supplier)) return supplier;
+  // 使用完整的真实供应商列表
+  const suppliers = [
+    "聚龙", "欣冠", "广正", "丽德宝", "怡同", "富群", "天马", "东声",
+    "瑞声", "歌尔", "BOE", "盛泰", "风华", "理威", "天实", "深奥",
+    "华星", "奥海", "维科", "百佳达", "辉阳", "歌尔股份"
+  ];
+
+  // 添加别名支持
+  const supplierAliases = {
+    'BOE': ['BOE', '京东方', 'boe'],
+    '聚龙': ['聚龙', 'julong'],
+    '歌尔': ['歌尔', '歌尔股份', 'goer'],
+    '天马': ['天马', 'tianma'],
+    '华星': ['华星', '华星光电']
+  };
+
+  // 首先检查别名
+  for (const [supplier, aliases] of Object.entries(supplierAliases)) {
+    for (const alias of aliases) {
+      if (query.toLowerCase().includes(alias.toLowerCase())) {
+        return supplier;
+      }
+    }
   }
-  return 'BOE'; // 默认
+
+  // 然后检查完整供应商名称
+  for (const supplier of suppliers) {
+    if (query.includes(supplier)) {
+      return supplier;
+    }
+  }
+
+  return null; // 如果没有匹配到，返回null而不是默认值
 }
 
 function extractMaterialName(query) {

@@ -41,8 +41,7 @@
                 <Box v-if="categoryName === '库存场景'" />
                 <Monitor v-else-if="categoryName === '上线场景'" />
                 <DataAnalysis v-else-if="categoryName === '测试场景'" />
-                <Collection v-else-if="categoryName === '批次场景'" />
-                <TrendCharts v-else-if="categoryName === '对比场景'" />
+                <TrendCharts v-else-if="categoryName === '高级场景'" />
                 <Grid v-else />
               </el-icon>
               <span class="category-name">{{ categoryName }}</span>
@@ -591,11 +590,9 @@ const rulesLibrary = ref({});
 const totalRulesCount = ref(0);
 const expandedCategories = reactive({
   '库存场景': true,
-  '上线场景': false,
-  '测试场景': false,
-  '批次场景': false,
-  '对比场景': false,
-  '综合场景': false
+  '上线场景': true,
+  '测试场景': true,
+  '高级场景': false
 });
 
 // 数据范围定义（基于实际数据库内容）
@@ -880,24 +877,52 @@ const formatTime = (timestamp) => {
 const refreshRules = async () => {
   loadingRules.value = true;
   try {
-    const response = await fetch('/api/assistant/rules');
+    const response = await fetch('/api/rules');
     const result = await response.json();
 
     if (result.success && result.data) {
-      // 按分类组织规则
-      const categorizedRules = {};
+      // 按场景智能分类规则 - 使用中文分类名
+      const categorizedRules = {
+        '库存场景': [],
+        '上线场景': [],
+        '测试场景': [],
+        '高级场景': []
+      };
+
       result.data.forEach(rule => {
-        const category = rule.category || '未分类';
-        if (!categorizedRules[category]) {
-          categorizedRules[category] = [];
+        // 根据规则内容智能分类
+        const desc = rule.description ? rule.description.toLowerCase() : '';
+        const target = rule.action_target ? rule.action_target.toLowerCase() : '';
+
+        if (desc.includes('库存') || target.includes('inventory')) {
+          categorizedRules['库存场景'].push(rule);
+        } else if (desc.includes('上线') || target.includes('online_tracking')) {
+          categorizedRules['上线场景'].push(rule);
+        } else if (desc.includes('测试') || desc.includes('检验') || target.includes('lab_tests')) {
+          categorizedRules['测试场景'].push(rule);
+        } else {
+          categorizedRules['高级场景'].push(rule);
         }
-        categorizedRules[category].push(rule);
       });
 
       rulesLibrary.value = categorizedRules;
       totalRulesCount.value = result.data.length;
 
-      ElMessage.success(`已加载 ${result.data.length} 条规则`);
+      // 统计各场景规则数量
+      const stats = Object.entries(categorizedRules).map(([name, rules]) =>
+        `${name}:${rules.length}条`
+      ).join(', ');
+
+      ElMessage.success(`已加载 ${result.data.length} 条规则 (${stats})`);
+
+      console.log('📊 规则库加载完成:', {
+        总数: result.data.length,
+        库存场景: categorizedRules['库存场景'].length,
+        上线场景: categorizedRules['上线场景'].length,
+        测试场景: categorizedRules['测试场景'].length,
+        高级场景: categorizedRules['高级场景'].length,
+        更新时间: new Date().toLocaleString()
+      });
     }
   } catch (error) {
     console.error('加载规则失败:', error);
