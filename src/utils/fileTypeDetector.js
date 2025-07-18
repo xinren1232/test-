@@ -1,13 +1,39 @@
 /**
  * 文件类型识别模块
- * 用于区分常规案例和8D报告格式
+ * 支持多种识别模式，用于区分不同类型的文档格式
  */
+
+/**
+ * 识别模式枚举
+ */
+const DETECTION_MODES = {
+  AUTO: 'auto',           // 自动识别（默认）
+  STRICT: 'strict',       // 严格模式（高精度）
+  FUZZY: 'fuzzy',         // 模糊模式（高召回）
+  MANUAL: 'manual',       // 手动指定
+  HYBRID: 'hybrid'        // 混合模式（多算法融合）
+}
+
+/**
+ * 文档类型定义
+ */
+const DOCUMENT_TYPES = {
+  D8_REPORT: '8D报告',
+  REGULAR_CASE: '常规案例',
+  QUALITY_REPORT: '质量报告',
+  INSPECTION_REPORT: '检验报告',
+  ANALYSIS_REPORT: '分析报告',
+  MAINTENANCE_LOG: '维护日志',
+  TRAINING_MATERIAL: '培训资料',
+  PROCEDURE_DOC: '程序文件',
+  UNKNOWN: '未知类型'
+}
 
 // 8D报告关键词
 const D8_KEYWORDS = [
   '8D', '8d', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8',
-  '建立团队', '问题描述', '临时措施', '根本原因', '纠正措施', 
-  '永久措施', '预防', '团队祝贺', '8D报告', '8D分析'
+  '建立团队', '问题描述', '临时措施', '根本原因', '纠正措施',
+  '永久措施', '预防', '团队祝贺', '8D报告', '8D分析', '8D方法'
 ]
 
 // 8D报告结构模式
@@ -25,33 +51,91 @@ const D8_STRUCTURE_PATTERNS = [
   /团队.*祝贺/g
 ]
 
-// 常规案例关键词
-const REGULAR_CASE_KEYWORDS = [
-  '案例', '问题', '分析', '解决方案', '总结', '经验',
-  '故障', '维修', '检修', '改进', '优化', '建议'
-]
+// 扩展的文档类型关键词库
+const DOCUMENT_KEYWORDS = {
+  [DOCUMENT_TYPES.D8_REPORT]: [
+    '8D', '8d', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8',
+    '建立团队', '问题描述', '临时措施', '根本原因', '纠正措施',
+    '永久措施', '预防', '团队祝贺', '8D报告', '8D分析', '8D方法',
+    '跨职能团队', 'PDCA', '鱼骨图', '5Why'
+  ],
+  [DOCUMENT_TYPES.REGULAR_CASE]: [
+    '案例', '问题', '分析', '解决方案', '总结', '经验',
+    '故障', '维修', '检修', '改进', '优化', '建议',
+    '现象', '原因', '措施', '效果', '启示'
+  ],
+  [DOCUMENT_TYPES.QUALITY_REPORT]: [
+    '质量', '品质', '检测', '检验', '合格率', '不良率',
+    '质量控制', 'QC', 'QA', '质量管理', '质量体系',
+    '标准', '规范', '要求', '指标'
+  ],
+  [DOCUMENT_TYPES.INSPECTION_REPORT]: [
+    '检验', '检查', '检测', '测试', '试验', '验证',
+    '检验报告', '检测报告', '测试报告', '试验报告',
+    '合格', '不合格', '符合', '不符合', '标准'
+  ],
+  [DOCUMENT_TYPES.ANALYSIS_REPORT]: [
+    '分析', '统计', '数据', '趋势', '对比', '评估',
+    '分析报告', '数据分析', '统计分析', '趋势分析',
+    '图表', '表格', '数据', '指标'
+  ],
+  [DOCUMENT_TYPES.MAINTENANCE_LOG]: [
+    '维护', '保养', '维修', '检修', '巡检', '点检',
+    '维护记录', '保养记录', '维修记录', '设备',
+    '故障', '异常', '正常', '完成'
+  ],
+  [DOCUMENT_TYPES.TRAINING_MATERIAL]: [
+    '培训', '教育', '学习', '课程', '教材', '讲义',
+    '培训资料', '教学', '知识', '技能', '能力',
+    '考试', '考核', '评价', '证书'
+  ],
+  [DOCUMENT_TYPES.PROCEDURE_DOC]: [
+    '程序', '流程', '步骤', '操作', '规程', '制度',
+    '程序文件', '作业指导书', 'SOP', '标准操作',
+    '规定', '要求', '方法', '标准'
+  ]
+}
 
 /**
- * 检测文件类型
+ * 检测文件类型（支持多种模式）
  * @param {File} file - 文件对象
  * @param {string} content - 文件内容（可选）
+ * @param {Object} options - 检测选项
  * @returns {Promise<Object>} 检测结果
  */
-export async function detectFileType(file, content = null) {
+export async function detectFileType(file, content = null, options = {}) {
+  const {
+    mode = DETECTION_MODES.AUTO,
+    manualType = null,
+    strictThreshold = 80,
+    fuzzyThreshold = 30,
+    enableMultiType = false
+  } = options
   try {
     const result = {
       fileName: file.name,
       fileSize: file.size,
       mimeType: file.type,
-      documentType: 'unknown',
+      documentType: DOCUMENT_TYPES.UNKNOWN,
       confidence: 0,
+      detectionMode: mode,
+      possibleTypes: [],
       structure: null,
       analysis: {
-        d8Keywords: 0,
-        d8Patterns: 0,
-        regularKeywords: 0,
-        hasStructure: false
-      }
+        keywordMatches: {},
+        patternMatches: {},
+        structureScore: 0,
+        contentLength: 0
+      },
+      recommendations: []
+    }
+
+    // 手动模式直接返回指定类型
+    if (mode === DETECTION_MODES.MANUAL && manualType) {
+      result.documentType = manualType
+      result.confidence = 100
+      result.detectionMode = DETECTION_MODES.MANUAL
+      return result
     }
 
     // 如果没有提供内容，尝试读取文件内容
@@ -63,21 +147,17 @@ export async function detectFileType(file, content = null) {
       throw new Error('无法提取文件内容')
     }
 
-    // 分析内容
-    const analysis = analyzeContent(content)
-    result.analysis = analysis
-
-    // 判断文档类型
-    const typeResult = determineDocumentType(analysis, file.name)
-    result.documentType = typeResult.type
-    result.confidence = typeResult.confidence
-
-    // 如果是8D报告，提取结构信息
-    if (result.documentType === '8D报告') {
-      result.structure = extract8DStructure(content)
+    // 根据不同模式进行检测
+    switch (mode) {
+      case DETECTION_MODES.STRICT:
+        return await strictModeDetection(file, content, result, strictThreshold)
+      case DETECTION_MODES.FUZZY:
+        return await fuzzyModeDetection(file, content, result, fuzzyThreshold)
+      case DETECTION_MODES.HYBRID:
+        return await hybridModeDetection(file, content, result, options)
+      default:
+        return await autoModeDetection(file, content, result, enableMultiType)
     }
-
-    return result
   } catch (error) {
     console.error('文件类型检测失败:', error)
     return {
