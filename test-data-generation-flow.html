@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试数据生成流程</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        .warning { color: orange; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>数据生成和同步流程测试</h1>
+    
+    <div class="test-section">
+        <h2>1. 模拟数据生成</h2>
+        <button onclick="generateTestData()">生成测试数据</button>
+        <div id="generation-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. 数据获取验证</h2>
+        <button onclick="verifyDataRetrieval()">验证数据获取</button>
+        <div id="retrieval-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. 数据同步测试</h2>
+        <button onclick="testDataSync()">测试数据同步</button>
+        <div id="sync-result"></div>
+    </div>
+
+    <script>
+        // 模拟 UnifiedDataService 的关键方法
+        const STORAGE_KEYS = {
+            INVENTORY: 'unified_inventory_data',
+            LAB: 'unified_lab_data',
+            FACTORY: 'unified_factory_data'
+        };
+
+        function generateTestData() {
+            const resultDiv = document.getElementById('generation-result');
+            resultDiv.innerHTML = '<p>正在生成测试数据...</p>';
+            
+            try {
+                // 生成库存数据
+                const inventoryData = Array.from({length: 132}, (_, i) => ({
+                    id: i + 1,
+                    materialName: `测试物料${i + 1}`,
+                    materialCode: `MAT${String(i + 1).padStart(3, '0')}`,
+                    batchNo: `BATCH${String(i + 1).padStart(3, '0')}`,
+                    supplier: ['聚龙', '欣冠', '广正'][i % 3],
+                    quantity: 100 + i,
+                    status: '正常',
+                    warehouse: '深圳仓库',
+                    factory: '深圳工厂'
+                }));
+                
+                // 生成检验数据
+                const inspectionData = Array.from({length: 405}, (_, i) => ({
+                    id: i + 1,
+                    materialName: `测试物料${(i % 132) + 1}`,
+                    batchNo: `BATCH${String((i % 132) + 1).padStart(3, '0')}`,
+                    supplier: ['聚龙', '欣冠', '广正'][i % 3],
+                    testResult: ['合格', '不合格'][i % 10 === 0 ? 1 : 0],
+                    testDate: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+                    projectId: `PRJ${String((i % 10) + 1).padStart(3, '0')}`,
+                    defectDescription: i % 10 === 0 ? '外观缺陷' : ''
+                }));
+                
+                // 生成生产数据
+                const productionData = Array.from({length: 1080}, (_, i) => ({
+                    id: i + 1,
+                    materialName: `测试物料${(i % 132) + 1}`,
+                    materialCode: `MAT${String((i % 132) + 1).padStart(3, '0')}`,
+                    batchNo: `BATCH${String((i % 132) + 1).padStart(3, '0')}`,
+                    supplier: ['聚龙', '欣冠', '广正'][i % 3],
+                    factory: '深圳工厂',
+                    onlineTime: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+                    status: '已上线',
+                    projectId: `PRJ${String((i % 10) + 1).padStart(3, '0')}`
+                }));
+                
+                // 保存到localStorage
+                localStorage.setItem(STORAGE_KEYS.INVENTORY, JSON.stringify(inventoryData));
+                localStorage.setItem(STORAGE_KEYS.LAB, JSON.stringify(inspectionData));
+                localStorage.setItem(STORAGE_KEYS.FACTORY, JSON.stringify(productionData));
+                
+                // 添加时间戳
+                const timestamp = new Date().toISOString();
+                localStorage.setItem('inventory_data_timestamp', timestamp);
+                localStorage.setItem('lab_data_timestamp', timestamp);
+                localStorage.setItem('factory_data_timestamp', timestamp);
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <h3>✅ 数据生成成功</h3>
+                        <p>库存数据: ${inventoryData.length} 条</p>
+                        <p>检验数据: ${inspectionData.length} 条</p>
+                        <p>生产数据: ${productionData.length} 条</p>
+                        <p>生成时间: ${timestamp}</p>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ 数据生成失败: ${error.message}</div>`;
+            }
+        }
+
+        function verifyDataRetrieval() {
+            const resultDiv = document.getElementById('retrieval-result');
+            resultDiv.innerHTML = '<p>正在验证数据获取...</p>';
+            
+            try {
+                // 模拟 UnifiedDataService 的获取方法
+                const getInventoryData = () => {
+                    const data = localStorage.getItem(STORAGE_KEYS.INVENTORY) || '[]';
+                    return JSON.parse(data);
+                };
+                
+                const getLabData = () => {
+                    const data = localStorage.getItem(STORAGE_KEYS.LAB) || '[]';
+                    return JSON.parse(data);
+                };
+                
+                const getOnlineData = () => {
+                    const data = localStorage.getItem(STORAGE_KEYS.FACTORY) || '[]';
+                    return JSON.parse(data);
+                };
+                
+                const inventory = getInventoryData();
+                const inspection = getLabData();
+                const production = getOnlineData();
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <h3>✅ 数据获取验证成功</h3>
+                        <p>库存数据获取: ${inventory.length} 条</p>
+                        <p>检验数据获取: ${inspection.length} 条</p>
+                        <p>生产数据获取: ${production.length} 条</p>
+                        <h4>数据样本:</h4>
+                        <pre>${JSON.stringify({
+                            inventory: inventory[0] || null,
+                            inspection: inspection[0] || null,
+                            production: production[0] || null
+                        }, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ 数据获取验证失败: ${error.message}</div>`;
+            }
+        }
+
+        async function testDataSync() {
+            const resultDiv = document.getElementById('sync-result');
+            resultDiv.innerHTML = '<p>正在测试数据同步...</p>';
+            
+            try {
+                // 获取数据
+                const inventory = JSON.parse(localStorage.getItem(STORAGE_KEYS.INVENTORY) || '[]');
+                const inspection = JSON.parse(localStorage.getItem(STORAGE_KEYS.LAB) || '[]');
+                const production = JSON.parse(localStorage.getItem(STORAGE_KEYS.FACTORY) || '[]');
+                
+                const syncData = {
+                    inventory: inventory,
+                    inspection: inspection,
+                    production: production
+                };
+                
+                // 测试数据同步
+                const syncResponse = await fetch('http://localhost:3001/api/assistant/update-data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(syncData)
+                });
+                
+                if (!syncResponse.ok) {
+                    throw new Error(`同步失败: ${syncResponse.status} ${syncResponse.statusText}`);
+                }
+                
+                const syncResult = await syncResponse.json();
+                
+                // 测试数据验证
+                const verifyRequest = {
+                    expectedCounts: {
+                        inventory: inventory.length,
+                        inspection: inspection.length,
+                        production: production.length
+                    }
+                };
+                
+                const verifyResponse = await fetch('http://localhost:3001/api/assistant/verify-data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(verifyRequest)
+                });
+                
+                if (!verifyResponse.ok) {
+                    throw new Error(`验证失败: ${verifyResponse.status} ${verifyResponse.statusText}`);
+                }
+                
+                const verifyResult = await verifyResponse.json();
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <h3>✅ 数据同步测试成功</h3>
+                        <h4>同步结果:</h4>
+                        <p>状态: ${syncResult.success ? '成功' : '失败'}</p>
+                        <p>消息: ${syncResult.message}</p>
+                        <p>库存: ${syncResult.data.inventoryCount} 条</p>
+                        <p>检验: ${syncResult.data.inspectionCount} 条</p>
+                        <p>生产: ${syncResult.data.productionCount} 条</p>
+                        
+                        <h4>验证结果:</h4>
+                        <p>验证状态: ${verifyResult.verified ? '通过' : '失败'}</p>
+                        <p>验证消息: ${verifyResult.message}</p>
+                        
+                        <h4>详细检查:</h4>
+                        <pre>${JSON.stringify(verifyResult.checks, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ 数据同步测试失败: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

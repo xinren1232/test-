@@ -16,6 +16,10 @@ export default (sequelize) => {
       type: DataTypes.STRING(255),
       comment: '规则描述',
     },
+    category: {
+      type: DataTypes.STRING(50),
+      comment: '规则类别/场景',
+    },
     action_type: {
       type: DataTypes.STRING(50),
       allowNull: false,
@@ -46,6 +50,11 @@ export default (sequelize) => {
       type: DataTypes.INTEGER,
       defaultValue: 1,
       comment: '优先级，数字越大优先级越高',
+    },
+    sort_order: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      comment: '排序顺序',
     },
     status: {
       type: DataTypes.STRING(20),

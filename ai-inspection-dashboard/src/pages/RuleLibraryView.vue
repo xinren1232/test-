@@ -607,7 +607,7 @@ const testSingleRule = async (rule) => {
     console.log('🔍 使用示例查询:', testQuery);
 
     // 调用后端API进行测试
-    const response = await fetch('/api/assistant/query', {
+    const response = await fetch('http://localhost:3001/api/assistant/query', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -624,20 +624,20 @@ const testSingleRule = async (rule) => {
       console.log('📊 规则测试结果:', result);
 
       // 判断测试是否成功 - 重点检查是否有实际数据返回
-      // API返回的数据结构: { success: true, data: { tableData: [...] } }
-      const tableData = result.data?.tableData || [];
+      // API返回的数据结构: { success: true, tableData: [...], message: "..." }
+      const tableData = result.tableData || [];
       const hasData = Array.isArray(tableData) && tableData.length > 0;
       const hasReply = result.reply && result.reply.trim().length > 0;
-      const hasAnswer = result.data?.answer && result.data.answer.trim().length > 0;
-      const isSuccess = result.success !== false && (hasData || hasReply || hasAnswer);
+      const hasMessage = result.message && result.message.trim().length > 0;
+      const isSuccess = result.success !== false && (hasData || hasReply || hasMessage);
 
       console.log('📊 测试结果分析:');
       console.log('  - success字段:', result.success);
       console.log('  - 有数据:', hasData);
       console.log('  - 数据条数:', tableData.length);
       console.log('  - 有回复:', hasReply);
-      console.log('  - 有答案:', hasAnswer);
-      console.log('  - 数据内容:', result.data);
+      console.log('  - 有消息:', hasMessage);
+      console.log('  - 数据内容:', result.tableData);
       console.log('  - 最终判断:', isSuccess);
 
       // 更新规则状态
@@ -646,7 +646,7 @@ const testSingleRule = async (rule) => {
       rule.error = !isSuccess;
       rule.testResult = {
         success: isSuccess,
-        data: result.data || [],
+        data: { tableData: tableData },
         reply: result.reply || '',
         sql: result.sql || '',
         params: result.params || {},

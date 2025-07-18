@@ -36,7 +36,7 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/deepseek-api/, '')
       },
-      // 本地API代理配置 - 修复端口为3001
+      // 本地API代理配置 - 统一使用3001端口
       '/api': {
         target: 'http://localhost:3001',
         changeOrigin: true,

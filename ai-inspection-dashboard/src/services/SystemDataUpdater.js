@@ -206,21 +206,77 @@ class SystemDataUpdater {
   /**
    * 准备同步数据
    */
-  async prepareDataForSync() {
+  async prepareDataForSync(retryCount = 3) {
+    console.log('🔍 开始准备同步数据...');
+
+    for (let attempt = 1; attempt <= retryCount; attempt++) {
+      console.log(`📋 第${attempt}次尝试获取数据...`);
+
+      const inventory = unifiedDataService.getInventoryData();
+      const inspection = unifiedDataService.getLabData();
+      const production = unifiedDataService.getOnlineData();
+
+      console.log('📋 原始数据获取结果:', {
+        inventory: inventory ? inventory.length : 0,
+        inspection: inspection ? inspection.length : 0,
+        production: production ? production.length : 0
+      });
+
+      // 数据清理和标准化
+      const cleanedData = {
+        inventory: this.cleanInventoryData(inventory),
+        inspection: this.cleanInspectionData(inspection),
+        production: this.cleanProductionData(production)
+      };
+
+      console.log(`📊 清理后数据: 库存 ${cleanedData.inventory.length} 条, 检验 ${cleanedData.inspection.length} 条, 生产 ${cleanedData.production.length} 条`);
+
+      // 检查是否有足够的数据
+      const hasInventory = cleanedData.inventory.length > 0;
+      const hasInspection = cleanedData.inspection.length > 0;
+      const hasProduction = cleanedData.production.length > 0;
+
+      // 如果所有数据都存在，直接返回
+      if (hasInventory && hasInspection && hasProduction) {
+        console.log('✅ 所有数据准备完成');
+        return cleanedData;
+      }
+
+      // 如果只是部分数据缺失，记录警告但继续
+      if (hasInventory) {
+        if (!hasInspection) {
+          console.warn('⚠️ 检验数据为空，可能数据生成未完成或数据获取失败');
+        }
+        if (!hasProduction) {
+          console.warn('⚠️ 生产数据为空，可能数据生成未完成或数据获取失败');
+        }
+
+        // 如果是最后一次尝试，返回现有数据
+        if (attempt === retryCount) {
+          console.warn('⚠️ 使用部分数据继续同步');
+          return cleanedData;
+        }
+      }
+
+      // 如果数据不完整且不是最后一次尝试，等待后重试
+      if (attempt < retryCount) {
+        const waitTime = attempt * 300;
+        console.warn(`⚠️ 数据不完整，等待${waitTime}ms后重试...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+    }
+
+    // 最终回退：返回现有数据
+    console.warn('⚠️ 多次重试后仍有数据缺失，使用现有数据继续同步');
     const inventory = unifiedDataService.getInventoryData();
     const inspection = unifiedDataService.getLabData();
     const production = unifiedDataService.getOnlineData();
 
-    // 数据清理和标准化
-    const cleanedData = {
+    return {
       inventory: this.cleanInventoryData(inventory),
       inspection: this.cleanInspectionData(inspection),
       production: this.cleanProductionData(production)
     };
-
-    console.log(`📊 准备同步数据: 库存 ${cleanedData.inventory.length} 条, 检验 ${cleanedData.inspection.length} 条, 生产 ${cleanedData.production.length} 条`);
-
-    return cleanedData;
   }
 
   /**
@@ -330,7 +386,7 @@ class SystemDataUpdater {
     console.log(`📊 数据大小: ${(dataSize / 1024 / 1024).toFixed(2)} MB`);
 
     // 如果数据过大，使用分批推送
-    if (dataSize > 10 * 1024 * 1024) { // 超过10MB
+    if (dataSize > 5 * 1024 * 1024) { // 超过5MB就分批，避免413错误
       console.log('📦 数据过大，使用分批推送...');
       return await this.performBatchSync(dataToPush);
     }
@@ -401,7 +457,7 @@ class SystemDataUpdater {
   async performBatchSync(dataToPush) {
     console.log('📦 开始分批同步...');
 
-    const batchSize = 100; // 每批100条记录
+    const batchSize = 100; // 每批100条记录，避免413错误
     const results = [];
 
     // 分批同步库存数据
@@ -463,6 +519,61 @@ class SystemDataUpdater {
 
     console.log('✅ 分批同步完成');
     return { success: true, batchResults: results };
+  }
+
+  /**
+   * 验证数据生成结果
+   */
+  async verifyDataGeneration() {
+    try {
+      console.log('🔍 验证数据生成结果...');
+
+      const inventory = unifiedDataService.getInventoryData();
+      const inspection = unifiedDataService.getLabData();
+      const production = unifiedDataService.getOnlineData();
+
+      console.log('📊 数据生成验证:', {
+        inventory: inventory ? inventory.length : 0,
+        inspection: inspection ? inspection.length : 0,
+        production: production ? production.length : 0
+      });
+
+      const issues = [];
+
+      if (!inventory || inventory.length === 0) {
+        issues.push('库存数据生成失败或为空');
+      }
+      if (!inspection || inspection.length === 0) {
+        issues.push('检验数据生成失败或为空');
+      }
+      if (!production || production.length === 0) {
+        issues.push('生产数据生成失败或为空');
+      }
+
+      if (issues.length > 0) {
+        return {
+          success: false,
+          message: `数据生成存在问题: ${issues.join(', ')}`,
+          issues: issues
+        };
+      }
+
+      return {
+        success: true,
+        message: '所有数据生成成功',
+        counts: {
+          inventory: inventory.length,
+          inspection: inspection.length,
+          production: production.length
+        }
+      };
+    } catch (error) {
+      console.error('❌ 数据生成验证失败:', error);
+      return {
+        success: false,
+        message: `验证过程出错: ${error.message}`
+      };
+    }
   }
 
   /**
@@ -1658,7 +1769,16 @@ class SystemDataUpdater {
       
       // 触发数据更新事件
       this.isUpdating.value = false;
-      
+
+      // 等待一小段时间确保数据完全保存到localStorage
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // 验证数据是否正确生成和保存
+      const verificationResult = await this.verifyDataGeneration();
+      if (!verificationResult.success) {
+        console.warn('⚠️ 数据生成验证失败，但继续尝试同步:', verificationResult.message);
+      }
+
       // 3. 在数据生成成功后，调用推送函数
       await this.pushDataToAssistant();
 

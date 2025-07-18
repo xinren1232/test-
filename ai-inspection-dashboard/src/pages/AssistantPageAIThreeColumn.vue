@@ -5390,7 +5390,7 @@ const syncDataInBatches = async (data) => {
   try {
     console.log('🔄 开始分批推送数据...')
 
-    const batchSize = 50 // 每批50条记录
+    const batchSize = 100 // 每批100条记录，避免413错误
     const batches = []
 
     // 分割库存数据

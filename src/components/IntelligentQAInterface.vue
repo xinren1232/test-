@@ -201,41 +201,74 @@ export default {
       isLoading.value = true
 
       try {
-        // 调用智能问答API
-        const response = await fetch('/api/intelligent-qa/ask', {
+        // 调用真实数据智能查询API
+        const response = await fetch('http://localhost:3001/api/assistant/query', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ question })
+          body: JSON.stringify({ query: question })
         })
 
         const result = await response.json()
 
         if (result.success) {
+          // 构建回复内容
+          let content = result.message || '查询完成'
+
+          // 如果有表格数据，添加到回复中
+          if (result.tableData && result.tableData.length > 0) {
+            content += `\n\n📊 **查询结果** (共${result.tableData.length}条记录)\n`
+            content += `匹配规则: ${result.matchedRule}\n\n`
+
+            // 显示前5条数据作为预览
+            const previewData = result.tableData.slice(0, 5)
+            content += '**数据预览:**\n'
+            previewData.forEach((item, index) => {
+              content += `${index + 1}. `
+              Object.entries(item).forEach(([key, value], i) => {
+                if (i < 4) { // 只显示前4个字段
+                  content += `${key}: ${value}${i < 3 ? ', ' : ''}`
+                }
+              })
+              content += '\n'
+            })
+
+            if (result.tableData.length > 5) {
+              content += `... 还有${result.tableData.length - 5}条记录\n`
+            }
+          }
+
+          // 如果有统计卡片，添加到回复中
+          if (result.cards && result.cards.length > 0) {
+            content += '\n**📈 统计信息:**\n'
+            result.cards.forEach(card => {
+              content += `${card.icon} ${card.title}: ${card.value}\n`
+            })
+          }
+
           // 添加机器人回复
           const botMessage = {
             type: 'bot',
-            content: result.data.answer,
-            charts: result.data.charts || [],
-            analysis: result.data.analysis,
+            content: content,
+            charts: [],
+            analysis: {
+              type: 'data_query',
+              matchedRule: result.matchedRule,
+              dataCount: result.tableData ? result.tableData.length : 0
+            },
+            rawData: result, // 保存原始数据
             timestamp: new Date()
           }
 
           messages.push(botMessage)
-
-          // 渲染图表
-          await nextTick()
-          if (botMessage.charts.length > 0) {
-            renderCharts(botMessage.charts, messages.length - 1)
-          }
 
           // 获取新的建议
           await loadSuggestions(question)
         } else {
           messages.push({
             type: 'bot',
-            content: result.data.answer || '抱歉，处理您的问题时出现了错误。',
+            content: result.message || '抱歉，处理您的问题时出现了错误。',
             timestamp: new Date()
           })
         }
