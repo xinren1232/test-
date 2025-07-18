@@ -776,7 +776,7 @@ function generateRecommendations(issues, summary) {
   return recommendations
 }
 
-export default {
+export {
   parseD8Report,
   D8_STRUCTURE
 }
