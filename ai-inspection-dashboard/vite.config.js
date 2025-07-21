@@ -5,7 +5,7 @@ import { resolve } from 'path'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [vue()],
-  base: '/', // 修改为根路径，方便开发环境访问
+  base: process.env.NODE_ENV === 'production' ? '/IQE/' : '/', // GitHub Pages需要仓库名作为base path
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),

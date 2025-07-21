@@ -409,12 +409,6 @@
       <!-- 右侧分析过程面板 -->
       <div class="right-panel">
         <AnalysisProcessPanel :workflow="currentWorkflow" />
-              <div class="summary-description">
-                {{ thinkingSummary.description }}
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   </div>

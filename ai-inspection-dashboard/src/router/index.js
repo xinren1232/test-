@@ -402,10 +402,40 @@ const routes = [
   {
     path: '/data-cleaning',
     name: 'DataCleaning',
-    component: () => import('../pages/DataCleaningPage.vue'),
+    component: () => import('../pages/DataCleaningFinal.vue'),
     meta: {
       title: '数据清洗治理',
       icon: 'Tools',
+      requiresAuth: false
+    }
+  },
+  {
+    path: '/data-cleaning-minimal',
+    name: 'DataCleaningMinimal',
+    component: () => import('../pages/DataCleaningMinimal.vue'),
+    meta: {
+      title: '数据清洗治理(最小版)',
+      icon: 'Tools',
+      requiresAuth: false
+    }
+  },
+  {
+    path: '/test-page',
+    name: 'TestPage',
+    component: () => import('../pages/TestPage.vue'),
+    meta: {
+      title: '测试页面',
+      icon: 'Tools',
+      requiresAuth: false
+    }
+  },
+  {
+    path: '/data-processing',
+    name: 'DataProcessing',
+    component: () => import('../pages/DataProcessingCenter.vue'),
+    meta: {
+      title: '数据处理中心',
+      icon: 'Cpu',
       requiresAuth: false
     }
   },

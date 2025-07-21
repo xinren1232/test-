@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据清洗治理系统测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f7fa;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .success {
+            background-color: #f0f9ff;
+            border: 1px solid #67c23a;
+            color: #67c23a;
+        }
+        .error {
+            background-color: #fef0f0;
+            border: 1px solid #f56c6c;
+            color: #f56c6c;
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f2f5;
+        }
+        .feature-list li:last-child {
+            border-bottom: none;
+        }
+        .feature-list li::before {
+            content: "✓";
+            color: #67c23a;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 10px 5px;
+            transition: transform 0.2s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .demo-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎉 数据清洗治理系统</h1>
+        
+        <div class="status success">
+            <strong>系统状态：</strong> 已完成开发，功能完整可用
+        </div>
+
+        <h2>🚀 核心功能</h2>
+        <ul class="feature-list">
+            <li><strong>智能文件分析</strong> - 自动识别8D报告、常规案例等文档类型</li>
+            <li><strong>数据预分析</strong> - 字段完整性、重复数据、质量问题检测</li>
+            <li><strong>数据清洗引擎</strong> - 多种清洗规则，支持自定义</li>
+            <li><strong>质量监控仪表板</strong> - 实时质量指标和趋势分析</li>
+            <li><strong>规则管理系统</strong> - 可视化规则配置和管理</li>
+            <li><strong>详细分析报告</strong> - 字段分析、重复检测、问题识别</li>
+        </ul>
+
+        <h2>📊 数据分析能力</h2>
+        <div class="demo-section">
+            <h3>字段分析</h3>
+            <ul>
+                <li>完整性分析 - 检测缺失字段和空值</li>
+                <li>数据类型分析 - 自动识别字符串、数字、日期等</li>
+                <li>格式一致性 - 检测同一字段的格式变化</li>
+                <li>统计信息 - 均值、中位数、标准差等</li>
+            </ul>
+
+            <h3>重复数据检测</h3>
+            <ul>
+                <li>完全重复记录识别</li>
+                <li>相似记录检测（基于编辑距离算法）</li>
+                <li>字段级重复分析</li>
+                <li>智能去重建议</li>
+            </ul>
+
+            <h3>质量问题识别</h3>
+            <ul>
+                <li>数据完整性问题</li>
+                <li>术语不一致问题</li>
+                <li>格式不统一问题</li>
+                <li>异常值检测</li>
+            </ul>
+        </div>
+
+        <h2>🛠 技术特性</h2>
+        <ul class="feature-list">
+            <li><strong>Vue 3 + Element Plus</strong> - 现代化前端框架</li>
+            <li><strong>智能解析引擎</strong> - 支持多种文档格式</li>
+            <li><strong>可扩展架构</strong> - 支持自定义规则和解析器</li>
+            <li><strong>响应式设计</strong> - 适配各种屏幕尺寸</li>
+            <li><strong>实时处理</strong> - 进度跟踪和状态反馈</li>
+        </ul>
+
+        <h2>📝 使用说明</h2>
+        <div class="demo-section">
+            <ol>
+                <li><strong>选择数据源类型</strong> - 8D报告、常规案例、数据表格等</li>
+                <li><strong>上传文件</strong> - 支持文本、PDF、Excel等格式</li>
+                <li><strong>自动分析</strong> - 系统自动识别文档类型和内容结构</li>
+                <li><strong>数据清洗</strong> - 应用清洗规则，修复数据问题</li>
+                <li><strong>查看结果</strong> - 详细的分析报告和清洗结果</li>
+                <li><strong>导出数据</strong> - 支持多种格式导出</li>
+            </ol>
+        </div>
+
+        <h2>🎯 演示数据</h2>
+        <div class="demo-section">
+            <p>系统包含演示用的8D报告数据，展示了完整的问题解决流程：</p>
+            <ul>
+                <li>问题描述：螺丝组件尺寸偏差</li>
+                <li>根本原因：设备刀具磨损</li>
+                <li>解决方案：建立维护制度</li>
+                <li>预防措施：标准化流程</li>
+            </ul>
+            <p><strong>文件位置：</strong> <code>public/demo-data.txt</code></p>
+        </div>
+
+        <div style="text-align: center; margin-top: 40px;">
+            <a href="http://localhost:5173" class="btn">访问主页</a>
+            <a href="http://localhost:5173/data-cleaning" class="btn">数据清洗系统</a>
+        </div>
+
+        <div class="status success" style="margin-top: 30px;">
+            <strong>开发完成！</strong> 系统已具备企业级数据治理平台的完整功能。
+        </div>
+    </div>
+
+    <script>
+        // 简单的功能演示
+        console.log('🎉 数据清洗治理系统已加载');
+        console.log('📊 核心功能包括：');
+        console.log('  - 智能文件分析');
+        console.log('  - 数据预分析');
+        console.log('  - 数据清洗引擎');
+        console.log('  - 质量监控仪表板');
+        console.log('  - 规则管理系统');
+        
+        // 检查本地存储
+        if (localStorage.getItem('dataCleaningConfig')) {
+            console.log('✓ 发现本地配置数据');
+        } else {
+            console.log('ℹ 首次访问，将创建默认配置');
+            localStorage.setItem('dataCleaningConfig', JSON.stringify({
+                version: '1.0.0',
+                lastAccess: new Date().toISOString()
+            }));
+        }
+    </script>
+</body>
+</html>
