@@ -1,0 +1,16 @@
+{
+  "name": "iqe-vercel-api",
+  "version": "1.0.0",
+  "description": "IQE智能质检系统 Vercel Serverless API",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "vercel": "^33.0.0"
+  }
+}

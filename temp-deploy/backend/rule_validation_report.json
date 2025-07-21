@@ -1,0 +1,170 @@
+{
+  "basicRules": [
+    {
+      "ruleName": "库存查询规则",
+      "intent": "query_inventory_by_supplier",
+      "passed": true,
+      "message": "查询成功，返回 12 条记录",
+      "executionTime": 6,
+      "resultCount": 12,
+      "sampleData": [
+        {
+          "material_name": "电池盖",
+          "supplier_name": "聚龙",
+          "total_quantity": "903",
+          "storage_location": "南昌工厂",
+          "status": "正常",
+          "risk_level": "low"
+        },
+        {
+          "material_name": "中框",
+          "supplier_name": "聚龙",
+          "total_quantity": "298",
+          "storage_location": "南昌工厂",
+          "status": "风险",
+          "risk_level": "low"
+        },
+        {
+          "material_name": "中框",
+          "supplier_name": "聚龙",
+          "total_quantity": "645",
+          "storage_location": "深圳工厂",
+          "status": "正常",
+          "risk_level": "low"
+        }
+      ]
+    },
+    {
+      "ruleName": "测试结果查询规则",
+      "intent": "query_test_by_supplier",
+      "passed": true,
+      "message": "查询成功，返回 7 条记录",
+      "executionTime": 4,
+      "resultCount": 7,
+      "sampleData": [
+        {
+          "material_name": "侧键",
+          "supplier_name": "聚龙",
+          "test_result": "FAIL",
+          "test_count": 1,
+          "pass_count": "0"
+        },
+        {
+          "material_name": "手机卡托",
+          "supplier_name": "聚龙",
+          "test_result": "PASS",
+          "test_count": 9,
+          "pass_count": "9"
+        },
+        {
+          "material_name": "中框",
+          "supplier_name": "聚龙",
+          "test_result": "PASS",
+          "test_count": 8,
+          "pass_count": "8"
+        }
+      ]
+    },
+    {
+      "ruleName": "生产跟踪查询规则",
+      "intent": "query_production_by_supplier",
+      "passed": true,
+      "message": "查询成功，返回 20 条记录",
+      "executionTime": 3,
+      "resultCount": 20,
+      "sampleData": [
+        {
+          "material_name": "电池盖",
+          "supplier_name": "聚龙",
+          "factory": "南昌工厂",
+          "production_count": 3,
+          "avg_defect_rate": "1.73333333",
+          "total_exceptions": "0"
+        },
+        {
+          "material_name": "装饰件",
+          "supplier_name": "聚龙",
+          "factory": "深圳工厂",
+          "production_count": 1,
+          "avg_defect_rate": "2.10000000",
+          "total_exceptions": "0"
+        },
+        {
+          "material_name": "中框",
+          "supplier_name": "聚龙",
+          "factory": "重庆工厂",
+          "production_count": 5,
+          "avg_defect_rate": "2.98000000",
+          "total_exceptions": "0"
+        }
+      ]
+    }
+  ],
+  "advancedRules": [
+    {
+      "ruleName": "供应商质量风险分析",
+      "intent": "analyze_supplier_quality_risk",
+      "passed": true,
+      "message": "查询成功，返回 1 条记录",
+      "executionTime": 5,
+      "resultCount": 1,
+      "sampleData": [
+        {
+          "supplier_name": "聚龙",
+          "total_batches": 15,
+          "total_tests": 360,
+          "pass_count": "344",
+          "pass_rate": "95.56",
+          "avg_defect_rate": "2.11666500",
+          "total_exceptions": "0"
+        }
+      ]
+    },
+    {
+      "ruleName": "批次完整追溯",
+      "intent": "trace_batch_lifecycle",
+      "passed": true,
+      "message": "查询成功，返回 12 条记录",
+      "executionTime": 6,
+      "resultCount": 12,
+      "sampleData": [
+        {
+          "stage": "production",
+          "batch_code": "113621",
+          "material_name": "侧键",
+          "supplier_name": "广正",
+          "quantity": null,
+          "status": "正常",
+          "timestamp": "2025-06-07T01:49:21.000Z",
+          "location": "宜宾工厂-车间"
+        },
+        {
+          "stage": "testing",
+          "batch_code": "113621",
+          "material_name": "侧键",
+          "supplier_name": "广正",
+          "quantity": null,
+          "status": "PASS",
+          "timestamp": "2025-06-07T16:00:00.000Z",
+          "location": "常规检测"
+        },
+        {
+          "stage": "production",
+          "batch_code": "113621",
+          "material_name": "侧键",
+          "supplier_name": "广正",
+          "quantity": null,
+          "status": "异常",
+          "timestamp": "2025-06-08T01:49:21.000Z",
+          "location": "宜宾工厂-车间"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "totalRules": 5,
+    "passedRules": 5,
+    "failedRules": 0,
+    "executionTime": 27
+  }
+}

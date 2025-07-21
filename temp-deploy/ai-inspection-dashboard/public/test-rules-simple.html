@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>简单规则测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .loading { background-color: #fff3cd; color: #856404; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .rule-count { font-size: 18px; font-weight: bold; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🔧 规则API简单测试</h1>
+    
+    <button onclick="testAPI()">测试规则API</button>
+    <button onclick="clearResults()">清空结果</button>
+    
+    <div id="status"></div>
+    <div id="results"></div>
+
+    <script>
+        function showStatus(message, type = 'loading') {
+            document.getElementById('status').innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function clearResults() {
+            document.getElementById('status').innerHTML = '';
+            document.getElementById('results').innerHTML = '';
+        }
+
+        async function testAPI() {
+            showStatus('🔄 正在测试规则API...', 'loading');
+            
+            try {
+                const response = await fetch('/api/rules');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                console.log('API响应:', result);
+                
+                if (result.success && Array.isArray(result.data)) {
+                    showStatus(`✅ API测试成功！`, 'success');
+                    
+                    const rulesHtml = `
+                        <div class="rule-count">📊 共获取到 ${result.data.length} 条规则</div>
+                        <div><strong>数据格式验证:</strong></div>
+                        <ul>
+                            <li>success: ${result.success}</li>
+                            <li>data类型: ${Array.isArray(result.data) ? 'array' : typeof result.data}</li>
+                            <li>count: ${result.count}</li>
+                            <li>第一条规则: ${result.data[0]?.intent_name || 'N/A'}</li>
+                        </ul>
+                        <div><strong>前5条规则:</strong></div>
+                        <ol>
+                            ${result.data.slice(0, 5).map(rule => 
+                                `<li><strong>${rule.intent_name}</strong> - ${rule.description} (ID: ${rule.id})</li>`
+                            ).join('')}
+                        </ol>
+                    `;
+                    
+                    document.getElementById('results').innerHTML = rulesHtml;
+                } else {
+                    throw new Error('API返回数据格式不正确');
+                }
+                
+            } catch (error) {
+                showStatus(`❌ API测试失败: ${error.message}`, 'error');
+                console.error('API测试错误:', error);
+            }
+        }
+
+        // 页面加载时自动测试
+        window.addEventListener('load', () => {
+            testAPI();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>规则加载测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        pre { background-color: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>规则加载测试页面</h1>
+    <div id="status"></div>
+    <div id="results"></div>
+
+    <script>
+        async function testRulesLoading() {
+            const statusDiv = document.getElementById('status');
+            const resultsDiv = document.getElementById('results');
+            
+            try {
+                statusDiv.innerHTML = '<div class="info">🔄 正在加载规则数据...</div>';
+                
+                const timestamp = new Date().getTime();
+                const response = await fetch(`/data/rules.json?v=${timestamp}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const rulesData = await response.json();
+                
+                statusDiv.innerHTML = '<div class="success">✅ 规则数据加载成功！</div>';
+                
+                resultsDiv.innerHTML = `
+                    <h2>规则数据统计</h2>
+                    <div class="info">
+                        <p><strong>总规则数:</strong> ${rulesData.totalRules}</p>
+                        <p><strong>分类数量:</strong> ${rulesData.categories.length}</p>
+                        <p><strong>最后更新:</strong> ${rulesData.lastUpdated}</p>
+                    </div>
+                    
+                    <h3>分类详情</h3>
+                    ${rulesData.categories.map(category => `
+                        <div class="info">
+                            <h4>${category.name} (${category.rules.length}条规则)</h4>
+                            <ul>
+                                ${category.rules.slice(0, 3).map(rule => `
+                                    <li><strong>${rule.name}</strong> - ${rule.example}</li>
+                                `).join('')}
+                                ${category.rules.length > 3 ? `<li>... 还有 ${category.rules.length - 3} 条规则</li>` : ''}
+                            </ul>
+                        </div>
+                    `).join('')}
+                `;
+                
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="error">❌ 规则数据加载失败: ${error.message}</div>`;
+                resultsDiv.innerHTML = `
+                    <h2>错误详情</h2>
+                    <pre>${error.stack || error.message}</pre>
+                `;
+            }
+        }
+        
+        // 页面加载时自动测试
+        window.addEventListener('load', testRulesLoading);
+    </script>
+</body>
+</html>

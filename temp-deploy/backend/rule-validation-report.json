@@ -1,0 +1,1086 @@
+{
+  "timestamp": "2025-07-14T16:06:54.708Z",
+  "totalRules": 134,
+  "summary": {
+    "valid": 77,
+    "fieldErrors": 16,
+    "logicErrors": 2,
+    "sqlErrors": 36,
+    "emptyResults": 4
+  },
+  "details": {
+    "valid": [
+      {
+        "id": 326,
+        "name": "批次上线情况查询_优化",
+        "category": "批次场景",
+        "description": "按批次查询上线情况，展示完整字段",
+        "issues": []
+      },
+      {
+        "id": 330,
+        "name": "异常批次识别_优化",
+        "category": "批次场景",
+        "description": "识别有异常的批次",
+        "issues": []
+      },
+      {
+        "id": 323,
+        "name": "物料库存信息查询_优化",
+        "category": "库存场景",
+        "description": "查询所有物料的库存信息",
+        "issues": []
+      },
+      {
+        "id": 325,
+        "name": "物料上线跟踪查询_优化",
+        "category": "上线场景",
+        "description": "查询物料上线跟踪情况",
+        "issues": []
+      },
+      {
+        "id": 329,
+        "name": "批次综合信息查询_优化",
+        "category": "批次场景",
+        "description": "查询批次综合信息，展示批次管理页面所有字段",
+        "issues": []
+      },
+      {
+        "id": 300,
+        "name": "库存状态查询",
+        "category": "库存场景",
+        "description": "查询各种异常状态的库存",
+        "issues": []
+      },
+      {
+        "id": 321,
+        "name": "物料上线情况查询",
+        "category": "上线场景",
+        "description": "查询物料上线跟踪情况",
+        "issues": []
+      },
+      {
+        "id": 433,
+        "name": "BOE的LCD显示屏查询",
+        "category": "未分类",
+        "description": "查询BOE供应商的LCD显示屏库存",
+        "issues": []
+      },
+      {
+        "id": 434,
+        "name": "BOE的OLED显示屏查询",
+        "category": "未分类",
+        "description": "查询BOE供应商的OLED显示屏库存",
+        "issues": []
+      },
+      {
+        "id": 435,
+        "name": "天马的LCD显示屏查询",
+        "category": "未分类",
+        "description": "查询天马供应商的LCD显示屏库存",
+        "issues": []
+      },
+      {
+        "id": 436,
+        "name": "天马的OLED显示屏查询",
+        "category": "未分类",
+        "description": "查询天马供应商的OLED显示屏库存",
+        "issues": []
+      },
+      {
+        "id": 437,
+        "name": "华星的OLED显示屏查询",
+        "category": "未分类",
+        "description": "查询华星供应商的OLED显示屏库存",
+        "issues": []
+      },
+      {
+        "id": 438,
+        "name": "聚龙的中框查询",
+        "category": "未分类",
+        "description": "查询聚龙供应商的中框库存",
+        "issues": []
+      },
+      {
+        "id": 439,
+        "name": "聚龙的侧键查询",
+        "category": "未分类",
+        "description": "查询聚龙供应商的侧键库存",
+        "issues": []
+      },
+      {
+        "id": 440,
+        "name": "聚龙的手机卡托查询",
+        "category": "未分类",
+        "description": "查询聚龙供应商的手机卡托库存",
+        "issues": []
+      },
+      {
+        "id": 441,
+        "name": "聚龙的电池盖查询",
+        "category": "未分类",
+        "description": "查询聚龙供应商的电池盖库存",
+        "issues": []
+      },
+      {
+        "id": 442,
+        "name": "聚龙的装饰件查询",
+        "category": "未分类",
+        "description": "查询聚龙供应商的装饰件库存",
+        "issues": []
+      },
+      {
+        "id": 443,
+        "name": "欣冠的中框查询",
+        "category": "未分类",
+        "description": "查询欣冠供应商的中框库存",
+        "issues": []
+      },
+      {
+        "id": 444,
+        "name": "欣冠的侧键查询",
+        "category": "未分类",
+        "description": "查询欣冠供应商的侧键库存",
+        "issues": []
+      },
+      {
+        "id": 445,
+        "name": "欣冠的手机卡托查询",
+        "category": "未分类",
+        "description": "查询欣冠供应商的手机卡托库存",
+        "issues": []
+      },
+      {
+        "id": 446,
+        "name": "欣冠的电池盖查询",
+        "category": "未分类",
+        "description": "查询欣冠供应商的电池盖库存",
+        "issues": []
+      },
+      {
+        "id": 447,
+        "name": "欣冠的装饰件查询",
+        "category": "未分类",
+        "description": "查询欣冠供应商的装饰件库存",
+        "issues": []
+      },
+      {
+        "id": 448,
+        "name": "广正的中框查询",
+        "category": "未分类",
+        "description": "查询广正供应商的中框库存",
+        "issues": []
+      },
+      {
+        "id": 449,
+        "name": "广正的侧键查询",
+        "category": "未分类",
+        "description": "查询广正供应商的侧键库存",
+        "issues": []
+      },
+      {
+        "id": 450,
+        "name": "广正的手机卡托查询",
+        "category": "未分类",
+        "description": "查询广正供应商的手机卡托库存",
+        "issues": []
+      },
+      {
+        "id": 451,
+        "name": "广正的电池盖查询",
+        "category": "未分类",
+        "description": "查询广正供应商的电池盖库存",
+        "issues": []
+      },
+      {
+        "id": 452,
+        "name": "广正的装饰件查询",
+        "category": "未分类",
+        "description": "查询广正供应商的装饰件库存",
+        "issues": []
+      },
+      {
+        "id": 453,
+        "name": "歌尔的听筒查询",
+        "category": "未分类",
+        "description": "查询歌尔供应商的听筒库存",
+        "issues": []
+      },
+      {
+        "id": 454,
+        "name": "歌尔的喇叭查询",
+        "category": "未分类",
+        "description": "查询歌尔供应商的喇叭库存",
+        "issues": []
+      },
+      {
+        "id": 455,
+        "name": "东声的听筒查询",
+        "category": "未分类",
+        "description": "查询东声供应商的听筒库存",
+        "issues": []
+      },
+      {
+        "id": 456,
+        "name": "东声的喇叭查询",
+        "category": "未分类",
+        "description": "查询东声供应商的喇叭库存",
+        "issues": []
+      },
+      {
+        "id": 457,
+        "name": "瑞声的听筒查询",
+        "category": "未分类",
+        "description": "查询瑞声供应商的听筒库存",
+        "issues": []
+      },
+      {
+        "id": 458,
+        "name": "瑞声的喇叭查询",
+        "category": "未分类",
+        "description": "查询瑞声供应商的喇叭库存",
+        "issues": []
+      },
+      {
+        "id": 459,
+        "name": "天实的摄像头(CAM)查询",
+        "category": "未分类",
+        "description": "查询天实供应商的摄像头(CAM)库存",
+        "issues": []
+      },
+      {
+        "id": 460,
+        "name": "深奥的摄像头(CAM)查询",
+        "category": "未分类",
+        "description": "查询深奥供应商的摄像头(CAM)库存",
+        "issues": []
+      },
+      {
+        "id": 461,
+        "name": "盛泰的摄像头(CAM)查询",
+        "category": "未分类",
+        "description": "查询盛泰供应商的摄像头(CAM)库存",
+        "issues": []
+      },
+      {
+        "id": 462,
+        "name": "奥海的电池查询",
+        "category": "未分类",
+        "description": "查询奥海供应商的电池库存",
+        "issues": []
+      },
+      {
+        "id": 463,
+        "name": "百佳达的电池查询",
+        "category": "未分类",
+        "description": "查询百佳达供应商的电池库存",
+        "issues": []
+      },
+      {
+        "id": 464,
+        "name": "辉阳的电池查询",
+        "category": "未分类",
+        "description": "查询辉阳供应商的电池库存",
+        "issues": []
+      },
+      {
+        "id": 465,
+        "name": "理威的充电器查询",
+        "category": "未分类",
+        "description": "查询理威供应商的充电器库存",
+        "issues": []
+      },
+      {
+        "id": 466,
+        "name": "维科的充电器查询",
+        "category": "未分类",
+        "description": "查询维科供应商的充电器库存",
+        "issues": []
+      },
+      {
+        "id": 467,
+        "name": "风华的充电器查询",
+        "category": "未分类",
+        "description": "查询风华供应商的充电器库存",
+        "issues": []
+      },
+      {
+        "id": 468,
+        "name": "丽德宝的保护套查询",
+        "category": "未分类",
+        "description": "查询丽德宝供应商的保护套库存",
+        "issues": []
+      },
+      {
+        "id": 469,
+        "name": "丽德宝的包装盒查询",
+        "category": "未分类",
+        "description": "查询丽德宝供应商的包装盒库存",
+        "issues": []
+      },
+      {
+        "id": 470,
+        "name": "丽德宝的标签查询",
+        "category": "未分类",
+        "description": "查询丽德宝供应商的标签库存",
+        "issues": []
+      },
+      {
+        "id": 471,
+        "name": "富群的保护套查询",
+        "category": "未分类",
+        "description": "查询富群供应商的保护套库存",
+        "issues": []
+      },
+      {
+        "id": 472,
+        "name": "富群的包装盒查询",
+        "category": "未分类",
+        "description": "查询富群供应商的包装盒库存",
+        "issues": []
+      },
+      {
+        "id": 473,
+        "name": "富群的标签查询",
+        "category": "未分类",
+        "description": "查询富群供应商的标签库存",
+        "issues": []
+      },
+      {
+        "id": 474,
+        "name": "怡同的保护套查询",
+        "category": "未分类",
+        "description": "查询怡同供应商的保护套库存",
+        "issues": []
+      },
+      {
+        "id": 475,
+        "name": "怡同的包装盒查询",
+        "category": "未分类",
+        "description": "查询怡同供应商的包装盒库存",
+        "issues": []
+      },
+      {
+        "id": 476,
+        "name": "怡同的标签查询",
+        "category": "未分类",
+        "description": "查询怡同供应商的标签库存",
+        "issues": []
+      },
+      {
+        "id": 263,
+        "name": "批次信息查询",
+        "category": "库存场景",
+        "description": "查询批次的完整信息",
+        "issues": []
+      },
+      {
+        "id": 280,
+        "name": "物料大类别质量对比",
+        "category": "对比场景",
+        "description": "对比各物料大类别的质量表现",
+        "issues": []
+      },
+      {
+        "id": 393,
+        "name": "BOE供应商库存查询",
+        "category": "未分类",
+        "description": "查询BOE供应商的库存信息",
+        "issues": []
+      },
+      {
+        "id": 398,
+        "name": "天马供应商库存查询",
+        "category": "未分类",
+        "description": "查询天马供应商的库存信息",
+        "issues": []
+      },
+      {
+        "id": 414,
+        "name": "LCD显示屏物料查询",
+        "category": "未分类",
+        "description": "查询LCD显示屏的库存和供应商信息",
+        "issues": []
+      },
+      {
+        "id": 415,
+        "name": "OLED显示屏物料查询",
+        "category": "未分类",
+        "description": "查询OLED显示屏的库存和供应商信息",
+        "issues": []
+      },
+      {
+        "id": 416,
+        "name": "中框物料查询",
+        "category": "未分类",
+        "description": "查询中框的库存和供应商信息",
+        "issues": []
+      },
+      {
+        "id": 417,
+        "name": "侧键物料查询",
+        "category": "未分类",
+        "description": "查询侧键的库存和供应商信息",
+        "issues": []
+      },
+      {
+        "id": 418,
+        "name": "保护套物料查询",
+        "category": "未分类",
+        "description": "查询保护套的库存和供应商信息",
+        "issues": []
+      },
+      {
+        "id": 419,
+        "name": "充电器物料查询",
+        "category": "未分类",
+        "description": "查询充电器的库存和供应商信息",
+        "issues": []
+      },
+      {
+        "id": 420,
+        "name": "包装盒物料查询",
+        "category": "未分类",
+        "description": "查询包装盒的库存和供应商信息",
+        "issues": []
+      },
+      {
+        "id": 421,
+        "name": "听筒物料查询",
+        "category": "未分类",
+        "description": "查询听筒的库存和供应商信息",
+        "issues": []
+      },
+      {
+        "id": 422,
+        "name": "喇叭物料查询",
+        "category": "未分类",
+        "description": "查询喇叭的库存和供应商信息",
+        "issues": []
+      },
+      {
+        "id": 423,
+        "name": "手机卡托物料查询",
+        "category": "未分类",
+        "description": "查询手机卡托的库存和供应商信息",
+        "issues": []
+      },
+      {
+        "id": 424,
+        "name": "摄像头(CAM)物料查询",
+        "category": "未分类",
+        "description": "查询摄像头(CAM)的库存和供应商信息",
+        "issues": []
+      },
+      {
+        "id": 425,
+        "name": "标签物料查询",
+        "category": "未分类",
+        "description": "查询标签的库存和供应商信息",
+        "issues": []
+      },
+      {
+        "id": 426,
+        "name": "电池物料查询",
+        "category": "未分类",
+        "description": "查询电池的库存和供应商信息",
+        "issues": []
+      },
+      {
+        "id": 427,
+        "name": "电池盖物料查询",
+        "category": "未分类",
+        "description": "查询电池盖的库存和供应商信息",
+        "issues": []
+      },
+      {
+        "id": 428,
+        "name": "装饰件物料查询",
+        "category": "未分类",
+        "description": "查询装饰件的库存和供应商信息",
+        "issues": []
+      },
+      {
+        "id": 282,
+        "name": "结构件类供应商质量排行",
+        "category": "对比场景",
+        "description": "分析结构件类供应商的质量表现排行",
+        "issues": []
+      },
+      {
+        "id": 283,
+        "name": "光学类供应商质量排行",
+        "category": "对比场景",
+        "description": "分析光学类供应商的质量表现排行",
+        "issues": []
+      },
+      {
+        "id": 429,
+        "name": "深圳工厂库存查询",
+        "category": "未分类",
+        "description": "查询深圳工厂的库存信息",
+        "issues": []
+      },
+      {
+        "id": 477,
+        "name": "正常状态库存查询",
+        "category": "未分类",
+        "description": "查询正常状态的库存物料",
+        "issues": []
+      },
+      {
+        "id": 478,
+        "name": "风险状态库存查询",
+        "category": "未分类",
+        "description": "查询风险状态的库存物料",
+        "issues": []
+      },
+      {
+        "id": 479,
+        "name": "冻结状态库存查询",
+        "category": "未分类",
+        "description": "查询冻结状态的库存物料",
+        "issues": []
+      },
+      {
+        "id": 287,
+        "name": "物料大类别月度质量趋势",
+        "category": "对比场景",
+        "description": "分析各物料大类别的月度质量变化趋势",
+        "issues": []
+      }
+    ],
+    "logicErrors": [
+      {
+        "id": 304,
+        "name": "供应商测试情况查询",
+        "category": "测试场景",
+        "description": "按供应商查询测试情况",
+        "issues": [
+          "字段值为空: 不合格描述",
+          "供应商查询返回了18个供应商，可能没有正确过滤"
+        ]
+      },
+      {
+        "id": 324,
+        "name": "供应商库存查询_优化",
+        "category": "库存场景",
+        "description": "按供应商查询库存信息",
+        "issues": [
+          "供应商查询返回了18个供应商，可能没有正确过滤"
+        ]
+      }
+    ],
+    "fieldErrors": [
+      {
+        "id": 314,
+        "name": "Top缺陷排行查询",
+        "category": "测试场景",
+        "description": "查询Top缺陷排行统计",
+        "issues": [
+          "字段值为空: 备注"
+        ]
+      },
+      {
+        "id": 289,
+        "name": "本月测试汇总",
+        "category": "综合场景",
+        "description": "汇总本月测试活动的整体情况",
+        "issues": [
+          "字段值为空: 不合格描述"
+        ]
+      },
+      {
+        "id": 333,
+        "name": "结构件类测试情况查询",
+        "category": "测试场景",
+        "description": "查询结构件类物料的测试结果信息",
+        "issues": [
+          "字段值为空: 不合格描述"
+        ]
+      },
+      {
+        "id": 336,
+        "name": "光学类测试情况查询",
+        "category": "测试场景",
+        "description": "查询光学类物料的测试结果信息",
+        "issues": [
+          "字段值为空: 不合格描述"
+        ]
+      },
+      {
+        "id": 339,
+        "name": "充电类测试情况查询",
+        "category": "测试场景",
+        "description": "查询充电类物料的测试结果信息",
+        "issues": [
+          "字段值为空: 不合格描述"
+        ]
+      },
+      {
+        "id": 342,
+        "name": "声学类测试情况查询",
+        "category": "测试场景",
+        "description": "查询声学类物料的测试结果信息",
+        "issues": [
+          "字段值为空: 不合格描述"
+        ]
+      },
+      {
+        "id": 345,
+        "name": "包装类测试情况查询",
+        "category": "测试场景",
+        "description": "查询包装类物料的测试结果信息",
+        "issues": [
+          "字段值为空: 不合格描述"
+        ]
+      },
+      {
+        "id": 256,
+        "name": "基线物料不良查询",
+        "category": "综合场景",
+        "description": "按基线查询物料不良情况",
+        "issues": [
+          "字段值为空: 不合格描述"
+        ]
+      },
+      {
+        "id": 260,
+        "name": "项目测试情况查询",
+        "category": "测试场景",
+        "description": "按项目查询测试情况",
+        "issues": [
+          "字段值为空: 不合格描述"
+        ]
+      },
+      {
+        "id": 261,
+        "name": "基线测试情况查询",
+        "category": "测试场景",
+        "description": "按基线查询测试情况",
+        "issues": [
+          "字段值为空: 不合格描述"
+        ]
+      },
+      {
+        "id": 304,
+        "name": "供应商测试情况查询",
+        "category": "测试场景",
+        "description": "按供应商查询测试情况",
+        "issues": [
+          "字段值为空: 不合格描述",
+          "供应商查询返回了18个供应商，可能没有正确过滤"
+        ]
+      },
+      {
+        "id": 327,
+        "name": "物料测试结果查询_优化",
+        "category": "测试场景",
+        "description": "查询所有物料的测试结果",
+        "issues": [
+          "字段值为空: 备注"
+        ]
+      },
+      {
+        "id": 257,
+        "name": "物料测试情况查询",
+        "category": "测试场景",
+        "description": "查询指定物料的测试情况，包括测试通过率、主要不良现象等",
+        "issues": [
+          "字段值为空: 不合格描述"
+        ]
+      },
+      {
+        "id": 265,
+        "name": "物料测试Top不良",
+        "category": "测试场景",
+        "description": "统计物料测试失败率排行，基于真实测试数据",
+        "issues": [
+          "字段值为空: 不合格描述"
+        ]
+      },
+      {
+        "id": 281,
+        "name": "大类别Top不良分析",
+        "category": "对比场景",
+        "description": "分析各物料大类别的主要不良问题",
+        "issues": [
+          "字段值为空: 不合格描述"
+        ]
+      },
+      {
+        "id": 350,
+        "name": "LCD显示屏测试专查",
+        "category": "未分类",
+        "description": "专门查询LCD显示屏的测试情况",
+        "issues": [
+          "字段值为空: 备注"
+        ]
+      }
+    ],
+    "sqlErrors": [
+      {
+        "id": 243,
+        "name": "物料大类查询",
+        "category": "库存场景",
+        "description": "查询特定物料大类的统计信息，支持结构件类、光学类、充电类等",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 332,
+        "name": "结构件类上线情况查询",
+        "category": "上线场景",
+        "description": "查询结构件类物料的上线跟踪信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 335,
+        "name": "光学类上线情况查询",
+        "category": "上线场景",
+        "description": "查询光学类物料的上线跟踪信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 338,
+        "name": "充电类上线情况查询",
+        "category": "上线场景",
+        "description": "查询充电类物料的上线跟踪信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 341,
+        "name": "声学类上线情况查询",
+        "category": "上线场景",
+        "description": "查询声学类物料的上线跟踪信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 344,
+        "name": "包装类上线情况查询",
+        "category": "上线场景",
+        "description": "查询包装类物料的上线跟踪信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 255,
+        "name": "项目物料不良查询",
+        "category": "批次场景",
+        "description": "按项目查询物料不良情况",
+        "issues": [
+          "SQL错误: Illegal mix of collations (utf8mb4_0900_ai_ci,IMPLICIT) and (utf8mb4_unicode_ci,IMPLICIT) for operation '='"
+        ]
+      },
+      {
+        "id": 299,
+        "name": "批次库存信息查询",
+        "category": "库存场景",
+        "description": "按批次查询库存信息，展示完整字段",
+        "issues": [
+          "SQL错误: Illegal mix of collations (utf8mb4_0900_ai_ci,IMPLICIT) and (utf8mb4_unicode_ci,IMPLICIT) for operation '='"
+        ]
+      },
+      {
+        "id": 302,
+        "name": "供应商上线情况查询",
+        "category": "上线场景",
+        "description": "按供应商查询上线情况",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 306,
+        "name": "批次测试情况查询",
+        "category": "批次场景",
+        "description": "按批次查询测试情况",
+        "issues": [
+          "SQL错误: Illegal mix of collations (utf8mb4_0900_ai_ci,IMPLICIT) and (utf8mb4_unicode_ci,IMPLICIT) for operation '='"
+        ]
+      },
+      {
+        "id": 264,
+        "name": "物料上线Top不良",
+        "category": "上线场景",
+        "description": "统计物料上线不良率排行，基于真实不良率数据",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 348,
+        "name": "BOE供应商库存专查",
+        "category": "未分类",
+        "description": "专门查询BOE供应商的库存物料",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 349,
+        "name": "聚龙供应商库存专查",
+        "category": "未分类",
+        "description": "专门查询聚龙供应商的库存物料",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 394,
+        "name": "东声供应商库存查询",
+        "category": "未分类",
+        "description": "查询东声供应商的库存信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 395,
+        "name": "丽德宝供应商库存查询",
+        "category": "未分类",
+        "description": "查询丽德宝供应商的库存信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 396,
+        "name": "华星供应商库存查询",
+        "category": "未分类",
+        "description": "查询华星供应商的库存信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 397,
+        "name": "天实供应商库存查询",
+        "category": "未分类",
+        "description": "查询天实供应商的库存信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 399,
+        "name": "奥海供应商库存查询",
+        "category": "未分类",
+        "description": "查询奥海供应商的库存信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 400,
+        "name": "富群供应商库存查询",
+        "category": "未分类",
+        "description": "查询富群供应商的库存信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 401,
+        "name": "广正供应商库存查询",
+        "category": "未分类",
+        "description": "查询广正供应商的库存信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 402,
+        "name": "怡同供应商库存查询",
+        "category": "未分类",
+        "description": "查询怡同供应商的库存信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 403,
+        "name": "欣冠供应商库存查询",
+        "category": "未分类",
+        "description": "查询欣冠供应商的库存信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 404,
+        "name": "歌尔供应商库存查询",
+        "category": "未分类",
+        "description": "查询歌尔供应商的库存信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 405,
+        "name": "深奥供应商库存查询",
+        "category": "未分类",
+        "description": "查询深奥供应商的库存信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 406,
+        "name": "理威供应商库存查询",
+        "category": "未分类",
+        "description": "查询理威供应商的库存信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 407,
+        "name": "瑞声供应商库存查询",
+        "category": "未分类",
+        "description": "查询瑞声供应商的库存信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 408,
+        "name": "百佳达供应商库存查询",
+        "category": "未分类",
+        "description": "查询百佳达供应商的库存信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 409,
+        "name": "盛泰供应商库存查询",
+        "category": "未分类",
+        "description": "查询盛泰供应商的库存信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 410,
+        "name": "维科供应商库存查询",
+        "category": "未分类",
+        "description": "查询维科供应商的库存信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 411,
+        "name": "聚龙供应商库存查询",
+        "category": "未分类",
+        "description": "查询聚龙供应商的库存信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 412,
+        "name": "辉阳供应商库存查询",
+        "category": "未分类",
+        "description": "查询辉阳供应商的库存信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 413,
+        "name": "风华供应商库存查询",
+        "category": "未分类",
+        "description": "查询风华供应商的库存信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 351,
+        "name": "风险状态库存专查",
+        "category": "未分类",
+        "description": "查询风险状态的库存物料",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 430,
+        "name": "重庆工厂库存查询",
+        "category": "未分类",
+        "description": "查询重庆工厂的库存信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 431,
+        "name": "南昌工厂库存查询",
+        "category": "未分类",
+        "description": "查询南昌工厂的库存信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      },
+      {
+        "id": 432,
+        "name": "宜宾工厂库存查询",
+        "category": "未分类",
+        "description": "查询宜宾工厂的库存信息",
+        "issues": [
+          "SQL错误: Unknown column '工厂' in 'field list'"
+        ]
+      }
+    ],
+    "emptyResults": [
+      {
+        "id": 307,
+        "name": "供应商对比分析",
+        "category": "对比场景",
+        "description": "对比两个指定供应商的综合表现，展示库存页面格式的完整数据，包括测试不良率",
+        "issues": [
+          "返回空结果"
+        ]
+      },
+      {
+        "id": 328,
+        "name": "NG测试结果查询_优化",
+        "category": "测试场景",
+        "description": "查询测试不合格的物料",
+        "issues": [
+          "返回空结果"
+        ]
+      },
+      {
+        "id": 285,
+        "name": "结构件类深度不良分析",
+        "category": "对比场景",
+        "description": "深度分析结构件类物料的不良模式和改善建议",
+        "issues": [
+          "返回空结果"
+        ]
+      },
+      {
+        "id": 286,
+        "name": "光学类显示缺陷专项分析",
+        "category": "对比场景",
+        "description": "专项分析光学类显示器件的缺陷模式",
+        "issues": [
+          "返回空结果"
+        ]
+      }
+    ]
+  }
+}

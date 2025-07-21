@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>调试规则加载</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .debug-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 规则加载调试工具</h1>
+        
+        <div class="debug-section">
+            <h3>1. 检查后端API连接</h3>
+            <button onclick="checkBackendAPI()">检查后端</button>
+            <div id="backendResult" class="result"></div>
+        </div>
+        
+        <div class="debug-section">
+            <h3>2. 模拟前端规则分类逻辑</h3>
+            <button onclick="simulateFrontendLogic()">模拟分类</button>
+            <div id="frontendResult" class="result"></div>
+        </div>
+        
+        <div class="debug-section">
+            <h3>3. 检查前端页面状态</h3>
+            <button onclick="checkFrontendPage()">检查页面</button>
+            <div id="pageResult" class="result"></div>
+        </div>
+        
+        <div class="debug-section">
+            <h3>4. 强制刷新规则</h3>
+            <button onclick="forceRefreshRules()">强制刷新</button>
+            <div id="refreshResult" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3001';
+        
+        async function checkBackendAPI() {
+            const resultDiv = document.getElementById('backendResult');
+            resultDiv.textContent = '正在检查后端API...';
+            
+            try {
+                // 检查健康状态
+                const healthResponse = await fetch(`${API_BASE}/health`);
+                const healthResult = await healthResponse.json();
+                
+                // 检查规则API
+                const rulesResponse = await fetch(`${API_BASE}/api/rules`);
+                const rulesResult = await rulesResponse.json();
+                
+                let output = '✅ 后端API检查结果:\n\n';
+                output += `健康状态: ${healthResult.status || 'OK'}\n`;
+                output += `规则API: ${rulesResult.success ? '正常' : '异常'}\n`;
+                output += `规则数量: ${rulesResult.data ? rulesResult.data.length : 0}\n\n`;
+                
+                if (rulesResult.data && rulesResult.data.length > 0) {
+                    output += '规则分类统计:\n';
+                    const categories = {};
+                    rulesResult.data.forEach(rule => {
+                        const cat = rule.category || '未分类';
+                        categories[cat] = (categories[cat] || 0) + 1;
+                    });
+                    
+                    Object.entries(categories).forEach(([cat, count]) => {
+                        output += `  ${cat}: ${count} 条\n`;
+                    });
+                }
+                
+                resultDiv.className = 'result success';
+                resultDiv.textContent = output;
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ 后端API检查失败: ${error.message}`;
+            }
+        }
+        
+        async function simulateFrontendLogic() {
+            const resultDiv = document.getElementById('frontendResult');
+            resultDiv.textContent = '正在模拟前端分类逻辑...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/rules`);
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    // 模拟前端分类逻辑
+                    const categorizedRules = {
+                        '库存场景': [],
+                        '上线场景': [],
+                        '测试场景': [],
+                        '高级场景': []
+                    };
+                    
+                    result.data.forEach(rule => {
+                        const desc = rule.description ? rule.description.toLowerCase() : '';
+                        const target = rule.action_target ? rule.action_target.toLowerCase() : '';
+                        
+                        if (desc.includes('库存') || target.includes('inventory')) {
+                            categorizedRules['库存场景'].push(rule);
+                        } else if (desc.includes('上线') || target.includes('online_tracking')) {
+                            categorizedRules['上线场景'].push(rule);
+                        } else if (desc.includes('测试') || desc.includes('检验') || target.includes('lab_tests')) {
+                            categorizedRules['测试场景'].push(rule);
+                        } else {
+                            categorizedRules['高级场景'].push(rule);
+                        }
+                    });
+                    
+                    let output = '📊 前端分类逻辑模拟结果:\n\n';
+                    Object.entries(categorizedRules).forEach(([name, rules]) => {
+                        output += `${name}: ${rules.length} 条规则\n`;
+                        if (rules.length > 0) {
+                            output += `  示例: ${rules.slice(0, 3).map(r => r.intent_name).join(', ')}\n`;
+                        }
+                        output += '\n';
+                    });
+                    
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = output;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ 获取规则数据失败: ${JSON.stringify(result, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ 模拟失败: ${error.message}`;
+            }
+        }
+        
+        function checkFrontendPage() {
+            const resultDiv = document.getElementById('pageResult');
+            
+            let output = '🔍 前端页面检查:\n\n';
+            output += `当前URL: ${window.location.href}\n`;
+            output += `用户代理: ${navigator.userAgent}\n`;
+            output += `时间戳: ${new Date().toLocaleString()}\n\n`;
+            
+            // 检查是否能访问智能问答页面
+            output += '正在检查智能问答页面...\n';
+            
+            // 尝试在新窗口打开智能问答页面
+            const assistantUrl = 'http://localhost:5174/assistant';
+            output += `智能问答页面URL: ${assistantUrl}\n`;
+            output += '请手动检查该页面是否显示正确的规则分类\n\n';
+            
+            output += '预期显示:\n';
+            output += '📦 库存场景 (展开)\n';
+            output += '🏭 上线场景 (展开)\n';
+            output += '🔬 测试场景 (展开)\n';
+            output += '📈 高级场景 (折叠)\n';
+            
+            resultDiv.className = 'result success';
+            resultDiv.textContent = output;
+            
+            // 在新标签页打开智能问答页面
+            window.open(assistantUrl, '_blank');
+        }
+        
+        async function forceRefreshRules() {
+            const resultDiv = document.getElementById('refreshResult');
+            resultDiv.textContent = '正在强制刷新规则...';
+            
+            try {
+                // 添加时间戳参数强制刷新
+                const timestamp = Date.now();
+                const response = await fetch(`${API_BASE}/api/rules?t=${timestamp}`, {
+                    cache: 'no-cache',
+                    headers: {
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    let output = '✅ 强制刷新成功!\n\n';
+                    output += `获取时间: ${new Date().toLocaleString()}\n`;
+                    output += `规则总数: ${result.data.length}\n\n`;
+                    
+                    // 分类统计
+                    const categories = {};
+                    result.data.forEach(rule => {
+                        const cat = rule.category || '未分类';
+                        categories[cat] = (categories[cat] || 0) + 1;
+                    });
+                    
+                    output += '分类统计:\n';
+                    Object.entries(categories).forEach(([cat, count]) => {
+                        output += `  ${cat}: ${count} 条\n`;
+                    });
+                    
+                    output += '\n建议操作:\n';
+                    output += '1. 清除浏览器缓存\n';
+                    output += '2. 硬刷新智能问答页面 (Ctrl+F5)\n';
+                    output += '3. 检查浏览器开发者工具的控制台\n';
+                    
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = output;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ 刷新失败: ${JSON.stringify(result, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ 刷新失败: ${error.message}`;
+            }
+        }
+        
+        // 页面加载时自动检查
+        window.onload = function() {
+            checkBackendAPI();
+        };
+    </script>
+</body>
+</html>

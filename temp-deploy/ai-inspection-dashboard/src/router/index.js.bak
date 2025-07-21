@@ -1,0 +1,137 @@
+import { createRouter, createWebHistory } from 'vue-router';
+import Dashboard from '../pages/Dashboard.vue';
+import InventoryView from '../pages/Inventory.vue';
+import LabView from '../pages/LabView.vue';
+import FactoryView from '../pages/FactoryView.vue';
+import AdminDataPage from '../pages/AdminDataPage.vue';
+import DataImportExport from '../components/admin/DataImportExport.vue';
+import RuleLibraryView from '../pages/RuleLibraryView.vue';
+import HistoricalDataPage from '../pages/HistoricalDataPage.vue';
+import MaterialExceptionPage from '../pages/MaterialExceptionPage.vue';
+import BatchManagement from '../pages/BatchManagement.vue';
+import NewDataRulesPage from '../pages/NewDataRulesPage.vue';
+import DataRulesView from '../pages/admin/DataRulesView.vue';
+
+const routes = [
+  {
+    path: '/',
+    name: 'Dashboard',
+    component: Dashboard,
+    meta: {
+      title: '数据看板',
+      icon: 'el-icon-s-data'
+    }
+  },
+  {
+    path: '/inventory',
+    name: 'Inventory',
+    component: InventoryView,
+    meta: {
+      title: '物料仓存管理',
+      icon: 'el-icon-box'
+    }
+  },
+  {
+    path: '/lab',
+    name: 'Lab',
+    component: LabView,
+    meta: {
+      title: '物料测试数据',
+      icon: 'el-icon-s-check'
+    }
+  },
+  {
+    path: '/factory',
+    name: 'Factory',
+    component: FactoryView,
+    meta: {
+      title: '物料上线跟踪',
+      icon: 'el-icon-s-management'
+    }
+  },
+  {
+    path: '/batch',
+    name: 'BatchManagement',
+    component: BatchManagement,
+    meta: {
+      title: '批次管理',
+      icon: 'el-icon-s-order'
+    }
+  },
+  {
+    path: '/material-exception',
+    name: 'MaterialException',
+    component: MaterialExceptionPage,
+    meta: {
+      title: '物料异常管理',
+      icon: 'el-icon-warning'
+    }
+  },
+  {
+    path: '/admin/data',
+    name: 'AdminData',
+    component: AdminDataPage,
+    meta: {
+      title: '数据管理',
+      icon: 'el-icon-setting',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/admin/data-import',
+    name: 'DataImport',
+    component: DataImportExport,
+    meta: {
+      title: '数据导入/导出',
+      icon: 'el-icon-upload2',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/admin/data/rules',
+    name: 'RuleLibrary',
+    component: RuleLibraryView,
+    meta: {
+      title: '规则库',
+      icon: 'el-icon-s-management',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/admin/data/rules/definition',
+    name: 'DataRulesDefinition',
+    component: NewDataRulesPage,
+    meta: {
+      title: '数据结构定义',
+      icon: 'el-icon-document',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/admin/data/rules/match',
+    name: 'DataRulesMatch',
+    component: DataRulesView,
+    meta: {
+      title: '匹配规则',
+      icon: 'el-icon-connection',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/admin/data/historical',
+    name: 'HistoricalData',
+    component: HistoricalDataPage,
+    meta: {
+      title: '历史数据',
+      icon: 'el-icon-time',
+      requiresAuth: true
+    }
+  }
+];
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes
+});
+
+export default router;

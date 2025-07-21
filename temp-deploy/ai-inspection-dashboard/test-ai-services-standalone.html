@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI服务测试 - 独立版本</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .header p {
+            color: #7f8c8d;
+            font-size: 16px;
+        }
+
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+        }
+
+        .test-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+            border: 1px solid #e9ecef;
+        }
+
+        .test-card h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .test-controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .test-input {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px 16px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .test-button {
+            padding: 10px 20px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .test-button:hover {
+            background: #2980b9;
+        }
+
+        .test-button.secondary {
+            background: #95a5a6;
+        }
+
+        .test-button.secondary:hover {
+            background: #7f8c8d;
+        }
+
+        .test-results {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 16px;
+            border-left: 4px solid #3498db;
+            min-height: 100px;
+        }
+
+        .result-content {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+        }
+
+        .status-label {
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .status-value {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #e74c3c;
+            color: white;
+        }
+
+        .status-value.active {
+            background: #27ae60;
+        }
+
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .success {
+            border-left-color: #27ae60;
+        }
+
+        .error {
+            border-left-color: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 AI服务测试 - 独立版本</h1>
+            <p>测试DeepSeek缓存、用户会话和实时搜索服务的功能</p>
+        </div>
+
+        <div class="test-grid">
+            <!-- DeepSeek缓存测试 -->
+            <div class="test-card">
+                <h2>🧠 DeepSeek缓存服务测试</h2>
+                <div class="test-controls">
+                    <input 
+                        id="cacheQuestion" 
+                        class="test-input"
+                        placeholder="输入测试问题..."
+                        value="什么是质量管理？"
+                    />
+                    <button onclick="testCache()" class="test-button">测试缓存</button>
+                    <button onclick="clearCache()" class="test-button secondary">清空缓存</button>
+                </div>
+                <div id="cacheResults" class="test-results">
+                    <div class="result-content">等待测试...</div>
+                </div>
+            </div>
+
+            <!-- 用户会话测试 -->
+            <div class="test-card">
+                <h2>👤 用户会话服务测试</h2>
+                <div class="test-controls">
+                    <button onclick="createSession()" class="test-button">创建会话</button>
+                    <button onclick="getSessionStats()" class="test-button">获取统计</button>
+                    <button onclick="testQuickInput()" class="test-button secondary">快速输入</button>
+                </div>
+                <div id="sessionResults" class="test-results">
+                    <div class="result-content">等待测试...</div>
+                </div>
+            </div>
+
+            <!-- 实时搜索测试 -->
+            <div class="test-card">
+                <h2>🔍 实时搜索服务测试</h2>
+                <div class="test-controls">
+                    <input 
+                        id="searchQuery" 
+                        class="test-input"
+                        placeholder="输入搜索查询..."
+                        value="查询深圳工厂库存"
+                    />
+                    <button onclick="testSearch()" class="test-button">测试搜索</button>
+                    <button onclick="testIntegratedAPI()" class="test-button secondary">测试API</button>
+                </div>
+                <div id="searchResults" class="test-results">
+                    <div class="result-content">等待测试...</div>
+                </div>
+            </div>
+
+            <!-- 服务状态 -->
+            <div class="test-card">
+                <h2>📊 服务状态监控</h2>
+                <div class="status-grid">
+                    <div class="status-item">
+                        <span class="status-label">DeepSeek缓存:</span>
+                        <span id="cacheStatus" class="status-value">未测试</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">用户会话:</span>
+                        <span id="sessionStatus" class="status-value">未测试</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">实时搜索:</span>
+                        <span id="searchStatus" class="status-value">未测试</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">后端API:</span>
+                        <span id="apiStatus" class="status-value">未测试</span>
+                    </div>
+                </div>
+                <div class="test-controls" style="margin-top: 20px;">
+                    <button onclick="runAllTests()" class="test-button">运行全部测试</button>
+                    <button onclick="checkAPIHealth()" class="test-button secondary">检查API健康</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟DeepSeek缓存服务
+        const mockCache = new Map();
+        
+        // 模拟用户会话服务
+        const mockSessions = new Map();
+        
+        // 工具函数
+        function updateStatus(elementId, status, isActive) {
+            const element = document.getElementById(elementId);
+            element.textContent = status;
+            element.className = isActive ? 'status-value active' : 'status-value';
+        }
+        
+        function updateResults(elementId, content, isSuccess = true) {
+            const element = document.getElementById(elementId);
+            const resultDiv = element.querySelector('.result-content');
+            resultDiv.textContent = typeof content === 'object' ? JSON.stringify(content, null, 2) : content;
+            element.className = `test-results ${isSuccess ? 'success' : 'error'}`;
+        }
+        
+        function setLoading(elementId, isLoading) {
+            const element = document.getElementById(elementId);
+            element.className = isLoading ? 'test-results loading' : 'test-results';
+        }
+        
+        // DeepSeek缓存测试
+        function testCache() {
+            const question = document.getElementById('cacheQuestion').value;
+            setLoading('cacheResults', true);
+            
+            setTimeout(() => {
+                try {
+                    // 检查缓存
+                    let result = mockCache.get(question);
+                    
+                    if (!result) {
+                        // 创建新的缓存条目
+                        result = {
+                            question: question,
+                            answer: `这是对"${question}"的模拟回答。DeepSeek缓存系统正常工作。`,
+                            timestamp: new Date().toISOString(),
+                            source: 'mock_llm'
+                        };
+                        mockCache.set(question, result);
+                    }
+                    
+                    const response = {
+                        cached: mockCache.has(question),
+                        result: result,
+                        cacheSize: mockCache.size,
+                        timestamp: new Date().toLocaleString()
+                    };
+                    
+                    updateResults('cacheResults', response);
+                    updateStatus('cacheStatus', '正常', true);
+                    console.log('✅ DeepSeek缓存测试成功');
+                    
+                } catch (error) {
+                    updateResults('cacheResults', `错误: ${error.message}`, false);
+                    updateStatus('cacheStatus', '异常', false);
+                    console.error('❌ DeepSeek缓存测试失败:', error);
+                } finally {
+                    setLoading('cacheResults', false);
+                }
+            }, 500);
+        }
+        
+        function clearCache() {
+            mockCache.clear();
+            updateResults('cacheResults', {
+                message: '缓存已清空',
+                cacheSize: 0,
+                timestamp: new Date().toLocaleString()
+            });
+        }
+        
+        // 用户会话测试
+        function createSession() {
+            setLoading('sessionResults', true);
+            
+            setTimeout(() => {
+                try {
+                    const sessionId = `session_${Date.now()}`;
+                    const session = {
+                        sessionId: sessionId,
+                        userId: 'test_user',
+                        userName: '测试用户',
+                        userRole: 'operator',
+                        startTime: new Date().toISOString(),
+                        queryHistory: [],
+                        quickInputHistory: ['查询深圳工厂库存', '分析质量趋势']
+                    };
+                    
+                    mockSessions.set(sessionId, session);
+                    
+                    const response = {
+                        session: session,
+                        activeSessions: mockSessions.size,
+                        timestamp: new Date().toLocaleString()
+                    };
+                    
+                    updateResults('sessionResults', response);
+                    updateStatus('sessionStatus', '正常', true);
+                    console.log('✅ 用户会话测试成功');
+                    
+                } catch (error) {
+                    updateResults('sessionResults', `错误: ${error.message}`, false);
+                    updateStatus('sessionStatus', '异常', false);
+                    console.error('❌ 用户会话测试失败:', error);
+                } finally {
+                    setLoading('sessionResults', false);
+                }
+            }, 300);
+        }
+        
+        function getSessionStats() {
+            const sessions = Array.from(mockSessions.values());
+            const stats = {
+                totalSessions: sessions.length,
+                sessions: sessions,
+                timestamp: new Date().toLocaleString()
+            };
+            updateResults('sessionResults', stats);
+        }
+        
+        function testQuickInput() {
+            const suggestions = [
+                '查询深圳工厂的库存情况',
+                '分析结构件类物料的质量状况',
+                '检查高风险物料批次',
+                '生成供应商质量报告',
+                '统计测试通过率趋势'
+            ];
+            
+            updateResults('sessionResults', {
+                quickInputSuggestions: suggestions,
+                count: suggestions.length,
+                timestamp: new Date().toLocaleString()
+            });
+        }
+        
+        // 实时搜索测试
+        function testSearch() {
+            const query = document.getElementById('searchQuery').value;
+            setLoading('searchResults', true);
+            
+            setTimeout(() => {
+                try {
+                    const result = {
+                        searchQuery: query,
+                        result: {
+                            content: `基于实时搜索的结果：${query}\n\n这是一个模拟的搜索响应，展示了系统的搜索能力。`,
+                            source: 'realtime-search',
+                            category: '智能搜索'
+                        },
+                        metadata: {
+                            engine: 'mock-search-engine',
+                            responseTime: 300,
+                            intent: {
+                                type: 'general-query',
+                                confidence: 0.9
+                            },
+                            timestamp: new Date().toISOString()
+                        }
+                    };
+                    
+                    updateResults('searchResults', result);
+                    updateStatus('searchStatus', '正常', true);
+                    console.log('✅ 实时搜索测试成功');
+                    
+                } catch (error) {
+                    updateResults('searchResults', `错误: ${error.message}`, false);
+                    updateStatus('searchStatus', '异常', false);
+                    console.error('❌ 实时搜索测试失败:', error);
+                } finally {
+                    setLoading('searchResults', false);
+                }
+            }, 800);
+        }
+        
+        // 测试后端API
+        async function testIntegratedAPI() {
+            const query = document.getElementById('searchQuery').value;
+            setLoading('searchResults', true);
+
+            try {
+                console.log('🎯 测试整合分析API:', query);
+                const response = await fetch('http://localhost:3004/api/integrated-analysis/intelligent-query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query: query,
+                        userContext: {
+                            userId: 'test_user',
+                            role: 'operator'
+                        }
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ 整合分析API响应:', data);
+
+                    let formattedResponse = data.response || '无响应内容';
+
+                    // 添加解析条件信息
+                    if (data.parsedCriteria && Object.keys(data.parsedCriteria).length > 0) {
+                        formattedResponse += '\n\n🔍 解析条件：\n';
+                        Object.entries(data.parsedCriteria).forEach(([key, value]) => {
+                            const keyMap = {
+                                materialCategory: '物料分类',
+                                supplier: '供应商',
+                                factory: '工厂',
+                                project: '项目'
+                            };
+                            formattedResponse += `• ${keyMap[key] || key}：${value}\n`;
+                        });
+                    }
+
+                    // 添加应用规则信息
+                    if (data.metadata && data.metadata.appliedRules) {
+                        formattedResponse += '\n📋 应用规则：\n';
+                        data.metadata.appliedRules.forEach(rule => {
+                            formattedResponse += `• ${rule}\n`;
+                        });
+                    }
+
+                    updateResults('searchResults', {
+                        success: data.success,
+                        formattedResponse: formattedResponse,
+                        rawData: data,
+                        engine: 'integrated-analysis-api',
+                        timestamp: new Date().toLocaleString()
+                    });
+                    updateStatus('apiStatus', '正常', true);
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+            } catch (error) {
+                console.error('❌ API测试失败:', error);
+                updateResults('searchResults', `API错误: ${error.message}`, false);
+                updateStatus('apiStatus', '异常', false);
+            } finally {
+                setLoading('searchResults', false);
+            }
+        }
+        
+        // 检查API健康状态
+        async function checkAPIHealth() {
+            try {
+                const response = await fetch('http://localhost:3004/api/integrated-analysis/rules');
+                if (response.ok) {
+                    updateStatus('apiStatus', '正常', true);
+                    console.log('✅ API健康检查通过');
+                } else {
+                    updateStatus('apiStatus', '异常', false);
+                }
+            } catch (error) {
+                updateStatus('apiStatus', '离线', false);
+                console.error('❌ API健康检查失败:', error);
+            }
+        }
+        
+        // 运行全部测试
+        function runAllTests() {
+            console.log('🚀 开始运行全部测试...');
+            
+            // 重置状态
+            updateStatus('cacheStatus', '测试中...', false);
+            updateStatus('sessionStatus', '测试中...', false);
+            updateStatus('searchStatus', '测试中...', false);
+            updateStatus('apiStatus', '测试中...', false);
+            
+            // 依次运行测试
+            setTimeout(() => testCache(), 100);
+            setTimeout(() => createSession(), 600);
+            setTimeout(() => testSearch(), 1100);
+            setTimeout(() => checkAPIHealth(), 1600);
+            
+            console.log('✅ 全部测试已启动');
+        }
+        
+        // 页面加载完成后自动运行基础测试
+        window.addEventListener('load', () => {
+            console.log('🚀 AI服务测试页面已加载');
+            setTimeout(() => {
+                runAllTests();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

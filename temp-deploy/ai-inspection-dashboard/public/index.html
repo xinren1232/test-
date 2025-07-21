@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>IQE动态检验系统</title>
+  <script type="text/javascript">
+    // 处理来自404.html的重定向
+    (function() {
+      var redirect = sessionStorage.redirect;
+      delete sessionStorage.redirect;
+      if (redirect && redirect != location.href) {
+        history.replaceState(null, null, redirect);
+      }
+
+      // 处理查询参数
+      var l = window.location;
+      var query = l.search.slice(1);
+      var params = {};
+      
+      if (query) {
+        query.split('&').forEach(function(v) {
+          var pair = v.split('=');
+          params[pair[0]] = pair[1];
+        });
+      }
+
+      // 如果有p参数，表示这是从404.html重定向来的
+      if (params.p) {
+        var path = params.p;
+        var newUrl = l.protocol + '//' + l.host + path;
+        
+        if (params.q) {
+          newUrl += '?' + params.q.replace(/~and~/g, '&');
+        }
+        
+        if (l.hash) {
+          newUrl += l.hash;
+        }
+        
+        history.replaceState(null, null, newUrl);
+      }
+    })();
+
+    // API后端配置
+    window.IQE_CONFIG = {
+      API_BASE_URL: '/api', // 实际开发/生产环境中改为实际API地址
+      DEEPSEEK_API_ENABLED: true, // 启用DeepSeek API调用
+      DEEPSEEK_API_PROXY: false // 默认不使用代理，直接调用DeepSeek API
+    };
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <!-- 构建的脚本会自动注入 -->
+
+  <!-- 展示欢迎语 -->
+  <div id="user-info" style="font-size: 18px; margin-top: 10px; color: #444;"></div>
+  <!-- 引入飞书 SDK -->
+  <script src="https://lf1-cdn-tos.bytegoofy.com/goofy/lark/lark.js"></script>
+  <script>
+    (async function () {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+
+      if (code) {
+        try {
+          const resp = await fetch("https://feishu-sso-vercel.vercel.app/api/feishu-login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code })
+          });
+          const data = await resp.json();
+          const name = data.name || data.name_cn || data.en_name || "飞书用户";
+          document.getElementById("user-info").innerText = `欢迎你，${name}`;
+        } catch (err) {
+          document.getElementById("user-info").innerText = "登录失败，请重试";
+        }
+        return;
+      }
+
+      LarkWeb.login({
+        appId: "cli_a7dd270320635013",
+        redirectUri: window.location.href,
+      });
+    })();
+  </script>
+</body>
+</html> 

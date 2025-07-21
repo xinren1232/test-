@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>百度搜索集成测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .header p {
+            color: #7f8c8d;
+            font-size: 16px;
+        }
+
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .test-section h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #5a6fd8;
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn.baidu {
+            background: #3385ff;
+        }
+
+        .btn.baidu:hover {
+            background: #2d78f4;
+        }
+
+        .result-box {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            min-height: 100px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .loading {
+            color: #667eea;
+            font-style: italic;
+        }
+
+        .success {
+            border-color: #28a745;
+            background: #f8fff9;
+        }
+
+        .error {
+            border-color: #dc3545;
+            background: #fff8f8;
+            color: #dc3545;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-success { background: #28a745; }
+        .status-error { background: #dc3545; }
+        .status-loading { background: #ffc107; animation: pulse 1s infinite; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .test-queries {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .query-btn {
+            padding: 8px 12px;
+            background: #e9ecef;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .query-btn:hover {
+            background: #3385ff;
+            color: white;
+        }
+
+        .search-engines {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .engine-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .engine-card.enabled {
+            border-color: #28a745;
+            background: #f8fff9;
+        }
+
+        .engine-logo {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .engine-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .engine-desc {
+            font-size: 12px;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 百度搜索集成测试</h1>
+            <p>测试AI问答系统的百度搜索功能</p>
+        </div>
+
+        <!-- 百度搜索测试 -->
+        <div class="test-section">
+            <h3>
+                <span class="status-indicator" id="baiduStatus"></span>
+                百度搜索功能测试
+            </h3>
+            <div class="input-group">
+                <input type="text" id="baiduQuery" placeholder="输入搜索查询..." value="质量管理体系">
+                <button class="btn baidu" onclick="testBaiduSearch()" id="baiduBtn">百度搜索</button>
+            </div>
+            <div class="test-queries">
+                <button class="query-btn" onclick="setQuery('baiduQuery', '质量管理体系')">质量管理体系</button>
+                <button class="query-btn" onclick="setQuery('baiduQuery', 'ISO 9001标准')">ISO 9001标准</button>
+                <button class="query-btn" onclick="setQuery('baiduQuery', '供应链质量管理')">供应链质量管理</button>
+                <button class="query-btn" onclick="setQuery('baiduQuery', '质量检测技术')">质量检测技术</button>
+                <button class="query-btn" onclick="setQuery('baiduQuery', '今天的质量新闻')">今天的质量新闻</button>
+                <button class="query-btn" onclick="setQuery('baiduQuery', '最新质量标准')">最新质量标准</button>
+            </div>
+            <div class="result-box" id="baiduResult">等待测试...</div>
+        </div>
+
+        <!-- AI增强搜索测试 -->
+        <div class="test-section">
+            <h3>
+                <span class="status-indicator" id="aiStatus"></span>
+                AI增强搜索测试（含百度搜索）
+            </h3>
+            <div class="input-group">
+                <input type="text" id="aiQuery" placeholder="输入AI查询..." value="什么是质量管理">
+                <button class="btn" onclick="testAISearch()" id="aiBtn">AI搜索</button>
+            </div>
+            <div class="test-queries">
+                <button class="query-btn" onclick="setQuery('aiQuery', '什么是质量管理')">什么是质量管理</button>
+                <button class="query-btn" onclick="setQuery('aiQuery', '如何建立质量体系')">如何建立质量体系</button>
+                <button class="query-btn" onclick="setQuery('aiQuery', '今天有什么质量新闻')">今天有什么质量新闻</button>
+                <button class="query-btn" onclick="setQuery('aiQuery', '深圳工厂库存情况')">深圳工厂库存情况</button>
+            </div>
+            <div class="result-box" id="aiResult">等待测试...</div>
+        </div>
+
+        <!-- 搜索引擎状态 -->
+        <div class="test-section">
+            <h3>
+                <span class="status-indicator" id="engineStatus"></span>
+                搜索引擎状态
+            </h3>
+            <div class="search-engines">
+                <div class="engine-card enabled">
+                    <div class="engine-logo">🔍</div>
+                    <div class="engine-name">百度搜索</div>
+                    <div class="engine-desc">中国最大的搜索引擎，提供中文搜索服务</div>
+                </div>
+                <div class="engine-card enabled">
+                    <div class="engine-logo">🌐</div>
+                    <div class="engine-name">必应搜索</div>
+                    <div class="engine-desc">微软的搜索引擎，提供全球搜索服务</div>
+                </div>
+                <div class="engine-card enabled">
+                    <div class="engine-logo">🔎</div>
+                    <div class="engine-name">搜狗搜索</div>
+                    <div class="engine-desc">搜狐旗下的搜索引擎，专注中文搜索</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟百度搜索服务
+        const baiduSearchService = {
+            async search(query) {
+                console.log('🔍 执行百度搜索:', query);
+                
+                // 模拟网络延迟
+                await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
+                
+                return {
+                    success: true,
+                    results: [
+                        {
+                            title: `${query} - 百度百科`,
+                            url: `https://baike.baidu.com/item/${encodeURIComponent(query)}`,
+                            snippet: `${query}是指...（百度百科提供的权威解释和详细信息）`,
+                            source: 'baidu'
+                        },
+                        {
+                            title: `${query}相关资讯 - 百度新闻`,
+                            url: `https://news.baidu.com/ns?word=${encodeURIComponent(query)}`,
+                            snippet: `最新关于${query}的新闻资讯和行业动态`,
+                            source: 'baidu'
+                        },
+                        {
+                            title: `${query}专业解答 - 百度知道`,
+                            url: `https://zhidao.baidu.com/search?word=${encodeURIComponent(query)}`,
+                            snippet: `专业人士对${query}的详细解答和经验分享`,
+                            source: 'baidu'
+                        }
+                    ],
+                    sources: ['baidu'],
+                    timestamp: new Date().toISOString()
+                };
+            }
+        };
+
+        // 模拟AI增强搜索服务
+        const aiSearchService = {
+            async intelligentQuery(query) {
+                console.log('🤖 执行AI增强搜索:', query);
+                
+                // 分析查询意图
+                const needsWebSearch = this.shouldSearchWeb(query);
+                
+                let webSearchResults = null;
+                if (needsWebSearch) {
+                    console.log('🌐 触发百度搜索');
+                    webSearchResults = await baiduSearchService.search(query);
+                }
+                
+                // 生成AI回答
+                const aiResponse = await this.generateAIResponse(query, webSearchResults);
+                
+                return {
+                    success: true,
+                    response: aiResponse,
+                    metadata: {
+                        webSearchUsed: needsWebSearch,
+                        webSearchResults: webSearchResults?.results?.length || 0,
+                        sources: webSearchResults?.sources || [],
+                        responseTime: 300 + Math.floor(Math.random() * 700)
+                    }
+                };
+            },
+            
+            shouldSearchWeb(query) {
+                const webSearchKeywords = ['什么是', '如何', '为什么', '今天', '最新', '新闻'];
+                const systemKeywords = ['库存', '工厂', '批次', '检测'];
+                
+                const queryLower = query.toLowerCase();
+                const needsWebSearch = webSearchKeywords.some(keyword => queryLower.includes(keyword));
+                const isSystemQuery = systemKeywords.some(keyword => queryLower.includes(keyword));
+                
+                return needsWebSearch && !isSystemQuery;
+            },
+            
+            async generateAIResponse(query, webSearchResults) {
+                // 模拟AI处理时间
+                await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 1200));
+                
+                let response = `根据您的查询"${query}"，为您提供以下信息：\n\n`;
+                
+                if (webSearchResults && webSearchResults.results.length > 0) {
+                    response += `🔍 基于百度搜索的最新信息：\n\n`;
+                    
+                    webSearchResults.results.forEach((result, index) => {
+                        response += `${index + 1}. **${result.title}**\n`;
+                        response += `   ${result.snippet}\n`;
+                        response += `   🔗 ${result.url}\n\n`;
+                    });
+                    
+                    response += `📊 搜索统计：\n`;
+                    response += `• 找到 ${webSearchResults.results.length} 个相关结果\n`;
+                    response += `• 搜索引擎：${webSearchResults.sources.join(', ')}\n`;
+                    response += `• 搜索时间：${new Date(webSearchResults.timestamp).toLocaleString()}\n\n`;
+                    
+                    response += `💡 AI分析总结：\n`;
+                    response += `基于以上搜索结果，${query}是一个重要的主题，建议您深入了解相关内容。`;
+                } else {
+                    response += `📊 基于系统内部数据的分析：\n\n`;
+                    response += `• 库存记录：1,250条\n`;
+                    response += `• 生产记录：890条\n`;
+                    response += `• 检测记录：456条\n\n`;
+                    response += `💡 系统建议：\n`;
+                    response += `根据系统数据分析，为您提供相关的质量管理建议和操作指导。`;
+                }
+                
+                return response;
+            }
+        };
+
+        // 测试函数
+        window.testBaiduSearch = async function() {
+            const query = document.getElementById('baiduQuery').value;
+            const resultBox = document.getElementById('baiduResult');
+            const btn = document.getElementById('baiduBtn');
+            const status = document.getElementById('baiduStatus');
+            
+            if (!query.trim()) {
+                alert('请输入搜索查询');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.textContent = '搜索中...';
+            resultBox.textContent = '正在执行百度搜索...';
+            resultBox.className = 'result-box loading';
+            status.className = 'status-indicator status-loading';
+            
+            try {
+                const result = await baiduSearchService.search(query);
+                
+                if (result.success) {
+                    let output = `✅ 百度搜索成功！\n\n`;
+                    output += `🔍 查询: ${query}\n`;
+                    output += `📊 找到 ${result.results.length} 个结果\n`;
+                    output += `🕒 时间: ${new Date(result.timestamp).toLocaleString()}\n\n`;
+                    
+                    result.results.forEach((item, index) => {
+                        output += `${index + 1}. ${item.title}\n`;
+                        output += `   ${item.snippet}\n`;
+                        output += `   🔗 ${item.url}\n\n`;
+                    });
+                    
+                    resultBox.textContent = output;
+                    resultBox.className = 'result-box success';
+                    status.className = 'status-indicator status-success';
+                } else {
+                    throw new Error(result.error || '搜索失败');
+                }
+                
+            } catch (error) {
+                resultBox.textContent = `❌ 搜索失败: ${error.message}`;
+                resultBox.className = 'result-box error';
+                status.className = 'status-indicator status-error';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '百度搜索';
+            }
+        };
+
+        window.testAISearch = async function() {
+            const query = document.getElementById('aiQuery').value;
+            const resultBox = document.getElementById('aiResult');
+            const btn = document.getElementById('aiBtn');
+            const status = document.getElementById('aiStatus');
+            
+            if (!query.trim()) {
+                alert('请输入AI查询');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.textContent = 'AI处理中...';
+            resultBox.textContent = '正在调用AI增强搜索服务...';
+            resultBox.className = 'result-box loading';
+            status.className = 'status-indicator status-loading';
+            
+            try {
+                const result = await aiSearchService.intelligentQuery(query);
+                
+                if (result.success) {
+                    let output = `🤖 AI增强搜索结果:\n\n${result.response}\n\n`;
+                    output += `📊 元数据:\n`;
+                    output += `• 联网搜索: ${result.metadata.webSearchUsed ? '已启用' : '未启用'}\n`;
+                    output += `• 网络资源: ${result.metadata.webSearchResults} 个\n`;
+                    output += `• 搜索引擎: ${result.metadata.sources.join(', ') || '无'}\n`;
+                    output += `• 响应时间: ${result.metadata.responseTime}ms\n`;
+                    
+                    resultBox.textContent = output;
+                    resultBox.className = 'result-box success';
+                    status.className = 'status-indicator status-success';
+                } else {
+                    throw new Error(result.error || 'AI处理失败');
+                }
+                
+            } catch (error) {
+                resultBox.textContent = `❌ AI处理失败: ${error.message}`;
+                resultBox.className = 'result-box error';
+                status.className = 'status-indicator status-error';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'AI搜索';
+            }
+        };
+
+        window.setQuery = function(inputId, query) {
+            document.getElementById(inputId).value = query;
+        };
+
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔍 百度搜索测试页面已加载');
+            
+            // 初始化状态指示器
+            document.getElementById('baiduStatus').className = 'status-indicator';
+            document.getElementById('aiStatus').className = 'status-indicator';
+            document.getElementById('engineStatus').className = 'status-indicator status-success';
+        });
+    </script>
+</body>
+</html>

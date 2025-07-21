@@ -1,0 +1,1017 @@
+{
+  "exportTime": "2025-07-04T20:12:30.629Z",
+  "totalRules": 29,
+  "rules": [
+    {
+      "id": 95,
+      "intent_name": "供应商库存查询",
+      "description": "查询特定供应商的库存物料详情，支持聚龙、BOE、华星等供应商",
+      "action_type": "SQL_QUERY",
+      "action_target": "\n      SELECT \n        material_name as 物料名称,\n        supplier_name as 供应商,\n        batch_code as 批次号,\n        quantity as 库存数量,\n        storage_location as 存储位置,\n        status as 状态,\n        risk_level as 风险等级,\n        inbound_time as 入库时间\n      FROM inventory \n      WHERE supplier_name LIKE CONCAT('%', ?, '%')\n      ORDER BY inbound_time DESC\n      LIMIT 20\n    ",
+      "parameters": {
+        "supplier": {
+          "type": "string",
+          "mapping": {
+            "BOE": "BOE",
+            "华星": "华星",
+            "天马": "天马",
+            "广正": "广正",
+            "欣冠": "欣冠",
+            "歌尔": "歌尔",
+            "盛泰": "盛泰",
+            "聚龙": "聚龙"
+          },
+          "description": "供应商名称",
+          "extract_from": [
+            "聚龙",
+            "BOE",
+            "华星",
+            "歌尔",
+            "天马",
+            "广正",
+            "欣冠",
+            "盛泰"
+          ]
+        }
+      },
+      "trigger_words": [
+        "供应商",
+        "库存",
+        "查询",
+        "物料"
+      ],
+      "synonyms": {
+        "库存": [
+          "存货",
+          "物料",
+          "材料"
+        ],
+        "供应商": [
+          "厂商",
+          "供货商",
+          "提供商"
+        ]
+      },
+      "example_query": "查询聚龙供应商的库存情况",
+      "priority": 20,
+      "status": "active",
+      "created_at": "2025-07-04T20:12:30.000Z",
+      "updated_at": "2025-07-04T20:12:30.000Z"
+    },
+    {
+      "id": 98,
+      "intent_name": "批次状态查询",
+      "description": "查询特定状态的批次信息，支持正常、风险、冻结状态",
+      "action_type": "SQL_QUERY",
+      "action_target": "\n      SELECT \n        batch_code as 批次号,\n        material_name as 物料名称,\n        supplier_name as 供应商,\n        status as 状态,\n        risk_level as 风险等级,\n        quantity as 数量,\n        storage_location as 位置\n      FROM inventory \n      WHERE status = ?\n      ORDER BY inbound_time DESC\n      LIMIT 15\n    ",
+      "parameters": {
+        "status": {
+          "type": "string",
+          "mapping": {
+            "冻结": "冻结",
+            "异常": "风险",
+            "正常": "正常",
+            "风险": "风险"
+          },
+          "description": "批次状态",
+          "extract_from": [
+            "风险",
+            "正常",
+            "冻结",
+            "异常"
+          ]
+        }
+      },
+      "trigger_words": [
+        "状态",
+        "风险",
+        "冻结",
+        "正常",
+        "批次"
+      ],
+      "synonyms": null,
+      "example_query": "查询风险状态的批次",
+      "priority": 19,
+      "status": "active",
+      "created_at": "2025-07-04T20:12:30.000Z",
+      "updated_at": "2025-07-04T20:12:30.000Z"
+    },
+    {
+      "id": 103,
+      "intent_name": "测试结果查询",
+      "description": "查询物料的测试结果和质量状况，支持按供应商筛选",
+      "action_type": "SQL_QUERY",
+      "action_target": "\n      SELECT\n        material_name as 物料名称,\n        supplier_name as 供应商,\n        batch_code as 批次号,\n        test_result as 测试结果,\n        test_item as 测试项目,\n        test_date as 测试日期,\n        conclusion as 结论,\n        defect_desc as 缺陷描述\n      FROM lab_tests\n      WHERE supplier_name LIKE CONCAT('%', ?, '%')\n      ORDER BY test_date DESC\n      LIMIT 20\n    ",
+      "parameters": {
+        "supplier": {
+          "type": "string",
+          "mapping": {
+            "BOE": "BOE",
+            "华星": "华星",
+            "歌尔": "歌尔",
+            "聚龙": "聚龙"
+          },
+          "description": "供应商名称",
+          "extract_from": [
+            "聚龙",
+            "BOE",
+            "华星",
+            "歌尔",
+            "天马",
+            "广正",
+            "欣冠"
+          ]
+        }
+      },
+      "trigger_words": [
+        "测试",
+        "检验",
+        "质量",
+        "结果"
+      ],
+      "synonyms": {
+        "测试": [
+          "检验",
+          "检测",
+          "试验"
+        ],
+        "结果": [
+          "报告",
+          "数据",
+          "记录"
+        ]
+      },
+      "example_query": "查询华星供应商的测试结果",
+      "priority": 19,
+      "status": "active",
+      "created_at": "2025-07-04T20:12:30.000Z",
+      "updated_at": "2025-07-04T20:12:30.000Z"
+    },
+    {
+      "id": 96,
+      "intent_name": "物料类型库存查询",
+      "description": "查询特定物料类型的库存分布，支持电池盖、中框、显示屏等",
+      "action_type": "SQL_QUERY",
+      "action_target": "\n      SELECT \n        material_name as 物料名称,\n        supplier_name as 供应商,\n        COUNT(*) as 批次数量,\n        SUM(quantity) as 总库存,\n        storage_location as 存储位置,\n        status as 状态\n      FROM inventory \n      WHERE material_name LIKE CONCAT('%', ?, '%')\n      GROUP BY material_name, supplier_name, storage_location, status\n      ORDER BY 总库存 DESC\n    ",
+      "parameters": {
+        "material": {
+          "type": "string",
+          "mapping": {
+            "中框": "中框",
+            "侧键": "侧键",
+            "摄像头": "摄像头",
+            "电池盖": "电池盖",
+            "LCD显示屏": "LCD显示屏",
+            "手机卡托": "手机卡托",
+            "OLED显示屏": "OLED显示屏"
+          },
+          "description": "物料名称",
+          "extract_from": [
+            "电池盖",
+            "中框",
+            "手机卡托",
+            "侧键",
+            "LCD显示屏",
+            "OLED显示屏",
+            "摄像头"
+          ]
+        }
+      },
+      "trigger_words": [
+        "物料",
+        "材料",
+        "库存",
+        "分布"
+      ],
+      "synonyms": null,
+      "example_query": "查询电池盖的库存分布情况",
+      "priority": 18,
+      "status": "active",
+      "created_at": "2025-07-04T20:12:30.000Z",
+      "updated_at": "2025-07-04T20:12:30.000Z"
+    },
+    {
+      "id": 97,
+      "intent_name": "工厂库存统计",
+      "description": "统计各工厂的库存情况，支持重庆、深圳、南昌、宜宾工厂",
+      "action_type": "SQL_QUERY",
+      "action_target": "\n      SELECT \n        storage_location as 工厂,\n        COUNT(DISTINCT material_name) as 物料种类,\n        COUNT(*) as 批次数量,\n        SUM(quantity) as 总库存,\n        COUNT(CASE WHEN status = '风险' THEN 1 END) as 风险批次,\n        ROUND(COUNT(CASE WHEN status = '风险' THEN 1 END) * 100.0 / COUNT(*), 2) as 风险比例\n      FROM inventory \n      WHERE storage_location LIKE CONCAT('%', ?, '%')\n      GROUP BY storage_location\n      ORDER BY 总库存 DESC\n    ",
+      "parameters": {
+        "factory": {
+          "type": "string",
+          "mapping": {
+            "南昌": "南昌工厂",
+            "宜宾": "宜宾工厂",
+            "深圳": "深圳工厂",
+            "重庆": "重庆工厂"
+          },
+          "description": "工厂名称",
+          "extract_from": [
+            "重庆工厂",
+            "深圳工厂",
+            "南昌工厂",
+            "宜宾工厂",
+            "重庆",
+            "深圳",
+            "南昌",
+            "宜宾"
+          ]
+        }
+      },
+      "trigger_words": [
+        "工厂",
+        "库存",
+        "统计",
+        "分布"
+      ],
+      "synonyms": null,
+      "example_query": "统计深圳工厂的库存情况",
+      "priority": 17,
+      "status": "active",
+      "created_at": "2025-07-04T20:12:30.000Z",
+      "updated_at": "2025-07-04T20:12:30.000Z"
+    },
+    {
+      "id": 99,
+      "intent_name": "库存数量预警",
+      "description": "查询库存数量低于阈值的物料预警信息",
+      "action_type": "SQL_QUERY",
+      "action_target": "\n      SELECT \n        material_name as 物料名称,\n        supplier_name as 供应商,\n        SUM(quantity) as 总库存,\n        COUNT(*) as 批次数量,\n        storage_location as 主要存储位置\n      FROM inventory \n      GROUP BY material_name, supplier_name, storage_location\n      HAVING SUM(quantity) < 1000\n      ORDER BY 总库存 ASC\n    ",
+      "parameters": {},
+      "trigger_words": [
+        "库存",
+        "预警",
+        "不足",
+        "低库存",
+        "缺货"
+      ],
+      "synonyms": null,
+      "example_query": "查询库存不足的物料预警",
+      "priority": 16,
+      "status": "active",
+      "created_at": "2025-07-04T20:12:30.000Z",
+      "updated_at": "2025-07-04T20:12:30.000Z"
+    },
+    {
+      "id": 104,
+      "intent_name": "测试通过率分析",
+      "description": "分析供应商或物料的测试通过率统计",
+      "action_type": "SQL_QUERY",
+      "action_target": "\n      SELECT\n        supplier_name as 供应商,\n        material_name as 物料名称,\n        COUNT(*) as 总测试次数,\n        SUM(CASE WHEN test_result = 'PASS' THEN 1 ELSE 0 END) as 通过次数,\n        ROUND(SUM(CASE WHEN test_result = 'PASS' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as 通过率,\n        COUNT(DISTINCT batch_code) as 批次数量\n      FROM lab_tests\n      WHERE supplier_name LIKE CONCAT('%', ?, '%')\n      GROUP BY supplier_name, material_name\n      ORDER BY 通过率 DESC\n    ",
+      "parameters": {
+        "supplier": {
+          "type": "string",
+          "mapping": {
+            "BOE": "BOE",
+            "华星": "华星",
+            "歌尔": "歌尔",
+            "聚龙": "聚龙"
+          },
+          "description": "供应商名称",
+          "extract_from": [
+            "聚龙",
+            "BOE",
+            "华星",
+            "歌尔",
+            "天马",
+            "广正",
+            "欣冠"
+          ]
+        }
+      },
+      "trigger_words": [
+        "通过率",
+        "合格率",
+        "质量分析",
+        "测试统计"
+      ],
+      "synonyms": null,
+      "example_query": "分析聚龙供应商的测试通过率",
+      "priority": 16,
+      "status": "active",
+      "created_at": "2025-07-04T20:12:30.000Z",
+      "updated_at": "2025-07-04T20:12:30.000Z"
+    },
+    {
+      "id": 83,
+      "intent_name": "状态查询,风险查询,冻结查询,正常查询",
+      "description": "查询特定状态的库存物料",
+      "action_type": "SQL_QUERY",
+      "action_target": "SELECT\n        status as 状态,\n        material_name as 物料名称,\n        supplier_name as 供应商,\n        storage_location as 工厂,\n        batch_code as 批次号,\n        quantity as 数量,\n        risk_level as 风险等级,\n        DATE_FORMAT(inbound_time, '%Y-%m-%d') as 入库日期\n      FROM inventory\n      WHERE status IN ('正常','风险','冻结')\n        AND (status LIKE CONCAT('%', ?, '%') OR ? = '')\n      ORDER BY\n        CASE status\n          WHEN '冻结' THEN 1\n          WHEN '风险' THEN 2\n          WHEN '正常' THEN 3\n        END,\n        created_at DESC\n      LIMIT 20",
+      "parameters": null,
+      "trigger_words": [
+        "状态",
+        "风险",
+        "冻结",
+        "正常",
+        "查询"
+      ],
+      "synonyms": {
+        "冻结": [
+          "锁定",
+          "暂停"
+        ],
+        "查询": [
+          "查看",
+          "检查",
+          "搜索"
+        ],
+        "正常": [
+          "良好",
+          "合格"
+        ],
+        "风险": [
+          "异常",
+          "危险",
+          "问题"
+        ]
+      },
+      "example_query": "查询风险状态的库存",
+      "priority": 15,
+      "status": "active",
+      "created_at": "2025-07-02T18:11:30.000Z",
+      "updated_at": "2025-07-02T18:11:30.000Z"
+    },
+    {
+      "id": 100,
+      "intent_name": "批次追溯查询",
+      "description": "根据批次号追溯完整的物料流转信息",
+      "action_type": "SQL_QUERY",
+      "action_target": "\n      SELECT \n        '库存' as 数据源,\n        batch_code as 批次号,\n        material_name as 物料名称,\n        supplier_name as 供应商,\n        inbound_time as 时间,\n        status as 状态\n      FROM inventory \n      WHERE batch_code = ?\n      UNION ALL\n      SELECT \n        '测试' as 数据源,\n        batch_code as 批次号,\n        material_name as 物料名称,\n        supplier_name as 供应商,\n        test_date as 时间,\n        test_result as 状态\n      FROM lab_tests \n      WHERE batch_code = ?\n      ORDER BY 时间 DESC\n    ",
+      "parameters": {
+        "batch_code": {
+          "type": "string",
+          "description": "批次号",
+          "extract_pattern": "\\b\\d{6}\\b"
+        }
+      },
+      "trigger_words": [
+        "批次",
+        "追溯",
+        "跟踪",
+        "历史"
+      ],
+      "synonyms": null,
+      "example_query": "追溯批次113621的完整信息",
+      "priority": 15,
+      "status": "active",
+      "created_at": "2025-07-04T20:12:30.000Z",
+      "updated_at": "2025-07-04T20:12:30.000Z"
+    },
+    {
+      "id": 105,
+      "intent_name": "测试项目统计",
+      "description": "统计各测试项目的执行情况和结果分布",
+      "action_type": "SQL_QUERY",
+      "action_target": "\n      SELECT\n        test_item as 测试项目,\n        COUNT(*) as 测试次数,\n        SUM(CASE WHEN test_result = 'PASS' THEN 1 ELSE 0 END) as 通过次数,\n        SUM(CASE WHEN test_result = 'FAIL' THEN 1 ELSE 0 END) as 失败次数,\n        ROUND(SUM(CASE WHEN test_result = 'PASS' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as 通过率\n      FROM lab_tests\n      GROUP BY test_item\n      ORDER BY 测试次数 DESC\n    ",
+      "parameters": {},
+      "trigger_words": [
+        "测试项目",
+        "项目统计",
+        "测试分布"
+      ],
+      "synonyms": null,
+      "example_query": "统计各测试项目的执行情况",
+      "priority": 15,
+      "status": "active",
+      "created_at": "2025-07-04T20:12:30.000Z",
+      "updated_at": "2025-07-04T20:12:30.000Z"
+    },
+    {
+      "id": 111,
+      "intent_name": "生产跟踪查询",
+      "description": "查询物料的生产跟踪信息和使用情况",
+      "action_type": "SQL_QUERY",
+      "action_target": "\n      SELECT\n        material_name as 物料名称,\n        supplier_name as 供应商,\n        batch_code as 批次号,\n        factory as 工厂,\n        workshop as 车间,\n        line as 产线,\n        defect_rate as 不良率,\n        exception_count as 异常次数,\n        use_time as 使用时间\n      FROM online_tracking\n      WHERE supplier_name LIKE CONCAT('%', ?, '%')\n      ORDER BY use_time DESC\n      LIMIT 20\n    ",
+      "parameters": {
+        "supplier": {
+          "type": "string",
+          "mapping": {
+            "BOE": "BOE",
+            "华星": "华星",
+            "歌尔": "歌尔",
+            "聚龙": "聚龙"
+          },
+          "description": "供应商名称",
+          "extract_from": [
+            "聚龙",
+            "BOE",
+            "华星",
+            "歌尔",
+            "天马",
+            "广正",
+            "欣冠"
+          ]
+        }
+      },
+      "trigger_words": [
+        "生产",
+        "跟踪",
+        "产线",
+        "车间"
+      ],
+      "synonyms": null,
+      "example_query": "查询BOE供应商的生产跟踪情况",
+      "priority": 15,
+      "status": "active",
+      "created_at": "2025-07-04T20:12:30.000Z",
+      "updated_at": "2025-07-04T20:12:30.000Z"
+    },
+    {
+      "id": 86,
+      "intent_name": "工厂生产效率分析",
+      "description": "分析各工厂的生产效率和缺陷率表现",
+      "action_type": "SQL_QUERY",
+      "action_target": "\n      SELECT\n        factory as 工厂,\n        COUNT(*) as 生产记录数,\n        COUNT(DISTINCT material_name) as 物料种类,\n        AVG(defect_rate) as 平均不良率,\n        SUM(exception_count) as 总异常次数,\n        COUNT(DISTINCT supplier_name) as 供应商数量\n      FROM online_tracking\n      WHERE factory LIKE CONCAT('%', ?, '%')\n      GROUP BY factory\n      ORDER BY 平均不良率 ASC\n    ",
+      "parameters": {
+        "factory": {
+          "type": "string",
+          "mapping": {
+            "南昌": "南昌工厂",
+            "宜宾": "宜宾工厂",
+            "深圳": "深圳工厂",
+            "重庆": "重庆工厂"
+          },
+          "description": "工厂名称",
+          "extract_from": [
+            "重庆工厂",
+            "深圳工厂",
+            "南昌工厂",
+            "宜宾工厂",
+            "重庆",
+            "深圳",
+            "南昌",
+            "宜宾"
+          ]
+        }
+      },
+      "trigger_words": [
+        "生产效率",
+        "缺陷率",
+        "工厂效率",
+        "产能分析"
+      ],
+      "synonyms": {
+        "效率": [
+          "产能",
+          "生产力"
+        ],
+        "缺陷": [
+          "不良",
+          "问题"
+        ]
+      },
+      "example_query": "分析深圳工厂的生产效率",
+      "priority": 14,
+      "status": "active",
+      "created_at": "2025-07-03T00:04:40.000Z",
+      "updated_at": "2025-07-04T20:12:30.000Z"
+    },
+    {
+      "id": 101,
+      "intent_name": "供应商物料种类统计",
+      "description": "统计各供应商提供的物料种类和数量分布",
+      "action_type": "SQL_QUERY",
+      "action_target": "\n      SELECT \n        supplier_name as 供应商,\n        COUNT(DISTINCT material_name) as 物料种类数,\n        COUNT(*) as 总批次数,\n        SUM(quantity) as 总库存量,\n        GROUP_CONCAT(DISTINCT material_name SEPARATOR ', ') as 物料清单\n      FROM inventory \n      WHERE supplier_name LIKE CONCAT('%', ?, '%')\n      GROUP BY supplier_name\n      ORDER BY 物料种类数 DESC\n    ",
+      "parameters": {
+        "supplier": {
+          "type": "string",
+          "mapping": {
+            "BOE": "BOE",
+            "华星": "华星",
+            "歌尔": "歌尔",
+            "聚龙": "聚龙"
+          },
+          "description": "供应商名称",
+          "extract_from": [
+            "聚龙",
+            "BOE",
+            "华星",
+            "歌尔",
+            "天马",
+            "广正",
+            "欣冠"
+          ]
+        }
+      },
+      "trigger_words": [
+        "供应商",
+        "物料种类",
+        "统计",
+        "分布"
+      ],
+      "synonyms": null,
+      "example_query": "统计聚龙供应商的物料种类分布",
+      "priority": 14,
+      "status": "active",
+      "created_at": "2025-07-04T20:12:30.000Z",
+      "updated_at": "2025-07-04T20:12:30.000Z"
+    },
+    {
+      "id": 106,
+      "intent_name": "缺陷分析查询",
+      "description": "查询和分析测试中发现的缺陷类型和分布",
+      "action_type": "SQL_QUERY",
+      "action_target": "\n      SELECT\n        defect_desc as 缺陷描述,\n        COUNT(*) as 出现次数,\n        COUNT(DISTINCT supplier_name) as 涉及供应商数,\n        COUNT(DISTINCT material_name) as 涉及物料数,\n        GROUP_CONCAT(DISTINCT supplier_name SEPARATOR ', ') as 供应商列表\n      FROM lab_tests\n      WHERE test_result = 'FAIL' AND defect_desc IS NOT NULL AND defect_desc != ''\n      GROUP BY defect_desc\n      ORDER BY 出现次数 DESC\n      LIMIT 10\n    ",
+      "parameters": {},
+      "trigger_words": [
+        "缺陷",
+        "不良",
+        "失败",
+        "问题分析"
+      ],
+      "synonyms": null,
+      "example_query": "分析测试中发现的主要缺陷类型",
+      "priority": 14,
+      "status": "active",
+      "created_at": "2025-07-04T20:12:30.000Z",
+      "updated_at": "2025-07-04T20:12:30.000Z"
+    },
+    {
+      "id": 102,
+      "intent_name": "工厂物料分布查询",
+      "description": "查询特定工厂的物料分布和存储情况",
+      "action_type": "SQL_QUERY",
+      "action_target": "\n      SELECT \n        material_name as 物料名称,\n        COUNT(*) as 批次数量,\n        SUM(quantity) as 总数量,\n        COUNT(DISTINCT supplier_name) as 供应商数量,\n        GROUP_CONCAT(DISTINCT supplier_name SEPARATOR ', ') as 供应商列表\n      FROM inventory \n      WHERE storage_location LIKE CONCAT('%', ?, '%')\n      GROUP BY material_name\n      ORDER BY 总数量 DESC\n    ",
+      "parameters": {
+        "factory": {
+          "type": "string",
+          "mapping": {
+            "南昌": "南昌工厂",
+            "宜宾": "宜宾工厂",
+            "深圳": "深圳工厂",
+            "重庆": "重庆工厂"
+          },
+          "description": "工厂名称",
+          "extract_from": [
+            "重庆工厂",
+            "深圳工厂",
+            "南昌工厂",
+            "宜宾工厂",
+            "重庆",
+            "深圳",
+            "南昌",
+            "宜宾"
+          ]
+        }
+      },
+      "trigger_words": [
+        "工厂",
+        "物料分布",
+        "存储",
+        "分配"
+      ],
+      "synonyms": null,
+      "example_query": "查询深圳工厂的物料分布情况",
+      "priority": 13,
+      "status": "active",
+      "created_at": "2025-07-04T20:12:30.000Z",
+      "updated_at": "2025-07-04T20:12:30.000Z"
+    },
+    {
+      "id": 107,
+      "intent_name": "批次测试历史",
+      "description": "查询特定批次的完整测试历史记录",
+      "action_type": "SQL_QUERY",
+      "action_target": "\n      SELECT\n        test_date as 测试日期,\n        test_item as 测试项目,\n        test_result as 测试结果,\n        conclusion as 结论,\n        defect_desc as 缺陷描述,\n        material_name as 物料名称,\n        supplier_name as 供应商\n      FROM lab_tests\n      WHERE batch_code = ?\n      ORDER BY test_date DESC\n    ",
+      "parameters": {
+        "batch_code": {
+          "type": "string",
+          "description": "批次号",
+          "extract_pattern": "\\b\\d{6}\\b"
+        }
+      },
+      "trigger_words": [
+        "批次",
+        "测试历史",
+        "测试记录"
+      ],
+      "synonyms": null,
+      "example_query": "查询批次113621的测试历史",
+      "priority": 13,
+      "status": "active",
+      "created_at": "2025-07-04T20:12:30.000Z",
+      "updated_at": "2025-07-04T20:12:30.000Z"
+    },
+    {
+      "id": 112,
+      "intent_name": "产线不良率排名",
+      "description": "统计和排名各产线的不良率表现",
+      "action_type": "SQL_QUERY",
+      "action_target": "\n      SELECT\n        factory as 工厂,\n        workshop as 车间,\n        line as 产线,\n        COUNT(*) as 生产次数,\n        AVG(defect_rate) as 平均不良率,\n        MAX(defect_rate) as 最高不良率,\n        SUM(exception_count) as 异常总数\n      FROM online_tracking\n      GROUP BY factory, workshop, line\n      HAVING COUNT(*) >= 3\n      ORDER BY 平均不良率 DESC\n      LIMIT 15\n    ",
+      "parameters": {},
+      "trigger_words": [
+        "产线",
+        "不良率",
+        "排名",
+        "车间效率"
+      ],
+      "synonyms": null,
+      "example_query": "查看产线不良率排名情况",
+      "priority": 13,
+      "status": "active",
+      "created_at": "2025-07-04T20:12:30.000Z",
+      "updated_at": "2025-07-04T20:12:30.000Z"
+    },
+    {
+      "id": 108,
+      "intent_name": "物料测试覆盖率",
+      "description": "分析各物料的测试覆盖情况和测试完整性",
+      "action_type": "SQL_QUERY",
+      "action_target": "\n      SELECT\n        i.material_name as 物料名称,\n        i.supplier_name as 供应商,\n        COUNT(DISTINCT i.batch_code) as 库存批次数,\n        COUNT(DISTINCT t.batch_code) as 已测试批次数,\n        ROUND(COUNT(DISTINCT t.batch_code) * 100.0 / COUNT(DISTINCT i.batch_code), 2) as 测试覆盖率\n      FROM inventory i\n      LEFT JOIN lab_tests t ON i.batch_code = t.batch_code\n      WHERE i.material_name LIKE CONCAT('%', ?, '%')\n      GROUP BY i.material_name, i.supplier_name\n      ORDER BY 测试覆盖率 ASC\n    ",
+      "parameters": {
+        "material": {
+          "type": "string",
+          "mapping": {
+            "中框": "中框",
+            "摄像头": "摄像头",
+            "显示屏": "显示屏",
+            "电池盖": "电池盖"
+          },
+          "description": "物料名称",
+          "extract_from": [
+            "电池盖",
+            "中框",
+            "LCD显示屏",
+            "OLED显示屏",
+            "摄像头"
+          ]
+        }
+      },
+      "trigger_words": [
+        "测试覆盖率",
+        "覆盖情况",
+        "测试完整性"
+      ],
+      "synonyms": null,
+      "example_query": "分析电池盖的测试覆盖率",
+      "priority": 12,
+      "status": "active",
+      "created_at": "2025-07-04T20:12:30.000Z",
+      "updated_at": "2025-07-04T20:12:30.000Z"
+    },
+    {
+      "id": 113,
+      "intent_name": "物料生产表现分析",
+      "description": "分析特定物料在生产过程中的表现",
+      "action_type": "SQL_QUERY",
+      "action_target": "\n      SELECT\n        material_name as 物料名称,\n        supplier_name as 供应商,\n        COUNT(*) as 使用次数,\n        AVG(defect_rate) as 平均不良率,\n        COUNT(DISTINCT factory) as 使用工厂数,\n        SUM(exception_count) as 总异常次数\n      FROM online_tracking\n      WHERE material_name LIKE CONCAT('%', ?, '%')\n      GROUP BY material_name, supplier_name\n      ORDER BY 平均不良率 ASC\n    ",
+      "parameters": {
+        "material": {
+          "type": "string",
+          "mapping": {
+            "中框": "中框",
+            "摄像头": "摄像头",
+            "显示屏": "显示屏",
+            "电池盖": "电池盖"
+          },
+          "description": "物料名称",
+          "extract_from": [
+            "电池盖",
+            "中框",
+            "LCD显示屏",
+            "OLED显示屏",
+            "摄像头"
+          ]
+        }
+      },
+      "trigger_words": [
+        "物料",
+        "生产表现",
+        "使用情况"
+      ],
+      "synonyms": null,
+      "example_query": "分析电池盖的生产表现",
+      "priority": 12,
+      "status": "active",
+      "created_at": "2025-07-04T20:12:30.000Z",
+      "updated_at": "2025-07-04T20:12:30.000Z"
+    },
+    {
+      "id": 109,
+      "intent_name": "测试结果趋势分析",
+      "description": "分析测试结果的时间趋势和质量变化",
+      "action_type": "SQL_QUERY",
+      "action_target": "\n      SELECT\n        DATE(test_date) as 测试日期,\n        COUNT(*) as 测试总数,\n        SUM(CASE WHEN test_result = 'PASS' THEN 1 ELSE 0 END) as 通过数量,\n        ROUND(SUM(CASE WHEN test_result = 'PASS' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as 当日通过率\n      FROM lab_tests\n      WHERE supplier_name LIKE CONCAT('%', ?, '%')\n      AND test_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)\n      GROUP BY DATE(test_date)\n      ORDER BY 测试日期 DESC\n    ",
+      "parameters": {
+        "supplier": {
+          "type": "string",
+          "mapping": {
+            "BOE": "BOE",
+            "华星": "华星",
+            "歌尔": "歌尔",
+            "聚龙": "聚龙"
+          },
+          "description": "供应商名称",
+          "extract_from": [
+            "聚龙",
+            "BOE",
+            "华星",
+            "歌尔"
+          ]
+        }
+      },
+      "trigger_words": [
+        "测试趋势",
+        "质量趋势",
+        "时间分析"
+      ],
+      "synonyms": null,
+      "example_query": "分析聚龙供应商的测试结果趋势",
+      "priority": 11,
+      "status": "active",
+      "created_at": "2025-07-04T20:12:30.000Z",
+      "updated_at": "2025-07-04T20:12:30.000Z"
+    },
+    {
+      "id": 114,
+      "intent_name": "异常事件统计",
+      "description": "统计生产过程中的异常事件和频率",
+      "action_type": "SQL_QUERY",
+      "action_target": "\n      SELECT\n        factory as 工厂,\n        workshop as 车间,\n        COUNT(*) as 生产记录数,\n        SUM(exception_count) as 异常总数,\n        ROUND(SUM(exception_count) * 1.0 / COUNT(*), 2) as 平均异常频率,\n        COUNT(CASE WHEN exception_count > 0 THEN 1 END) as 有异常记录数\n      FROM online_tracking\n      GROUP BY factory, workshop\n      ORDER BY 异常总数 DESC\n    ",
+      "parameters": {},
+      "trigger_words": [
+        "异常",
+        "事件统计",
+        "异常频率"
+      ],
+      "synonyms": null,
+      "example_query": "统计生产异常事件情况",
+      "priority": 11,
+      "status": "active",
+      "created_at": "2025-07-04T20:12:30.000Z",
+      "updated_at": "2025-07-04T20:12:30.000Z"
+    },
+    {
+      "id": 85,
+      "intent_name": "测试结果统计分析",
+      "description": "统计和分析测试结果的分布情况",
+      "action_type": "SQL_QUERY",
+      "action_target": "SELECT test_result, COUNT(*) as count, ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM lab_tests), 2) as percentage FROM lab_tests GROUP BY test_result",
+      "parameters": null,
+      "trigger_words": [
+        "PASS",
+        "FAIL",
+        "测试统计",
+        "结果分析",
+        "合格率",
+        "不合格率"
+      ],
+      "synonyms": {
+        "合格": [
+          "PASS",
+          "通过"
+        ],
+        "统计": [
+          "分析",
+          "汇总"
+        ],
+        "不合格": [
+          "FAIL",
+          "失败"
+        ]
+      },
+      "example_query": null,
+      "priority": 10,
+      "status": "active",
+      "created_at": "2025-07-03T00:04:40.000Z",
+      "updated_at": "2025-07-03T00:04:40.000Z"
+    },
+    {
+      "id": 110,
+      "intent_name": "供应商质量对比",
+      "description": "对比不同供应商的质量表现和测试结果",
+      "action_type": "SQL_QUERY",
+      "action_target": "\n      SELECT\n        supplier_name as 供应商,\n        COUNT(*) as 总测试次数,\n        COUNT(DISTINCT material_name) as 物料种类,\n        SUM(CASE WHEN test_result = 'PASS' THEN 1 ELSE 0 END) as 通过次数,\n        ROUND(SUM(CASE WHEN test_result = 'PASS' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as 通过率,\n        COUNT(CASE WHEN test_result = 'FAIL' THEN 1 END) as 失败次数\n      FROM lab_tests\n      GROUP BY supplier_name\n      HAVING COUNT(*) >= 5\n      ORDER BY 通过率 DESC\n    ",
+      "parameters": {},
+      "trigger_words": [
+        "供应商对比",
+        "质量对比",
+        "供应商排名"
+      ],
+      "synonyms": null,
+      "example_query": "对比各供应商的质量表现",
+      "priority": 10,
+      "status": "active",
+      "created_at": "2025-07-04T20:12:30.000Z",
+      "updated_at": "2025-07-04T20:12:30.000Z"
+    },
+    {
+      "id": 115,
+      "intent_name": "批次生产追踪",
+      "description": "追踪特定批次在生产线上的使用记录",
+      "action_type": "SQL_QUERY",
+      "action_target": "\n      SELECT\n        use_time as 使用时间,\n        factory as 工厂,\n        workshop as 车间,\n        line as 产线,\n        defect_rate as 不良率,\n        exception_count as 异常次数,\n        material_name as 物料名称,\n        supplier_name as 供应商\n      FROM online_tracking\n      WHERE batch_code = ?\n      ORDER BY use_time DESC\n    ",
+      "parameters": {
+        "batch_code": {
+          "type": "string",
+          "description": "批次号",
+          "extract_pattern": "\\b\\d{6}\\b"
+        }
+      },
+      "trigger_words": [
+        "批次",
+        "生产追踪",
+        "使用记录"
+      ],
+      "synonyms": null,
+      "example_query": "追踪批次113621的生产使用情况",
+      "priority": 10,
+      "status": "active",
+      "created_at": "2025-07-04T20:12:30.000Z",
+      "updated_at": "2025-07-04T20:12:30.000Z"
+    },
+    {
+      "id": 116,
+      "intent_name": "供应商生产质量对比",
+      "description": "对比不同供应商物料在生产中的质量表现",
+      "action_type": "SQL_QUERY",
+      "action_target": "\n      SELECT\n        supplier_name as 供应商,\n        COUNT(*) as 生产使用次数,\n        COUNT(DISTINCT material_name) as 物料种类,\n        AVG(defect_rate) as 平均不良率,\n        SUM(exception_count) as 总异常次数,\n        COUNT(DISTINCT factory) as 使用工厂数\n      FROM online_tracking\n      GROUP BY supplier_name\n      HAVING COUNT(*) >= 5\n      ORDER BY 平均不良率 ASC\n    ",
+      "parameters": {},
+      "trigger_words": [
+        "供应商",
+        "生产质量",
+        "质量对比"
+      ],
+      "synonyms": null,
+      "example_query": "对比各供应商的生产质量表现",
+      "priority": 9,
+      "status": "active",
+      "created_at": "2025-07-04T20:12:30.000Z",
+      "updated_at": "2025-07-04T20:12:30.000Z"
+    },
+    {
+      "id": 117,
+      "intent_name": "生产时间分析",
+      "description": "分析生产时间分布和使用频率",
+      "action_type": "SQL_QUERY",
+      "action_target": "\n      SELECT\n        DATE(use_time) as 使用日期,\n        COUNT(*) as 生产次数,\n        COUNT(DISTINCT material_name) as 物料种类,\n        AVG(defect_rate) as 平均不良率,\n        SUM(exception_count) as 异常总数\n      FROM online_tracking\n      WHERE use_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)\n      GROUP BY DATE(use_time)\n      ORDER BY 使用日期 DESC\n      LIMIT 15\n    ",
+      "parameters": {},
+      "trigger_words": [
+        "生产时间",
+        "使用频率",
+        "时间分析"
+      ],
+      "synonyms": null,
+      "example_query": "分析最近的生产时间分布",
+      "priority": 8,
+      "status": "active",
+      "created_at": "2025-07-04T20:12:30.000Z",
+      "updated_at": "2025-07-04T20:12:30.000Z"
+    },
+    {
+      "id": 81,
+      "intent_name": "真实测试结果统计",
+      "description": "统计真实测试结果分布，支持PASS/FAIL状态查询",
+      "action_type": "SQL_QUERY",
+      "action_target": "SELECT * FROM lab_tests WHERE test_result LIKE CONCAT(\"%\", ?, \"%\") ORDER BY test_date DESC",
+      "parameters": {
+        "test_result": {
+          "type": "string",
+          "mapping": {
+            "NG": "FAIL",
+            "OK": "PASS",
+            "合格": "PASS",
+            "失败": "FAIL",
+            "通过": "PASS",
+            "不合格": "FAIL"
+          },
+          "description": "测试结果",
+          "extract_from": [
+            "PASS",
+            "FAIL",
+            "OK",
+            "NG",
+            "合格",
+            "不合格",
+            "通过",
+            "失败"
+          ]
+        }
+      },
+      "trigger_words": [
+        "PASS",
+        "FAIL",
+        "测试",
+        "结果",
+        "统计",
+        "合格",
+        "不合格",
+        "通过",
+        "失败"
+      ],
+      "synonyms": {
+        "FAIL": [
+          "不合格",
+          "失败",
+          "NG"
+        ],
+        "PASS": [
+          "合格",
+          "通过",
+          "OK"
+        ],
+        "测试": [
+          "检验",
+          "检测",
+          "质检"
+        ]
+      },
+      "example_query": "统计OK和PENDING和NG的测试结果",
+      "priority": 7,
+      "status": "active",
+      "created_at": "2025-07-01T19:53:23.000Z",
+      "updated_at": "2025-07-01T19:53:23.000Z"
+    },
+    {
+      "id": 93,
+      "intent_name": "工厂库存查询",
+      "description": "查询特定工厂的库存详情，支持工厂名称参数提取",
+      "action_type": "MEMORY_QUERY",
+      "action_target": "SELECT * FROM inventory WHERE storage_location LIKE CONCAT(\"%\", ?, \"%\") ORDER BY inbound_time DESC",
+      "parameters": {
+        "factory": {
+          "type": "string",
+          "mapping": {
+            "南昌": "南昌工厂",
+            "宜宾": "宜宾工厂",
+            "深圳": "深圳工厂",
+            "重庆": "重庆工厂"
+          },
+          "description": "工厂名称",
+          "extract_from": [
+            "深圳工厂",
+            "重庆工厂",
+            "南昌工厂",
+            "宜宾工厂",
+            "深圳",
+            "重庆",
+            "南昌",
+            "宜宾"
+          ]
+        }
+      },
+      "trigger_words": [
+        "重庆工厂",
+        "深圳工厂",
+        "南昌工厂",
+        "宜宾工厂",
+        "重庆",
+        "深圳",
+        "南昌",
+        "宜宾",
+        "工厂",
+        "库存"
+      ],
+      "synonyms": {},
+      "example_query": null,
+      "priority": 5,
+      "status": "active",
+      "created_at": "2025-07-03T01:26:29.000Z",
+      "updated_at": "2025-07-03T01:26:29.000Z"
+    },
+    {
+      "id": 94,
+      "intent_name": "供应商查询",
+      "description": "查询特定供应商的相关信息和物料",
+      "action_type": "MEMORY_QUERY",
+      "action_target": "SELECT * FROM inventory WHERE supplier LIKE CONCAT(\"%\", ?, \"%\") ORDER BY inbound_time DESC",
+      "parameters": {
+        "supplier": {
+          "type": "string",
+          "mapping": {},
+          "description": "供应商名称",
+          "extract_from": [
+            "聚龙",
+            "BOE",
+            "歌尔",
+            "欣冠",
+            "广正",
+            "紫光",
+            "黑龙",
+            "欣旺",
+            "比亚迪",
+            "宁德时代"
+          ]
+        }
+      },
+      "trigger_words": [
+        "供应商",
+        "聚龙",
+        "BOE",
+        "歌尔",
+        "欣冠",
+        "广正",
+        "紫光",
+        "黑龙",
+        "欣旺"
+      ],
+      "synonyms": {},
+      "example_query": null,
+      "priority": 3,
+      "status": "active",
+      "created_at": "2025-07-03T01:26:29.000Z",
+      "updated_at": "2025-07-03T01:26:29.000Z"
+    }
+  ]
+}

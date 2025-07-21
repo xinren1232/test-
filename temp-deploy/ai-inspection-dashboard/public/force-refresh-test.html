@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>强制刷新测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f7fa;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .big-button {
+            font-size: 18px;
+            padding: 15px 30px;
+            background-color: #28a745;
+        }
+        .big-button:hover {
+            background-color: #218838;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .step {
+            margin: 15px 0;
+            padding: 10px;
+            border-left: 3px solid #007bff;
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 强制刷新测试页面</h1>
+        
+        <div class="status info">
+            这个页面帮助您测试和强制刷新智能助手的规则数据
+        </div>
+        
+        <div class="step">
+            <h3>📋 当前状态检查</h3>
+            <button onclick="checkCurrentStatus()">检查当前状态</button>
+            <div id="status-result"></div>
+        </div>
+        
+        <div class="step">
+            <h3>🔄 强制刷新操作</h3>
+            <button class="big-button" onclick="openAssistantAndRefresh()">🚀 打开助手页面并强制刷新</button>
+            <button onclick="clearBrowserCache()">🧹 清除浏览器缓存</button>
+        </div>
+        
+        <div class="step">
+            <h3>🔍 手动验证步骤</h3>
+            <ol>
+                <li>点击上面的"打开助手页面并强制刷新"按钮</li>
+                <li>在新打开的页面中，按 <code>Ctrl+Shift+R</code> 强制刷新</li>
+                <li>查看左侧面板的调试信息</li>
+                <li>点击左侧面板中的"强制刷新"按钮</li>
+                <li>检查规则数量是否显示为 52 条</li>
+            </ol>
+        </div>
+        
+        <div class="step">
+            <h3>🛠️ 故障排除</h3>
+            <button onclick="runTroubleshooting()">运行故障排除</button>
+            <div id="troubleshooting-result"></div>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        async function checkCurrentStatus() {
+            const resultDiv = document.getElementById('status-result');
+            resultDiv.innerHTML = '<p>🔄 检查中...</p>';
+            
+            try {
+                // 检查规则文件
+                const response = await fetch('/data/rules.json?v=' + Date.now());
+                const data = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <div style="background: #d4edda; padding: 10px; margin: 10px 0; border-radius: 4px;">
+                        <h4>✅ 规则文件状态正常</h4>
+                        <p><strong>总规则数:</strong> ${data.totalRules}</p>
+                        <p><strong>分类数量:</strong> ${data.categories.length}</p>
+                        <p><strong>文件大小:</strong> ${JSON.stringify(data).length} 字符</p>
+                        <p><strong>检查时间:</strong> ${new Date().toLocaleString()}</p>
+                    </div>
+                `;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div style="background: #f8d7da; padding: 10px; margin: 10px 0; border-radius: 4px;">
+                        <h4>❌ 规则文件访问失败</h4>
+                        <p><strong>错误:</strong> ${error.message}</p>
+                        <p><strong>建议:</strong> 检查前端服务器是否正在运行</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function openAssistantAndRefresh() {
+            // 打开助手页面
+            const assistantWindow = window.open('/assistant', '_blank');
+            
+            // 等待页面加载后执行刷新
+            setTimeout(() => {
+                if (assistantWindow) {
+                    try {
+                        // 尝试在新窗口中执行强制刷新
+                        assistantWindow.location.reload(true);
+                    } catch (e) {
+                        console.log('无法自动刷新新窗口，请手动按 Ctrl+Shift+R');
+                    }
+                }
+            }, 2000);
+            
+            alert('已打开助手页面！\n\n请在新页面中：\n1. 按 Ctrl+Shift+R 强制刷新\n2. 点击左侧面板的"强制刷新"按钮\n3. 检查规则数量是否为 52 条');
+        }
+        
+        function clearBrowserCache() {
+            if ('caches' in window) {
+                caches.keys().then(function(names) {
+                    names.forEach(function(name) {
+                        caches.delete(name);
+                    });
+                });
+            }
+            
+            // 清除localStorage
+            localStorage.clear();
+            sessionStorage.clear();
+            
+            alert('已清除浏览器缓存！\n请刷新助手页面查看效果。');
+        }
+        
+        async function runTroubleshooting() {
+            const resultDiv = document.getElementById('troubleshooting-result');
+            resultDiv.innerHTML = '<p>🔄 运行故障排除...</p>';
+            
+            const issues = [];
+            const solutions = [];
+            
+            try {
+                // 1. 检查规则文件访问
+                const response = await fetch('/data/rules.json?v=' + Date.now());
+                if (!response.ok) {
+                    issues.push(`规则文件HTTP错误: ${response.status}`);
+                    solutions.push('检查文件是否存在于 public/data/rules.json');
+                }
+                
+                // 2. 检查JSON格式
+                const data = await response.json();
+                if (!data.categories || !Array.isArray(data.categories)) {
+                    issues.push('规则文件格式错误');
+                    solutions.push('检查JSON文件格式是否正确');
+                }
+                
+                // 3. 检查规则数量
+                if (data.totalRules !== 52) {
+                    issues.push(`规则数量不匹配: 期望52条，实际${data.totalRules}条`);
+                    solutions.push('重新生成规则文件');
+                }
+                
+                // 4. 检查前端服务
+                const frontendCheck = await fetch('/');
+                if (!frontendCheck.ok) {
+                    issues.push('前端服务异常');
+                    solutions.push('重启前端开发服务器');
+                }
+                
+            } catch (error) {
+                issues.push(`网络错误: ${error.message}`);
+                solutions.push('检查网络连接和服务器状态');
+            }
+            
+            let html = '';
+            if (issues.length === 0) {
+                html = `
+                    <div style="background: #d4edda; padding: 10px; margin: 10px 0; border-radius: 4px;">
+                        <h4>✅ 未发现技术问题</h4>
+                        <p>规则文件和服务器状态正常。如果前端仍未更新，可能是浏览器缓存问题。</p>
+                        <p><strong>建议:</strong></p>
+                        <ul>
+                            <li>强制刷新浏览器 (Ctrl+Shift+R)</li>
+                            <li>清除浏览器缓存</li>
+                            <li>在助手页面点击"强制刷新"按钮</li>
+                        </ul>
+                    </div>
+                `;
+            } else {
+                html = `
+                    <div style="background: #f8d7da; padding: 10px; margin: 10px 0; border-radius: 4px;">
+                        <h4>❌ 发现问题</h4>
+                        <p><strong>问题列表:</strong></p>
+                        <ul>${issues.map(issue => `<li>${issue}</li>`).join('')}</ul>
+                        <p><strong>解决方案:</strong></p>
+                        <ul>${solutions.map(solution => `<li>${solution}</li>`).join('')}</ul>
+                    </div>
+                `;
+            }
+            
+            resultDiv.innerHTML = html;
+        }
+        
+        // 页面加载时自动检查状态
+        window.addEventListener('load', checkCurrentStatus);
+    </script>
+</body>
+</html>

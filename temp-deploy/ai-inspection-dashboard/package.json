@@ -1,0 +1,52 @@
+{
+  "name": "ai-inspection-dashboard",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "node deploy.js",
+    "deploy-gh": "sh deploy.sh",
+    "deploy-win": "powershell -ExecutionPolicy Bypass -File deploy.ps1",
+    "test-ai": "node --experimental-modules --es-module-specifier-resolution=node src/run-ai-test.js",
+    "api-server": "node --experimental-modules --es-module-specifier-resolution=node server.js"
+  },
+  "dependencies": {
+    "@ant-design/icons-vue": "^7.0.1",
+    "@element-plus/icons-vue": "^2.3.1",
+    "@vueuse/core": "^10.9.0",
+    "ant-design-vue": "^4.2.6",
+    "axios": "^1.6.8",
+    "axios-mock-adapter": "^2.1.0",
+    "body-parser": "^2.2.0",
+    "chart.js": "^4.5.0",
+    "chartjs-adapter-date-fns": "^3.0.0",
+    "cors": "^2.8.5",
+    "d3": "^7.9.0",
+    "d3-axis": "^3.0.0",
+    "d3-scale": "^4.0.2",
+    "d3-selection": "^3.0.0",
+    "d3-shape": "^3.2.0",
+    "dayjs": "^1.11.13",
+    "echarts": "^5.6.0",
+    "element-plus": "^2.6.0",
+    "express": "^4.18.3",
+    "lodash": "^4.17.21",
+    "marked": "^15.0.12",
+    "mermaid": "^11.6.0",
+    "papaparse": "^5.4.1",
+    "pinia": "^3.0.3",
+    "plotly.js-dist-min": "^3.0.1",
+    "uuid": "^11.1.0",
+    "vue": "^3.4.21",
+    "vue-chartjs": "^5.3.2",
+    "vue-router": "^4.3.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.4",
+    "vite": "^5.1.6"
+  }
+}
