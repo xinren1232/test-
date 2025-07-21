@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>直接测试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .status {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            backdrop-filter: blur(10px);
+        }
+        .time {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #ffeb3b;
+        }
+        .success {
+            color: #4caf50;
+            font-size: 1.2em;
+            margin: 10px 0;
+        }
+        button {
+            background: #ff4081;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            background: #e91e63;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 系统状态检测</h1>
+        
+        <div class="status">
+            <div class="success">✅ HTML页面加载成功</div>
+            <div class="success">✅ CSS样式应用正常</div>
+            <div class="success" id="js-status">⏳ JavaScript检测中...</div>
+            <div class="time" id="current-time">加载中...</div>
+        </div>
+
+        <button onclick="testVue()">测试Vue应用</button>
+        <button onclick="testAPI()">测试API连接</button>
+        <button onclick="clearCache()">清除缓存</button>
+
+        <div id="test-results" class="status" style="display:none;">
+            <h3>测试结果：</h3>
+            <div id="results-content"></div>
+        </div>
+    </div>
+
+    <script>
+        // 更新时间
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = 
+                `当前时间: ${now.toLocaleString()}`;
+        }
+
+        // JavaScript状态检测
+        document.getElementById('js-status').innerHTML = '✅ JavaScript运行正常';
+        updateTime();
+        setInterval(updateTime, 1000);
+
+        // 测试Vue应用
+        function testVue() {
+            const results = document.getElementById('results-content');
+            results.innerHTML = '<div>🔍 检测Vue应用状态...</div>';
+            document.getElementById('test-results').style.display = 'block';
+            
+            // 尝试访问Vue应用
+            fetch('/')
+                .then(response => response.text())
+                .then(html => {
+                    if (html.includes('<div id="app">') && html.includes('vue')) {
+                        results.innerHTML += '<div class="success">✅ Vue应用HTML结构正常</div>';
+                    } else {
+                        results.innerHTML += '<div style="color:#ff5722">❌ Vue应用HTML结构异常</div>';
+                    }
+                })
+                .catch(error => {
+                    results.innerHTML += `<div style="color:#ff5722">❌ Vue应用访问失败: ${error.message}</div>`;
+                });
+        }
+
+        // 测试API连接
+        function testAPI() {
+            const results = document.getElementById('results-content');
+            results.innerHTML = '<div>🔍 检测API连接...</div>';
+            document.getElementById('test-results').style.display = 'block';
+            
+            // 测试后端API
+            fetch('/api/health')
+                .then(response => {
+                    if (response.ok) {
+                        results.innerHTML += '<div class="success">✅ 后端API连接正常</div>';
+                    } else {
+                        results.innerHTML += '<div style="color:#ff5722">❌ 后端API响应异常</div>';
+                    }
+                })
+                .catch(error => {
+                    results.innerHTML += `<div style="color:#ff5722">❌ 后端API连接失败: ${error.message}</div>`;
+                });
+        }
+
+        // 清除缓存
+        function clearCache() {
+            if ('caches' in window) {
+                caches.keys().then(names => {
+                    names.forEach(name => {
+                        caches.delete(name);
+                    });
+                });
+            }
+            localStorage.clear();
+            sessionStorage.clear();
+            alert('缓存已清除，请刷新页面');
+        }
+
+        console.log('🎉 直接测试页面加载完成！');
+    </script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>IQE动态检验系统</title>
+  <script type="text/javascript">
+    // 单页应用的GitHub Pages路由解决方案
+    // 将404页面重定向到index.html
+    var segmentCount = 1; // 根据你的仓库名调整这个值，例如 /repo-name/ 是 1
+    var l = window.location;
+    var repo = 'IQE'; // 使用固定的仓库名
+    l.replace(
+      l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+      '/' + repo + '/?p=/' + 
+      l.pathname.slice(1).split('/').slice(segmentCount).join('/').replace(/&/g, '~and~') +
+      (l.search ? '&q=' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+      l.hash
+    );
+  </script>
+</head>
+<body>
+  <h2>正在重定向...</h2>
+</body>
+</html> 

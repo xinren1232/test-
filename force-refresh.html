@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>强制刷新</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+            text-align: center;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 600px;
+            margin: 50px auto;
+        }
+        .btn {
+            background-color: #409EFF;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+        }
+        .btn:hover {
+            background-color: #337ecc;
+        }
+        .btn.danger {
+            background-color: #F56C6C;
+        }
+        .btn.danger:hover {
+            background-color: #e04848;
+        }
+        .status {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            border-left: 4px solid #409EFF;
+            background-color: #f0f9ff;
+        }
+        .instructions {
+            text-align: left;
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .instructions ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 前端页面修复工具</h1>
+        
+        <div class="status">
+            <strong>问题诊断:</strong> 页面显示HTML源码而不是渲染的内容，通常是由于浏览器缓存或JavaScript加载问题导致的。
+        </div>
+        
+        <h2>自动修复选项</h2>
+        
+        <button class="btn" onclick="clearCacheAndReload()">
+            🧹 清除缓存并重新加载
+        </button>
+        
+        <button class="btn" onclick="forceReload()">
+            🔄 强制刷新页面
+        </button>
+        
+        <button class="btn" onclick="openNewTab()">
+            🆕 在新标签页打开
+        </button>
+        
+        <button class="btn danger" onclick="hardReset()">
+            ⚠️ 硬重置 (清除所有数据)
+        </button>
+        
+        <div class="instructions">
+            <h3>手动修复步骤:</h3>
+            <ol>
+                <li><strong>清除浏览器缓存:</strong>
+                    <ul>
+                        <li>Chrome: Ctrl+Shift+Delete → 选择"缓存的图片和文件" → 清除数据</li>
+                        <li>或者按 Ctrl+F5 强制刷新</li>
+                    </ul>
+                </li>
+                <li><strong>检查开发者工具:</strong>
+                    <ul>
+                        <li>按 F12 打开开发者工具</li>
+                        <li>查看 Console 标签页是否有错误信息</li>
+                        <li>查看 Network 标签页检查资源加载情况</li>
+                    </ul>
+                </li>
+                <li><strong>尝试无痕模式:</strong>
+                    <ul>
+                        <li>Ctrl+Shift+N 打开无痕窗口</li>
+                        <li>访问 http://localhost:5173/</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+        
+        <h2>测试链接</h2>
+        <p>
+            <a href="/debug.html" target="_blank">🔧 调试页面</a> |
+            <a href="/" target="_blank">🏠 主页面</a> |
+            <a href="/test-simple.html" target="_blank">📄 简单测试页面</a>
+        </p>
+        
+        <div id="status"></div>
+    </div>
+
+    <script>
+        function clearCacheAndReload() {
+            const status = document.getElementById('status');
+            status.innerHTML = '<div class="status">🔄 正在清除缓存...</div>';
+            
+            // 清除各种缓存
+            if ('caches' in window) {
+                caches.keys().then(function(names) {
+                    for (let name of names) {
+                        caches.delete(name);
+                    }
+                });
+            }
+            
+            // 清除localStorage
+            localStorage.clear();
+            
+            // 清除sessionStorage
+            sessionStorage.clear();
+            
+            setTimeout(() => {
+                status.innerHTML = '<div class="status">✅ 缓存已清除，正在重新加载...</div>';
+                window.location.href = '/?t=' + Date.now();
+            }, 1000);
+        }
+        
+        function forceReload() {
+            const status = document.getElementById('status');
+            status.innerHTML = '<div class="status">🔄 强制刷新中...</div>';
+            
+            setTimeout(() => {
+                window.location.reload(true);
+            }, 500);
+        }
+        
+        function openNewTab() {
+            const url = '/?t=' + Date.now();
+            window.open(url, '_blank');
+        }
+        
+        function hardReset() {
+            if (confirm('这将清除所有本地数据，确定要继续吗？')) {
+                const status = document.getElementById('status');
+                status.innerHTML = '<div class="status">⚠️ 执行硬重置...</div>';
+                
+                // 清除所有存储
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                // 清除所有缓存
+                if ('caches' in window) {
+                    caches.keys().then(function(names) {
+                        for (let name of names) {
+                            caches.delete(name);
+                        }
+                    });
+                }
+                
+                // 清除IndexedDB
+                if ('indexedDB' in window) {
+                    indexedDB.databases().then(databases => {
+                        databases.forEach(db => {
+                            indexedDB.deleteDatabase(db.name);
+                        });
+                    });
+                }
+                
+                setTimeout(() => {
+                    status.innerHTML = '<div class="status">✅ 硬重置完成，正在重新加载...</div>';
+                    window.location.href = '/?t=' + Date.now();
+                }, 2000);
+            }
+        }
+        
+        // 页面加载完成后的状态检查
+        window.addEventListener('load', function() {
+            console.log('强制刷新页面加载完成');
+            
+            // 检查主应用状态
+            fetch('/')
+                .then(response => response.text())
+                .then(html => {
+                    if (html.includes('<script type="module" src="/src/main.js">')) {
+                        document.getElementById('status').innerHTML = 
+                            '<div class="status">✅ 主应用HTML结构正常，如果仍显示源码请尝试清除缓存</div>';
+                    } else {
+                        document.getElementById('status').innerHTML = 
+                            '<div class="status">❌ 主应用HTML结构异常</div>';
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('status').innerHTML = 
+                        '<div class="status">❌ 无法访问主应用: ' + error.message + '</div>';
+                });
+        });
+    </script>
+</body>
+</html>

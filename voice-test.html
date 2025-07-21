@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小Q语音识别测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        button {
+            padding: 12px 24px;
+            margin: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .start-btn { background: #28a745; color: white; }
+        .stop-btn { background: #dc3545; color: white; }
+        .test-btn { background: #007bff; color: white; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        .result {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #007bff;
+        }
+        .log {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .interim { color: #6c757d; font-style: italic; }
+        .final { color: #28a745; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 小Q语音识别测试工具</h1>
+        
+        <div id="support-status" class="status"></div>
+        
+        <div class="controls">
+            <button id="start-btn" class="start-btn">🎤 开始录音</button>
+            <button id="stop-btn" class="stop-btn" disabled>⏹️ 停止录音</button>
+            <button id="test-speech-btn" class="test-btn">🔊 测试语音播放</button>
+            <button id="clear-btn" class="test-btn">🗑️ 清空日志</button>
+        </div>
+        
+        <div class="result">
+            <h3>识别结果:</h3>
+            <div id="interim-result" class="interim"></div>
+            <div id="final-result" class="final"></div>
+            <div id="confidence"></div>
+        </div>
+        
+        <div class="log">
+            <h3>调试日志:</h3>
+            <div id="log-content"></div>
+        </div>
+    </div>
+
+    <script>
+        // 检查浏览器支持
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const speechSynthesis = window.speechSynthesis;
+        
+        let recognition = null;
+        let isListening = false;
+        
+        // 日志函数
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logContent = document.getElementById('log-content');
+            logContent.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            logContent.scrollTop = logContent.scrollHeight;
+            console.log(`[${timestamp}] ${message}`);
+        }
+        
+        // 初始化
+        function init() {
+            const statusDiv = document.getElementById('support-status');
+            
+            if (SpeechRecognition && speechSynthesis) {
+                statusDiv.className = 'status success';
+                statusDiv.textContent = '✅ 浏览器支持语音识别和语音合成';
+                log('浏览器支持检查通过');
+                initSpeechRecognition();
+            } else {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '❌ 浏览器不支持语音功能';
+                log('浏览器不支持语音功能');
+                document.getElementById('start-btn').disabled = true;
+                document.getElementById('test-speech-btn').disabled = true;
+            }
+        }
+        
+        // 初始化语音识别
+        function initSpeechRecognition() {
+            recognition = new SpeechRecognition();
+            
+            // 配置
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.lang = 'zh-CN';
+            recognition.maxAlternatives = 1;
+            
+            log('语音识别配置完成');
+            
+            // 事件处理
+            recognition.onstart = () => {
+                log('🎤 语音识别开始');
+                isListening = true;
+                updateButtons();
+            };
+            
+            recognition.onresult = (event) => {
+                log(`🎤 收到识别结果，共 ${event.results.length} 个结果`);
+                
+                let finalTranscript = '';
+                let interimTranscript = '';
+                let maxConfidence = 0;
+                
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const result = event.results[i];
+                    const transcript = result[0].transcript;
+                    const confidence = result[0].confidence || 0;
+                    
+                    log(`结果 ${i}: "${transcript}" (final: ${result.isFinal}, confidence: ${confidence.toFixed(3)})`);
+                    
+                    if (result.isFinal) {
+                        finalTranscript += transcript;
+                        maxConfidence = Math.max(maxConfidence, confidence);
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+                
+                // 更新显示
+                document.getElementById('interim-result').textContent = 
+                    interimTranscript ? `识别中: ${interimTranscript}` : '';
+                
+                if (finalTranscript) {
+                    document.getElementById('final-result').textContent = `最终结果: ${finalTranscript}`;
+                    document.getElementById('confidence').textContent = 
+                        `置信度: ${(maxConfidence * 100).toFixed(1)}%`;
+                    log(`✅ 最终识别结果: "${finalTranscript}" (置信度: ${(maxConfidence * 100).toFixed(1)}%)`);
+                }
+            };
+            
+            recognition.onerror = (event) => {
+                log(`❌ 语音识别错误: ${event.error}`);
+                isListening = false;
+                updateButtons();
+                
+                const statusDiv = document.getElementById('support-status');
+                statusDiv.className = 'status error';
+                statusDiv.textContent = `❌ 语音识别错误: ${event.error}`;
+            };
+            
+            recognition.onend = () => {
+                log('🎤 语音识别结束');
+                isListening = false;
+                updateButtons();
+            };
+        }
+        
+        // 更新按钮状态
+        function updateButtons() {
+            document.getElementById('start-btn').disabled = isListening;
+            document.getElementById('stop-btn').disabled = !isListening;
+        }
+        
+        // 开始录音
+        function startRecording() {
+            if (!recognition) {
+                log('❌ 语音识别未初始化');
+                return;
+            }
+            
+            try {
+                log('🎤 尝试启动语音识别...');
+                recognition.start();
+            } catch (error) {
+                log(`❌ 启动语音识别失败: ${error.message}`);
+            }
+        }
+        
+        // 停止录音
+        function stopRecording() {
+            if (recognition && isListening) {
+                log('🎤 停止语音识别');
+                recognition.stop();
+            }
+        }
+        
+        // 测试语音播放
+        function testSpeech() {
+            const text = '您好，我是小Q，您的专属QMS问答助手！如果您能听到这段话，说明语音合成功能正常工作。有什么问题尽管问我吧！';
+            log('🔊 开始语音播放测试');
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'zh-CN';
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+            
+            utterance.onstart = () => log('🔊 语音播放开始');
+            utterance.onend = () => log('🔊 语音播放结束');
+            utterance.onerror = (event) => log(`❌ 语音播放错误: ${event.error}`);
+            
+            speechSynthesis.speak(utterance);
+        }
+        
+        // 清空日志
+        function clearLog() {
+            document.getElementById('log-content').innerHTML = '';
+            document.getElementById('interim-result').textContent = '';
+            document.getElementById('final-result').textContent = '';
+            document.getElementById('confidence').textContent = '';
+            log('🗑️ 日志已清空');
+        }
+        
+        // 绑定事件
+        document.getElementById('start-btn').onclick = startRecording;
+        document.getElementById('stop-btn').onclick = stopRecording;
+        document.getElementById('test-speech-btn').onclick = testSpeech;
+        document.getElementById('clear-btn').onclick = clearLog;
+        
+        // 初始化
+        init();
+        
+        // 页面加载完成后的额外检查
+        window.onload = () => {
+            log('页面加载完成');
+            log(`User Agent: ${navigator.userAgent}`);
+            log(`协议: ${location.protocol}`);
+            log(`域名: ${location.hostname}`);
+            
+            // 检查麦克风权限
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(() => {
+                        log('✅ 麦克风权限获取成功');
+                    })
+                    .catch((error) => {
+                        log(`❌ 麦克风权限获取失败: ${error.message}`);
+                    });
+            }
+        };
+    </script>
+</body>
+</html>

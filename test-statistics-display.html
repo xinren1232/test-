@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>统计卡片显示测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .link-button {
+            background: #28a745;
+            text-decoration: none;
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 4px;
+            color: white;
+            margin-right: 10px;
+        }
+        .link-button:hover {
+            background: #218838;
+            color: white;
+        }
+        .stats-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 16px 0;
+        }
+        .stat-card-preview {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .stat-card-preview.primary {
+            border-left: 4px solid #3b82f6;
+        }
+        .stat-card-preview.info {
+            border-left: 4px solid #06b6d4;
+        }
+        .stat-card-preview.success {
+            border-left: 4px solid #10b981;
+        }
+        .stat-card-preview.warning {
+            border-left: 4px solid #f59e0b;
+        }
+        .stat-card-preview.danger {
+            border-left: 4px solid #ef4444;
+        }
+        .stat-icon-preview {
+            font-size: 24px;
+            line-height: 1;
+        }
+        .stat-content-preview {
+            flex: 1;
+        }
+        .stat-value-preview {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1f2937;
+            line-height: 1.2;
+            margin-bottom: 4px;
+        }
+        .stat-label-preview {
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            line-height: 1.2;
+            margin-bottom: 2px;
+        }
+        .stat-subtitle-preview {
+            font-size: 12px;
+            color: #6b7280;
+            line-height: 1.2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 统计卡片显示测试</h1>
+        <p>测试智能问答页面的统计卡片功能是否正确显示</p>
+        
+        <div class="test-section">
+            <h3>1. 库存场景统计卡片预览</h3>
+            <div class="stats-preview">
+                <div class="stat-card-preview primary">
+                    <div class="stat-icon-preview">📦</div>
+                    <div class="stat-content-preview">
+                        <div class="stat-value-preview">6</div>
+                        <div class="stat-label-preview">物料和批次</div>
+                        <div class="stat-subtitle-preview">0 个批次</div>
+                    </div>
+                </div>
+                <div class="stat-card-preview info">
+                    <div class="stat-icon-preview">🏭</div>
+                    <div class="stat-content-preview">
+                        <div class="stat-value-preview">5</div>
+                        <div class="stat-label-preview">供应商</div>
+                        <div class="stat-subtitle-preview">家供应商</div>
+                    </div>
+                </div>
+                <div class="stat-card-preview warning">
+                    <div class="stat-icon-preview">⚠️</div>
+                    <div class="stat-content-preview">
+                        <div class="stat-value-preview">11</div>
+                        <div class="stat-label-preview">风险库存</div>
+                        <div class="stat-subtitle-preview">需关注</div>
+                    </div>
+                </div>
+                <div class="stat-card-preview danger">
+                    <div class="stat-icon-preview">🧊</div>
+                    <div class="stat-content-preview">
+                        <div class="stat-value-preview">3</div>
+                        <div class="stat-label-preview">冻结库存</div>
+                        <div class="stat-subtitle-preview">已冻结</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>2. 生产场景统计卡片预览</h3>
+            <div class="stats-preview">
+                <div class="stat-card-preview primary">
+                    <div class="stat-icon-preview">📦</div>
+                    <div class="stat-content-preview">
+                        <div class="stat-value-preview">14</div>
+                        <div class="stat-label-preview">物料和批次</div>
+                        <div class="stat-subtitle-preview">44 个批次</div>
+                    </div>
+                </div>
+                <div class="stat-card-preview info">
+                    <div class="stat-icon-preview">🎯</div>
+                    <div class="stat-content-preview">
+                        <div class="stat-value-preview">5</div>
+                        <div class="stat-label-preview">项目</div>
+                        <div class="stat-subtitle-preview">个项目</div>
+                    </div>
+                </div>
+                <div class="stat-card-preview success">
+                    <div class="stat-icon-preview">🏭</div>
+                    <div class="stat-content-preview">
+                        <div class="stat-value-preview">18</div>
+                        <div class="stat-label-preview">供应商</div>
+                        <div class="stat-subtitle-preview">家供应商</div>
+                    </div>
+                </div>
+                <div class="stat-card-preview warning">
+                    <div class="stat-icon-preview">📊</div>
+                    <div class="stat-content-preview">
+                        <div class="stat-value-preview">26/24</div>
+                        <div class="stat-label-preview">不良率</div>
+                        <div class="stat-subtitle-preview">标准内/标准外</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>3. 测试场景统计卡片预览</h3>
+            <div class="stats-preview">
+                <div class="stat-card-preview primary">
+                    <div class="stat-icon-preview">📦</div>
+                    <div class="stat-content-preview">
+                        <div class="stat-value-preview">2</div>
+                        <div class="stat-label-preview">物料和批次</div>
+                        <div class="stat-subtitle-preview">50 个批次</div>
+                    </div>
+                </div>
+                <div class="stat-card-preview info">
+                    <div class="stat-icon-preview">🎯</div>
+                    <div class="stat-content-preview">
+                        <div class="stat-value-preview">10</div>
+                        <div class="stat-label-preview">项目</div>
+                        <div class="stat-subtitle-preview">个项目</div>
+                    </div>
+                </div>
+                <div class="stat-card-preview success">
+                    <div class="stat-icon-preview">🏭</div>
+                    <div class="stat-content-preview">
+                        <div class="stat-value-preview">3</div>
+                        <div class="stat-label-preview">供应商</div>
+                        <div class="stat-subtitle-preview">家供应商</div>
+                    </div>
+                </div>
+                <div class="stat-card-preview danger">
+                    <div class="stat-icon-preview">❌</div>
+                    <div class="stat-content-preview">
+                        <div class="stat-value-preview">3</div>
+                        <div class="stat-label-preview">NG批次</div>
+                        <div class="stat-subtitle-preview">个批次</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>4. 实际测试</h3>
+            <p>请按以下步骤测试实际功能：</p>
+            <ol>
+                <li><a href="http://localhost:5174/assistant" target="_blank" class="link-button">打开智能问答页面</a></li>
+                <li>输入查询: "查询库存信息"</li>
+                <li>检查是否显示库存场景的4个统计卡片</li>
+                <li>输入查询: "查询上线信息"</li>
+                <li>检查是否显示生产场景的4个统计卡片</li>
+                <li>输入查询: "查询测试信息"</li>
+                <li>检查是否显示测试场景的4个统计卡片</li>
+            </ol>
+            
+            <button onclick="testQueries()">自动测试查询</button>
+            <div id="testResult" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>5. 预期效果</h3>
+            <div class="result">
+✅ 统计卡片应该显示在查询结果的数据表格之前
+✅ 每个场景显示4个不同的统计卡片
+✅ 卡片有不同的颜色边框和图标
+✅ 统计数据应该与表格数据一致
+✅ 卡片应该有悬停效果和响应式布局
+
+📊 库存场景卡片:
+- 📦 物料和批次 (蓝色边框)
+- 🏭 供应商 (青色边框)  
+- ⚠️ 风险库存 (黄色边框)
+- 🧊 冻结库存 (红色边框)
+
+🏭 生产场景卡片:
+- 📦 物料和批次 (蓝色边框)
+- 🎯 项目 (青色边框)
+- 🏭 供应商 (绿色边框)
+- 📊 不良率 (黄色/绿色边框)
+
+🔬 测试场景卡片:
+- 📦 物料和批次 (蓝色边框)
+- 🎯 项目 (青色边框)
+- 🏭 供应商 (绿色边框)
+- ❌ NG批次 (红色边框)
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function testQueries() {
+            const resultDiv = document.getElementById('testResult');
+            resultDiv.textContent = '正在测试查询功能...';
+            
+            const testQueries = [
+                { query: '查询库存信息', scenario: '库存' },
+                { query: '查询上线信息', scenario: '生产' },
+                { query: '查询测试信息', scenario: '测试' }
+            ];
+            
+            let output = '🧪 自动测试结果:\n\n';
+            
+            for (const test of testQueries) {
+                try {
+                    const response = await fetch('http://localhost:3001/api/assistant/query', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ question: test.query })
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        
+                        if (result.success && result.data && result.data.tableData) {
+                            output += `✅ ${test.scenario}场景查询成功\n`;
+                            output += `   查询: ${test.query}\n`;
+                            output += `   结果: ${result.data.tableData.length} 条记录\n`;
+                            output += `   预期显示4个统计卡片\n\n`;
+                        } else {
+                            output += `❌ ${test.scenario}场景查询失败\n`;
+                            output += `   错误: ${result.message || '未知错误'}\n\n`;
+                        }
+                    } else {
+                        output += `❌ ${test.scenario}场景请求失败: ${response.status}\n\n`;
+                    }
+                } catch (error) {
+                    output += `❌ ${test.scenario}场景测试出错: ${error.message}\n\n`;
+                }
+            }
+            
+            output += '💡 请手动访问智能问答页面验证统计卡片显示效果';
+            
+            resultDiv.className = 'result success';
+            resultDiv.textContent = output;
+        }
+    </script>
+</body>
+</html>
